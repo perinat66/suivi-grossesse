@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suivi de grossesse</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Suivi grossesse">
+<meta name="theme-color" content="#F2F4F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1419" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex, nofollow">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E8ECF0; --ink:#17212B; --muted:#5B6876; --line:#D8DEE4;
+  --accent:#7A2E63; --accent-ink:#FFFFFF; --accent-soft:#F4E7F0;
+  --ok:#2E7656; --ok-soft:#E2F1E9; --warn:#935600; --warn-soft:#FBEFD8; --bad:#B42318; --bad-soft:#FBE6E3;
+  --radius:14px;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1419; --surface:#18202A; --surface-2:#232D38; --ink:#E7ECF1; --muted:#9BA8B5; --line:#2D3844;
+    --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335;
+    --ok:#6CC59A; --ok-soft:#163528; --warn:#E9B24E; --warn-soft:#3A2B12; --bad:#F28B82; --bad-soft:#3C1C1A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1419; --surface:#18202A; --surface-2:#232D38; --ink:#E7ECF1; --muted:#9BA8B5; --line:#2D3844;
+  --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335;
+  --ok:#6CC59A; --ok-soft:#163528; --warn:#E9B24E; --warn-soft:#3A2B12; --bad:#F28B82; --bad-soft:#3C1C1A;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 96px}
+
+/* Top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:12px 16px 10px;max-width:760px;margin:0 auto}
+.top-row{display:flex;align-items:center;gap:12px}
+.brand{font-weight:700;font-size:1.15rem;flex:1;display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{background:transparent;border-color:transparent;padding:8px 10px}
+.btn.small{min-height:32px;padding:4px 12px;font-size:.9rem}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border-radius:999px;padding:4px;margin-top:10px}
+.tabs button{flex:1;border:0;background:transparent;border-radius:999px;padding:7px 8px;font-weight:700;color:var(--muted)}
+.tabs button[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* List */
+.summary{margin:14px 2px 4px;color:var(--muted)}
+.summary strong{color:var(--ink);font-size:1.6rem;display:block;line-height:1.15}
+.search{display:flex;gap:8px;margin:12px 0 4px}
+.search input{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;min-width:0}
+.search select{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 8px}
+.group{margin-top:18px}
+.group-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px 6px}
+.group-h h2{font-size:1.02rem;margin:0}
+.group-h h2 span{color:var(--muted);font-weight:400}
+.link{border:0;background:none;color:var(--accent);font-weight:700;padding:4px}
+.card{background:var(--surface);border-radius:var(--radius);overflow:hidden}
+.row{display:flex;gap:12px;width:100%;text-align:left;border:0;background:transparent;padding:12px 14px;align-items:flex-start;border-top:1px solid var(--line)}
+.card > .row:first-child{border-top:0}
+.av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.9rem;color:#fff;background:var(--c)}
+.rmain{flex:1;min-width:0}
+.nm{font-weight:700;display:block}
+.trio{display:grid;grid-template-columns:repeat(3,auto);gap:2px 14px;justify-content:start;margin-top:2px}
+.trio small{display:block;color:var(--muted);font-size:.75rem}
+.trio span{font-size:.92rem}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink)}
+.tag.acc{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.prog{display:block;height:4px;background:var(--surface-2);border-radius:4px;margin-top:8px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent)}
+.prog.over i{background:var(--bad)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:12px}
+
+/* Detail */
+.back{margin:8px 0 0}
+.hero{background:var(--surface);border-radius:var(--radius);padding:18px 16px;margin-top:10px}
+.hero h1{margin:0;font-size:1.6rem;line-height:1.15}
+.hero .sub{color:var(--muted);margin-top:4px}
+.ga-big{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-top:14px}
+.ga-big .v{font-size:2.3rem;font-weight:700;line-height:1}
+.ga-big .l{color:var(--muted);font-size:.85rem}
+.ruler{margin-top:16px}
+.ruler svg{width:100%;height:auto;display:block}
+.sec{margin-top:22px}
+.sec > h2{font-size:1.02rem;margin:0 4px 8px;display:flex;justify-content:space-between;align-items:center}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:11px 14px;border-top:1px solid var(--line)}
+.card > .kv:first-child{border-top:0}
+.kv .k{color:var(--muted)}
+.kv .v{text-align:right;font-weight:700}
+.txt{padding:11px 14px;border-top:1px solid var(--line);white-space:pre-wrap}
+.card > .txt:first-child{border-top:0}
+.txt .k{display:block;color:var(--muted);font-size:.82rem}
+.ms{display:flex;gap:10px;align-items:center;padding:11px 14px;border-top:1px solid var(--line)}
+.card > .ms:first-child{border-top:0}
+.ms .mn{flex:1;min-width:0}
+.ms .mn b{display:block;font-weight:700}
+.ms .mn small{color:var(--muted)}
+.ms .md{text-align:right;font-size:.92rem}
+.ms .md small{display:block}
+.chk{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);background:transparent;display:grid;place-items:center;padding:0}
+.chk[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.st-encours .chk{border-color:var(--accent)}
+.st-depasse .chk{border-color:var(--bad)}
+.st-fait .mn b{color:var(--muted);text-decoration:line-through}
+.note{color:var(--muted);font-size:.85rem;margin:8px 4px 0}
+.doc{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line)}
+.card > .doc:first-child{border-top:0}
+.doc .dn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:none;text-align:left;padding:0;font-weight:700;color:var(--accent)}
+.doc small{color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.inline-form{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.inline-form input{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);min-width:0}
+
+/* Sheet editor */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.open{display:block}
+.sheet-h{position:sticky;top:0;z-index:2;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.sheet-h h2{flex:1;margin:0;font-size:1.05rem;text-align:center}
+.form{max-width:760px;margin:0 auto;padding:8px 16px 80px}
+fieldset{border:0;margin:20px 0 0;padding:0}
+legend{font-weight:700;font-size:1.02rem;padding:0 4px 8px}
+.fbox{background:var(--surface);border-radius:var(--radius);padding:4px 14px 14px}
+.f{display:block;margin-top:12px}
+.f > span{display:block;font-size:.86rem;color:var(--muted);margin-bottom:4px}
+.f input,.f select,.f textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.f textarea{min-height:76px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.92rem;background:var(--bg)}
+.seg input:checked + span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.preview{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.trow{display:grid;grid-template-columns:1.4fr 1fr auto;gap:8px;margin-top:8px;align-items:center}
+.trow.g{grid-template-columns:1.3fr 1fr .9fr auto}
+.trow input{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);min-width:0;width:100%}
+.x{border:0;background:var(--surface-2);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;padding:0}
+.chkline{display:flex;gap:10px;align-items:center;margin-top:12px}
+.chkline input{width:20px;height:20px;accent-color:var(--accent)}
+
+/* Settings */
+.msedit{padding:12px 14px;border-top:1px solid var(--line)}
+.card > .msedit:first-child{border-top:0}
+.msedit input,.msedit select{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);min-width:0}
+.msedit .nmin{width:100%}
+.msedit .nums{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:.9rem;color:var(--muted)}
+.msedit .nums input{width:58px;text-align:center}
+.msedit .nums select{flex:1;min-width:140px}
+
+/* Modal, toast, viewer */
+.modal{position:fixed;inset:0;z-index:40;background:rgba(10,14,20,.45);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.open{display:flex}
+.modal .box{background:var(--surface);border-radius:18px;padding:20px;max-width:420px;width:100%}
+.modal h3{margin:0 0 8px}
+.modal p{margin:0 0 12px;color:var(--muted)}
+.modal .bx{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;z-index:50;font-weight:700;display:none;max-width:90vw;text-align:center}
+.toast.show{display:block}
+.viewer{position:fixed;inset:0;z-index:30;background:var(--bg);display:none;flex-direction:column}
+.viewer.open{display:flex}
+.viewer header{display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;border-bottom:1px solid var(--line)}
+.viewer header b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.viewer iframe{flex:1;border:0;width:100%;background:#fff}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px}
+.tile{background:var(--surface);border-radius:var(--radius);padding:12px 14px}
+.tile b{display:block;font-size:1.45rem;line-height:1.15}
+.tile span{color:var(--muted);font-size:.85rem}
+.bars{padding:6px 14px 12px}
+.bar{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(50px,1fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:.92rem}
+.bar .bl{overflow:hidden;text-overflow:ellipsis}
+.bar .bt{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.bar .bt i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.bar .bv{text-align:right;white-space:nowrap;font-weight:700}
+.bar .bv small{color:var(--muted);font-weight:400}
+button.bar{border:0;background:none;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-radius:8px}
+button.bar:disabled{cursor:default}
+button.bar[aria-expanded="true"] .bl{color:var(--accent);font-weight:700}
+.barlist{margin:2px 0 10px;border:1px solid var(--line)}
+.statnote{color:var(--muted);font-size:.82rem;padding:10px 14px 0}
+details.flt{border-top:1px solid var(--line)}
+details.flt summary{padding:11px 14px;cursor:pointer;font-weight:700;display:flex;justify-content:space-between;list-style:none}
+details.flt summary::-webkit-details-marker{display:none}
+details.flt summary::after{content:"＋";color:var(--muted)}
+details.flt[open] summary::after{content:"−"}
+details.flt summary small{color:var(--accent);font-weight:700;margin-left:auto;margin-right:10px}
+details.flt .seg{padding:0 14px 12px;margin-top:0}
+.fpad{padding:4px 14px 12px}
+.fpad .grid2 input{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)}
+.row.sel-on{background:var(--accent-soft)}
+.selbox{flex:none;width:24px;height:24px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;margin-top:8px;color:#fff;font-weight:700;font-size:.85rem}
+.row.sel-on .selbox{background:var(--accent);border-color:var(--accent)}
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.selbar b{flex:1;min-width:120px}
+.kid{border:1px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-top:10px;background:var(--bg)}
+.kid-h{display:flex;justify-content:space-between;align-items:center;padding-top:8px}
+.kid .f input,.kid .f select,.ppc .f input,.ppc .f select,.hrow .f input{background:var(--surface)}
+.ppc,.hrow{border:1px solid var(--line);border-radius:12px;padding:2px 12px 10px;margin-top:10px;background:var(--bg)}
+.fgrp{padding:14px 14px 4px;font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--line)}
+.bblock{border-top:1px solid var(--line)} .card > .bblock:first-child{border-top:0}
+.bblock h3{font-size:.95rem;margin:0;padding:12px 14px 0}
+details.sgrp > summary{font-weight:700;font-size:1.02rem;padding:0 4px 8px;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+details.sgrp > summary::-webkit-details-marker{display:none}
+details.sgrp > summary::after{content:"＋";color:var(--muted)} details.sgrp[open] > summary::after{content:"−"}
+.hwrap svg{width:100%;height:auto;display:block}
+.hwrap{padding:4px 10px}
+.hb{cursor:pointer}
+.xwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.xt{border-collapse:collapse;font-size:.85rem;min-width:100%}
+.xt th,.xt td{border:1px solid var(--line);padding:4px 6px;text-align:center;vertical-align:middle}
+.xt thead th{background:var(--surface-2);font-weight:700;font-size:.78rem}
+.xt tbody th{text-align:left;font-weight:700;background:var(--surface-2);font-size:.8rem;max-width:140px}
+.xt td.z{color:var(--muted)}
+.xc{border:0;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:4px 6px;font-weight:700;min-width:44px;cursor:pointer;font-variant-numeric:tabular-nums}
+.xc small{display:block;font-weight:400;font-size:.7rem}
+.xc.on{background:var(--accent);color:var(--accent-ink)}
+.xsel{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 8px;background:var(--bg)}
+.zoom{position:fixed;inset:0;z-index:35;background:var(--bg);display:none;flex-direction:column;overflow-y:auto}
+.zoom.open{display:flex}
+.zoom header{position:sticky;top:0;background:var(--bg);display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;border-bottom:1px solid var(--line)}
+.zoom header b{flex:1}
+.zbody{padding:12px 12px calc(env(safe-area-inset-bottom,0px) + 20px);max-width:1000px;width:100%;margin:0 auto}
+.dginfo{margin-top:8px;font-size:.9rem}
+.dginfo summary{color:var(--accent);font-weight:700;cursor:pointer}
+.dginfo ul{margin:6px 0;padding-left:20px}
+.dginfo p{margin:0;color:var(--muted)}
+.allergy{display:flex;gap:12px;align-items:center;background:var(--bad);color:#fff;border-radius:12px;padding:10px 14px;margin:-4px 0 14px;font-weight:700;font-size:1.05rem;box-shadow:0 0 0 3px var(--bad-soft)}
+.allergy span{font-size:1.5rem;line-height:1}
+.allergy small{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.9}
+.allergy-line{background:var(--bad-soft)} .allergy-line .k{color:var(--bad);font-weight:700}
+.tag.allergy{background:var(--bad);color:#fff;font-weight:700}
+.vits{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.vit{background:var(--surface-2);border-radius:10px;padding:6px 10px;font-size:.92rem}
+.vit small{display:block;color:var(--muted);font-size:.72rem}
+.vit em{font-style:normal;color:var(--muted);font-size:.78rem;margin-left:6px}
+.vit.hi{background:var(--bad-soft);color:var(--bad)}
+.sortrow{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.9rem;color:var(--muted)}
+.sortrow select{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px;color:var(--ink)}
+.agec{color:var(--muted);font-weight:400;font-size:.85rem}
+.ideal{display:block;color:var(--accent);font-weight:700}
+.ucode{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:10px;background:var(--bg)}
+.ucode.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.ucode-h small{color:var(--muted);display:block;margin-top:4px;font-size:.8rem}
+.ucode .seg{margin-top:6px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.92rem}
+@media (max-width:420px){
+  .trio{grid-template-columns:auto auto auto;gap:2px 10px}
+  .trio span{font-size:.86rem}
+  .trow.g{grid-template-columns:1fr 1fr;}
+}
+@media (prefers-reduced-motion:no-preference){
+  .sheet.open{animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(16px);opacity:.4}to{transform:none;opacity:1}}
+}
+#printArea{display:none}
+@media print{
+  body.printing > *:not(#printArea){display:none !important}
+  body.printing #printArea{display:block;color:#000;background:#fff;font-size:10.5pt;padding:0}
+  body.printing::before{display:none}
+  :root{padding:0 !important}
+  #printArea h1{font-size:16pt;margin:0 0 4px} #printArea h2{font-size:13pt;margin:0} .pmeta{color:#555;font-size:9pt;margin:2px 0 10px}
+  #printArea h3{color:#7A2E63;font-size:11.5pt;border-bottom:1px solid #ccc;margin:14px 0 4px;padding-bottom:2px;break-after:avoid}
+  #printArea table{width:100%;border-collapse:collapse} #printArea th{text-align:left;width:34%;vertical-align:top;padding:2px 8px 2px 0;font-weight:700} #printArea td{padding:2px 0;vertical-align:top}
+  #printArea tr{break-inside:avoid} #printArea .pal{color:#B42318}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="top-row">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11.5" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="54 99" transform="rotate(-90 13 13)"/><circle cx="13" cy="13" r="11.5" fill="none" stroke="var(--line)" stroke-width="2.5" stroke-dasharray="18 99" stroke-dashoffset="-56" transform="rotate(-90 13 13)"/></svg>
+      Suivi de grossesse
+    </div>
+    <button class="btn primary" id="btnNew" aria-label="Nouvelle patiente">＋ Patiente</button>
+  </div>
+  <nav class="tabs" aria-label="Sections">
+    <button data-nav="liste">Patientes</button>
+    <button data-nav="agenda">Agenda</button>
+    <button data-nav="analyse">Analyse</button>
+    <button data-nav="reglages">Réglages</button>
+  </nav>
+</div>
+<main class="wrap" id="view"></main>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="box" id="modalBox"></div></div>
+<div class="viewer" id="viewer"><header><b id="vName"></b><button class="btn small" id="vOpen">Ouvrir</button><button class="btn small" id="vSave">Partager</button><button class="btn small" id="vClose">Fermer</button></header><iframe id="vFrame" title="Document PDF"></iframe></div>
+<div class="zoom" id="zoom" role="dialog" aria-modal="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="importInput" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+"use strict";
+/* ---------- Dates ---------- */
+const DAY = 86400000;
+const fD = new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const fDs = new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'});
+const fDl = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
+function parseD(s){ if(!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null; const [y,m,d]=s.split('-').map(Number); return Date.UTC(y,m-1,d); }
+function iso(t){ return new Date(t).toISOString().slice(0,10); }
+function localDay(ts){ const n=new Date(ts); return Date.UTC(n.getFullYear(),n.getMonth(),n.getDate()); }
+function today(){ const n=new Date(); return Date.UTC(n.getFullYear(),n.getMonth(),n.getDate()); }
+function fd(t){ return t==null ? '—' : fD.format(t); }
+function fds(t){ return fDs.format(t); }
+function range(a,b){
+  if(b==null || a===b) return fd(a);
+  const ya=new Date(a).getUTCFullYear(), yb=new Date(b).getUTCFullYear();
+  return (ya===yb ? fds(a) : fd(a)) + ' – ' + fd(b);
+}
+function sa(days){ if(days==null || isNaN(days)) return '—'; if(days<0) return 'avant DDR'; const w=Math.floor(days/7), d=days-w*7; return w+' SA'+(d? ' + '+d+' j':''); }
+function saShort(days){ const w=Math.floor(days/7), d=days-w*7; return w+(d?'+'+d:'')+' SA'; }
+function age(birth){ const b=parseD(birth); if(b==null) return null; const t=new Date(today()), bd=new Date(b); let a=t.getUTCFullYear()-bd.getUTCFullYear(); if(t.getUTCMonth()<bd.getUTCMonth() || (t.getUTCMonth()===bd.getUTCMonth() && t.getUTCDate()<bd.getUTCDate())) a--; return a; }
+
+/* ---------- Helpers ---------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uid(p){ return p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2600); }
+const PAL=['#7A2E63','#2F6F8F','#2E7656','#9A5B00','#5B4BA8','#B4485A','#3D6B4F','#8A4F2A','#356A9C','#7B5E1E'];
+function colorFor(id){ let h=0; for(const c of id) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
+function initials(p){ return ((p.prenom||'')[0]||'').toUpperCase()+((p.nom||'')[0]||'').toUpperCase() || '?'; }
+function norm(x){ return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function sameIdentity(a,b){ const n=norm(a.nom), q=norm(b.nom); if(!n || n!==q || norm(a.prenom)!==norm(b.prenom)) return false; return !a.naissance || !b.naissance || a.naissance===b.naissance; }
+function dupesOf(p){ if((p.status||'active')==='archived') return []; return S.patients.filter(x=>x.id!==p.id && (x.status||'active')!=='archived' && sameIdentity(x,p)); }
+function fullName(p){ return ((p.nom||'').toUpperCase()+' '+(p.prenom||'')).trim() || 'Sans nom'; }
+function fsize(n){ return n<1024?n+' o':n<1048576?(n/1024).toFixed(0)+' Ko':(n/1048576).toFixed(1).replace('.',',')+' Mo'; }
+
+/* ---------- Référentiel ---------- */
+const COND = {all:'Toutes les patientes', rhneg:'Rhésus négatif', cesar:'Utérus cicatriciel', dgrisk:'Facteurs de risque de DG', multi:'Multipares', primi:'Nullipares', multiple:'Grossesse multiple'};
+const DEFAULT_MS = [
+  {id:'cs1',   name:'Première consultation prénatale', s:42,  e:70,  cond:'all', auto:'consult'},
+  {id:'decl',  name:'Déclaration de grossesse',        s:42,  e:98,  cond:'all'},
+  {id:'echo1', name:'Échographie T1 + dépistage combiné', s:77, e:97, cond:'all', auto:'echo', ideal:84},
+  {id:'cm4',   name:'Consultation du 4e mois',         s:105, e:139, cond:'all', auto:'consult', ideal:126},
+  {id:'echo2', name:'Échographie T2 (morphologique)',  s:140, e:175, cond:'all', auto:'echo', ideal:154},
+  {id:'coq',   name:'Vaccin coqueluche',               s:140, e:252, cond:'all'},
+  {id:'hgpo',  name:'HGPO 75 g',                       s:168, e:196, cond:'dgrisk'},
+  {id:'cm6',   name:'Consultation du 6e mois',         s:168, e:195, cond:'all', auto:'consult', ideal:189},
+  {id:'antid', name:'Anti-D systématique',             s:196, e:203, cond:'rhneg'},
+  {id:'echo3', name:'Échographie T3',                  s:210, e:245, cond:'all', auto:'echo', ideal:224},
+  {id:'anesth',name:'Consultation d’anesthésie',       s:224, e:259, cond:'all'},
+  {id:'voie',  name:'Consultation voie d’accouchement',s:224, e:252, cond:'cesar'},
+  {id:'cm8',   name:'Consultation du 8e mois',         s:231, e:258, cond:'all', auto:'consult', ideal:252},
+  {id:'sgb',   name:'Prélèvement vaginal strepto B',   s:238, e:266, cond:'all'},
+  {id:'cm9',   name:'Consultation du 9e mois',         s:259, e:286, cond:'all', auto:'consult', ideal:273}
+];
+const MS_VERSION = 6;
+const IDEAL_IDS={"echo1": 84, "cm4": 126, "echo2": 154, "cm6": 189, "echo3": 224, "cm8": 252, "cm9": 273};
+const AUTO_IDS={cs1:'consult',cm4:'consult',cm6:'consult',cm8:'consult',cm9:'consult',echo1:'echo',echo2:'echo',echo3:'echo'};
+const DEFAULT_SETTINGS = { termDays:287, cycle:28, milestones:DEFAULT_MS, conge:true, msVersion:MS_VERSION, vacc:{grippe:{on:true,from:'10-13',to:'01-31'},covid:{on:true,from:'10-13',to:'01-31'},vrs:{on:true,from:'09-14',to:'02-28'}} };
+/* Issue de la grossesse */
+const ISSUE_GROUPS = [
+  ['Naissance',['Voie basse spontanée','Voie basse instrumentale','Césarienne programmée','Césarienne en urgence']],
+  ['Fin de grossesse précoce',['Fausse couche spontanée','Aspiration / curetage','Grossesse extra-utérine','Interruption de grossesse','Mort fœtale in utero']],
+  ['Autre',['Perdue de vue','Autre']]
+];
+const BIRTH = new Set(ISSUE_GROUPS[0][1]);
+const PERINEE = ['Intact','Déchirure 1er degré','Déchirure 2e degré','Déchirure 3e degré','Déchirure 4e degré','Épisiotomie','Épisiotomie + déchirure'];
+const ANALG = ['Péridurale','Rachianesthésie','Anesthésie générale','Aucune'];
+const ALIM = ['Allaitement maternel','Allaitement mixte','Lait artificiel'];
+const SEXE = {F:'Fille',M:'Garçon',I:'Indéterminé'};
+const LIEUX = ['CHP','Polyclinique Méditerranée','Montpellier','Autre établissement'];
+const ROLES = ['Sage-femme','Gynécologue-obstétricien','Médecin traitant','Autre'];
+const COMPL_MAT = ['Transfusion','Infection du post-partum','Thrombose veineuse','Désunion de cicatrice','Éclampsie / HELLP','Dépression du post-partum','Réhospitalisation','Admission en réanimation'];
+const NEONAT = ['Transfert en néonatologie','Détresse respiratoire','Infection néonatale','Hypoglycémie','Ictère traité','Apgar < 7 à 5 min','Traumatisme obstétrical','Malformation','Décès néonatal'];
+const SEXF = {F:'Fille',M:'Garçon',NS:'Le couple ne souhaite pas savoir'};
+const PRES = ['Céphalique','Siège','Transverse','Instable'];
+const PLAC_POS = ['Antérieur','Postérieur','Latéral droit','Latéral gauche','Fundique'];
+const PLAC_INS = ['Normalement inséré','Bas inséré non recouvrant','Bas inséré recouvrant'];
+const TRAVAIL = ['Spontané','Déclenchement','Césarienne avant travail'];
+const DECL_MOTIFS = ['Terme dépassé','Rupture prématurée des membranes','Macrosomie suspectée','RCIU / PAG','Diabète','HTA / prééclampsie','Cholestase gravidique','Anomalies du RCF','Diminution des mouvements actifs fœtaux','Oligoamnios','Grossesse gémellaire','Convenance / organisation'];
+const DECL_METH = ['Prostaglandines','Ballonnet','Ocytocine','Rupture artificielle des membranes'];
+const CES_MOTIFS = ['Anomalies du RCF','Stagnation / dystocie dynamique','Défaut d’engagement','Échec de déclenchement','Utérus cicatriciel','Présentation du siège','Présentation transverse','Macrosomie / disproportion fœto-pelvienne','Placenta praevia','Prééclampsie / HELLP','Hématome rétroplacentaire','Procidence du cordon','Grossesse gémellaire','RCIU','Demande maternelle'];
+const CES_PROG = CES_MOTIFS.filter(x=>!['Anomalies du RCF','Stagnation / dystocie dynamique','Défaut d’engagement','Hématome rétroplacentaire','Procidence du cordon'].includes(x));
+const CES_URG = {
+  Rouge:{t:'Risque vital immédiat pour la mère ou l’enfant – naissance au plus vite (objectif habituel ≈ 15 min)',m:['Bradycardie fœtale persistante','Anomalies sévères du RCF non récupérées','Procidence du cordon','Hématome rétroplacentaire','Suspicion de rupture utérine','Hémorragie maternelle grave','Éclampsie','Instabilité hémodynamique maternelle']},
+  Orange:{t:'Urgence sans menace vitale immédiate – naissance dans les 30 min',m:['Anomalies du RCF préoccupantes','Échec d’extraction instrumentale','Stagnation avec anomalies du RCF','Prééclampsie sévère / HELLP qui s’aggrave','Métrorragies sans retentissement','Chorioamniotite avec anomalies du RCF']},
+  Vert:{t:'Urgence relative, sans menace vitale – naissance dans l’heure (selon protocole du service)',m:['Stagnation / dystocie dynamique','Défaut d’engagement','Échec de déclenchement','Disproportion fœto-pelvienne / macrosomie','Présentation dystocique en travail','Échec de tentative de voie basse sur utérus cicatriciel','Demande maternelle en travail']}
+};
+const CES_URG_ALL = Object.values(CES_URG).flatMap(x=>x.m);
+const CODES = ['Rouge','Orange','Vert'];
+const INSTR = ['Ventouse','Forceps','Spatules'];
+const INSTR_MOTIFS = ['Anomalies du RCF','Défaut de progression','Efforts expulsifs insuffisants','Épuisement maternel','Contre-indication aux efforts expulsifs'];
+const DELIV = ['Délivrance naturelle complète','Délivrance artificielle','Révision utérine'];
+const PP_DELIV = ['Normale','Hémorragie de la délivrance','Délivrance artificielle','Révision utérine'];
+function numv(x){ if(x===''||x==null) return null; const n=+String(x).replace(',','.'); return isNaN(n)?null:n; }
+function nstr(x){ const n=numv(x); return n==null?'':String(n); }
+function frn(n,d){ return n==null?'':n.toLocaleString('fr-FR',{maximumFractionDigits:d==null?1:d}); }
+function imc(p){ const t=numv(p.taille), w=numv(p.poidsAvant); if(!(t>100&&w>25)) return null; return w/((t/100)**2); }
+function evalsOf(p){ return list(p.evals).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')); }
+function lastField(p,f){ const e=evalsOf(p).find(e=>e[f]!==''&&e[f]!=null); return e?{v:e[f],ev:e}:null; }
+function croisCat(pct){ const x=numv(pct); if(x==null) return null; return x<10?'Hypotrophe (< 10e p.)':x>90?'Macrosome (> 90e p.)':'Eutrophe (10e–90e p.)'; }
+function sexfArr(p){ const n=+p.multiple||1; const a=Array.isArray(p.sexeF)?p.sexeF:[]; return Array.from({length:n},(_,i)=>a[i]||''); }
+function kidsOf(p){ return isBirth(p)?list(p.issue.enfants):[]; }
+function codeCls(c){ return c==='Rouge'?'bad':c==='Orange'?'warn':c==='Vert'?'ok':''; }
+function dgAuto(p){ const out=[]; const a=age(p.naissance); if(a!=null&&a>=35) out.push('âge ≥ 35 ans ('+a+' ans)'); const x=imc(p); if(x!=null&&x>=25) out.push('IMC ≥ 25 ('+frn(x)+')'); return out; }
+const DG_CRITERIA = ['Âge maternel ≥ 35 ans','IMC ≥ 25 kg/m²','Antécédent de diabète chez un apparenté au 1er degré','Antécédent personnel de diabète gestationnel','Antécédent d’enfant macrosome'];
+
+function addictTags(p){ const a=[]; if(p.tabac==='Actif') a.push('Tabac'+(p.tabacN?' ('+p.tabacN+' cig./j)':'')); if(p.alcool==='Occasionnel'||p.alcool==='Régulier') a.push('Alcool '+p.alcool.toLowerCase()); if(p.toxiques==='Actif') a.push('Toxiques'+(p.toxPrec?' : '+p.toxPrec:'')); return a; }
+function addictText(p){ const a=[]; if(p.tabac) a.push('Tabac : '+p.tabac.toLowerCase()+(p.tabacN?' ('+p.tabacN+' cig./j)':'')); if(p.alcool) a.push('Alcool : '+p.alcool.toLowerCase()); if(p.toxiques) a.push('Toxiques : '+p.toxiques.toLowerCase()); if(p.toxPrec) a.push(p.toxPrec); return a.join(' – '); }
+function lieuLabel(o){ return o.lieu==='Autre établissement' && o.lieuPrec ? o.lieuPrec : (o.lieu||''); }
+const PATHO_MAT = ['Diabète gestationnel','Diabète préexistant','HTA gravidique','Prééclampsie','Cholestase gravidique','Menace d’accouchement prématuré','Anémie','Dysthyroïdie','Thrombopénie','Infection urinaire / PNA'];
+const PATHO_FOET = ['RCIU / PAG','Macrosomie','Malformation','Placenta praevia','Oligoamnios','Hydramnios','Présentation du siège','Anomalie du RCF'];
+/* Poids fœtal médian (Hadlock 1991, 50e percentile), en g, de 10 à 40 SA */
+/* Courbes OMS de poids fœtal estimé (Kiserud et al., PLoS Med 2017 – tables 11, 14 et 15), 14 à 40 SA */
+const WHO_P=[2.5,5,10,25,50,75,90,95,97.5];
+const WHO_ALL={14:[70,73,78,83,90,98,104,109,113],15:[89,93,99,106,114,124,132,138,144],16:[113,117,124,133,144,155,166,174,181],17:[141,146,155,166,179,193,207,217,225],18:[174,181,192,206,222,239,255,268,278],19:[214,223,235,252,272,292,313,328,340],20:[260,271,286,307,330,355,380,399,413],21:[314,327,345,370,398,428,458,481,497],22:[375,392,412,443,476,512,548,575,595],23:[445,465,489,525,565,608,650,682,705],24:[523,548,576,618,665,715,765,803,830],25:[611,641,673,723,778,836,894,938,970],26:[707,743,780,838,902,971,1038,1087,1125],27:[813,855,898,964,1039,1118,1196,1251,1295],28:[929,977,1026,1102,1189,1279,1368,1429,1481],29:[1053,1108,1165,1251,1350,1453,1554,1622,1682],30:[1185,1247,1313,1410,1523,1640,1753,1828,1897],31:[1326,1394,1470,1579,1707,1838,1964,2046,2126],32:[1473,1548,1635,1757,1901,2047,2187,2276,2367],33:[1626,1708,1807,1942,2103,2266,2419,2516,2619],34:[1785,1872,1985,2134,2312,2492,2659,2764,2880],35:[1948,2038,2167,2330,2527,2723,2904,3018,3148],36:[2113,2205,2352,2531,2745,2959,3153,3277,3422],37:[2280,2372,2537,2733,2966,3195,3403,3538,3697],38:[2446,2536,2723,2935,3186,3432,3652,3799,3973],39:[2612,2696,2905,3135,3403,3664,3897,4058,4247],40:[2775,2849,3084,3333,3617,3892,4135,4312,4515]};
+const WHO_PS=[5,10,25,50,75,90,95];
+const WHO_F={14:[73,77,82,89,96,102,107],15:[92,97,104,113,121,129,135],16:[116,122,131,141,152,162,170],17:[145,152,164,176,189,202,211],18:[180,188,202,217,233,248,261],19:[221,231,248,266,285,304,319],20:[269,281,302,322,346,369,387],21:[324,339,364,388,417,444,466],22:[388,405,435,464,499,530,557],23:[461,481,516,551,592,629,660],24:[542,567,608,649,697,740,776],25:[634,663,710,758,815,865,907],26:[735,769,823,880,946,1003,1051],27:[846,886,948,1014,1090,1156,1210],28:[967,1013,1083,1160,1247,1323,1383],29:[1096,1150,1230,1319,1418,1505,1570],30:[1234,1296,1386,1489,1601,1699,1770],31:[1379,1451,1553,1670,1796,1907,1984],32:[1530,1614,1728,1861,2002,2127,2209],33:[1687,1783,1911,2060,2217,2358,2445],34:[1847,1957,2101,2268,2440,2598,2690],35:[2008,2135,2296,2481,2669,2846,2943],36:[2169,2314,2494,2698,2902,3099,3201],37:[2329,2493,2695,2917,3138,3357,3462],38:[2484,2670,2896,3136,3373,3616,3725],39:[2633,2843,3096,3354,3605,3875,3988],40:[2775,3010,3294,3567,3832,4131,4247]};
+const WHO_M={14:[75,79,84,92,99,105,109],15:[96,100,107,116,126,134,139],16:[121,127,136,146,158,169,175],17:[152,158,170,183,197,210,219],18:[188,196,210,226,243,260,271],19:[232,241,258,277,298,320,333],20:[282,293,314,337,362,389,405],21:[341,354,380,407,436,469,489],22:[408,424,454,487,522,561,586],23:[484,503,539,578,619,666,695],24:[570,592,635,681,730,785,818],25:[666,692,742,795,853,917,956],26:[772,803,860,923,990,1063,1109],27:[888,924,989,1063,1141,1224,1276],28:[1014,1055,1129,1215,1305,1399,1458],29:[1149,1197,1281,1379,1482,1587,1654],30:[1293,1349,1442,1555,1672,1788,1863],31:[1445,1509,1613,1741,1874,2000,2085],32:[1605,1677,1793,1937,2085,2224,2319],33:[1770,1852,1980,2140,2306,2456,2562],34:[1941,2032,2174,2350,2534,2694,2814],35:[2114,2217,2372,2565,2767,2938,3072],36:[2290,2404,2574,2783,3002,3185,3334],37:[2466,2591,2777,3001,3238,3432,3598],38:[2641,2778,2981,3218,3472,3676,3863],39:[2813,2962,3183,3432,3701,3916,4125],40:[2981,3142,3382,3639,3923,4149,4383]};
+const ZQ={2.5:-1.95996,5:-1.64485,10:-1.28155,25:-0.67449,50:0,75:0.67449,90:1.28155,95:1.64485,97.5:1.95996};
+function whoRow(tab,days){ const w=days/7; if(w<14||w>40) return null; const a=Math.floor(w), b=Math.min(40,a+1), t=w-a; return tab[a].map((v,i)=>v+(tab[b][i]-v)*t); }
+function normCdf(z){ const t=1/(1+0.2316419*Math.abs(z)), d=0.3989423*Math.exp(-z*z/2); const p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return z>0?1-p:p; }
+function whoPct(g,days,sex){
+  const tab=sex==='F'?WHO_F:sex==='M'?WHO_M:WHO_ALL, P=sex==='F'||sex==='M'?WHO_PS:WHO_P;
+  const row=whoRow(tab,days); if(!row||!(g>0)) return null;
+  const L=row.map(Math.log), x=Math.log(g), Z=P.map(p=>ZQ[p]);
+  let k=0; while(k<L.length-2 && x>L[k+1]) k++;
+  let z=Z[k]+(Z[k+1]-Z[k])*(x-L[k])/(L[k+1]-L[k]); z=Math.max(-3.2,Math.min(3.2,z));
+  return {pct:normCdf(z)*100, ref:sex==='F'?'OMS, courbe fille':sex==='M'?'OMS, courbe garçon':'OMS, sexe non précisé'};
+}
+function pctLabel(x){ return x<1?'< 1':x>99?'> 99':String(Math.round(x)); }
+function efw(days){ const r=whoRow(WHO_ALL,days); return r?Math.round(r[4]):null; }
+
+/* ---------- Stockage ----------
+   1) compte Claude (capacité db, sous-arbre privé data/users/<id>) : persistant et synchronisé
+   2) à défaut, IndexedDB de l’appareil
+   3) à défaut, mémoire (perdu à la fermeture) */
+let idb=null; const mem={patients:new Map(),files:new Map(),kv:new Map()};
+const C={db:null,col:null};
+let MODE='memory';
+function rq(r){ return new Promise((res,rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+const withTimeout=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+async function openDB(){
+  try{
+    if(!('indexedDB' in window)) return null;
+    const r=indexedDB.open('suivi-grossesse',1);
+    r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('patients',{keyPath:'id'}); const f=d.createObjectStore('files',{keyPath:'id'}); f.createIndex('patientId','patientId'); d.createObjectStore('kv'); };
+    const d=await withTimeout(rq(r),4000); if(!d) return null;
+    const t=d.transaction('kv','readwrite').objectStore('kv'); await rq(t.put(Date.now(),'_test'));   // vérifie qu’on peut réellement écrire
+    return d;
+  }catch(e){ return null; }
+}
+async function initCloud(){
+  try{
+    if(!window.claude || typeof window.claude.use!=='function') return false;
+    const r=await withTimeout(Promise.all([window.claude.use('db'),window.claude.use('user')]),9000);
+    if(!r || !r[0] || !r[1]) return false;
+    const uid=await r[1].id(); if(!uid) return false;
+    C.db=r[0]; C.col=r[0].collection('data/users/'+uid);
+    await C.col.limit(1).get();
+    return true;
+  }catch(e){ C.db=null; C.col=null; return false; }
+}
+const clean=o=>JSON.parse(JSON.stringify(o));
+const strip=o=>{ const x=clean(o); delete x.kind; return x; };
+const CHUNK=180000;
+function b64(buf){ const u=new Uint8Array(buf); let s=''; for(let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
+function unb64(s){ const b=atob(s); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u.buffer; }
+async function cQuery(kind,extra){ let q=C.col.where('kind','==',kind); if(extra) q=q.where(extra[0],'==',extra[1]); const sn=await q.limit(1000).get(); return sn.docs.map(d=>strip(d.data())); }
+async function cGetFile(fid){
+  const m=await C.col.doc(fid).get(); if(!m.exists) return null; const meta=strip(m.data());
+  const parts=await Promise.all(Array.from({length:meta.chunks||0},(_,i)=>C.col.doc('c-'+fid+'-'+i).get()));
+  meta.data=unb64(parts.map(p=>p.exists?p.data().d:'').join('')); return meta;
+}
+async function cPutFile(f){
+  const s=b64(f.data); const n=Math.ceil(s.length/CHUNK)||1;
+  for(let i=0;i<n;i++) await C.col.doc('c-'+f.id+'-'+i).set({kind:'chunk',fid:f.id,i,d:s.slice(i*CHUNK,(i+1)*CHUNK)});
+  await C.col.doc(f.id).set({kind:'file',id:f.id,patientId:f.patientId,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,chunks:n});
+}
+async function cDelFile(fid){ const m=await C.col.doc(fid).get(); const n=m.exists?(m.data().chunks||0):0; await C.col.doc(fid).delete(); for(let i=0;i<n;i++) await C.col.doc('c-'+fid+'-'+i).delete(); }
+
+function store(n,mode){ return idb.transaction(n,mode||'readonly').objectStore(n); }
+async function getAll(n){
+  if(MODE==='cloud'){ if(n==='patients') return cQuery('patient'); if(n==='files'){ const ms=await cQuery('file'); const out=[]; for(const m of ms){ const f=await cGetFile(m.id); if(f) out.push(f); } return out; } return []; }
+  return idb ? rq(store(n).getAll()) : [...mem[n].values()];
+}
+async function put(n,v,k){
+  if(MODE==='cloud'){ if(n==='patients') return C.col.doc(v.id).set(Object.assign(clean(v),{kind:'patient'})); if(n==='kv') return C.col.doc(k).set({kind:'kv',value:clean(v)}); if(n==='files') return cPutFile(v); }
+  if(idb) return rq(k!==undefined?store(n,'readwrite').put(v,k):store(n,'readwrite').put(v)); mem[n].set(k!==undefined?k:v.id,v);
+}
+async function del(n,k){
+  if(MODE==='cloud'){ if(n==='files') return cDelFile(k); return C.col.doc(k).delete(); }
+  if(idb) return rq(store(n,'readwrite').delete(k)); mem[n].delete(k);
+}
+async function get(n,k){
+  if(MODE==='cloud'){ if(n==='files') return cGetFile(k); const d=await C.col.doc(k).get(); if(!d.exists) return undefined; return n==='kv'?clean(d.data().value):strip(d.data()); }
+  return idb ? rq(store(n).get(k)) : mem[n].get(k);
+}
+async function filesFor(pid){
+  if(MODE==='cloud') return cQuery('file',['patientId',pid]);
+  if(idb) return rq(store('files').index('patientId').getAll(pid)); return [...mem.files.values()].filter(f=>f.patientId===pid);
+}
+async function clearAll(){
+  if(MODE==='cloud'){ for(const kind of ['patient','file','chunk']){ const sn=await C.col.where('kind','==',kind).limit(1000).get(); for(const d of sn.docs) await C.col.doc(d.id).delete(); } await C.col.doc('settings').delete(); return; }
+  for(const n of ['patients','files','kv']){ if(idb) await rq(store(n,'readwrite').clear()); else mem[n].clear(); }
+}
+/* Copie unique des données déjà présentes sur l’appareil vers le compte */
+async function migrateLocalToCloud(){
+  if(!idb) return 0;
+  try{
+    const done=await rq(store('kv').get('migratedToCloud')); if(done) return 0;
+    const pats=await rq(store('patients').getAll()); if(!pats.length){ await rq(store('kv','readwrite').put(Date.now(),'migratedToCloud')); return 0; }
+    const existing=new Set((await cQuery('patient')).map(p=>p.id));
+    const lset=await rq(store('kv').get('settings')); if(lset && !(await C.col.doc('settings').get()).exists) await C.col.doc('settings').set({kind:'kv',value:clean(lset)});
+    let n=0; for(const p of pats){ if(existing.has(p.id)) continue; await C.col.doc(p.id).set(Object.assign(clean(p),{kind:'patient'})); n++; }
+    for(const f of await rq(store('files').getAll())){ if(!(await C.col.doc(f.id).get()).exists) await cPutFile(f); }
+    await rq(store('kv','readwrite').put(Date.now(),'migratedToCloud'));
+    return n;
+  }catch(e){ return 0; }
+}
+
+/* ---------- État ---------- */
+const S={ settings:null, patients:[], filter:'active', q:'', showOver:false, agendaDays:14, asOf:null, addingEvent:false, crits:[], sort:(()=>{ try{ return localStorage.getItem('sg-sort')||'terme'; }catch(e){ return 'terme'; } })(), selecting:false, sel:new Set() };
+async function saveSettings(){ try{ await put('kv',S.settings,'settings'); }catch(e){ toast('Échec de l’enregistrement des réglages'); } }
+async function savePatient(p){
+  p.updatedAt=Date.now();
+  const i=S.patients.findIndex(x=>x.id===p.id); if(i<0) S.patients.push(p); else S.patients[i]=p;   // toujours visible dans la liste
+  try{ await put('patients',p); S.saveError=false; }
+  catch(e){ S.saveError=true; toast(e && e.code==='quota_exceeded' ? 'Espace de stockage plein : dossier non sauvegardé' : 'Dossier non sauvegardé : vérifiez la connexion puis réessayez'); }
+}
+
+/* ---------- Calculs obstétricaux ---------- */
+function baseT(p){
+  const T=S.settings.termDays;
+  switch(p.datingMethod){
+    case 'dg':   { const d=parseD(p.dg); return d==null?null:d-14*DAY; }
+    case 'echo': { const d=parseD(p.echoDate); if(d==null || p.echoSA==='' || p.echoSA==null) return null; return d-((+p.echoSA||0)*7+(+p.echoJ||0))*DAY; }
+    case 'dpa':  { const d=parseD(p.dpaManual); return d==null?null:d-T*DAY; }
+    default:     { const d=parseD(p.ddr); if(d==null) return null; const c=+p.cycle||S.settings.cycle||28; return d+(c-28)*DAY; }
+  }
+}
+function info(p,at){
+  const b=baseT(p); if(b==null) return {ok:false};
+  const t=at||today(); const dpa=b+S.settings.termDays*DAY;
+  return {ok:true, base:b, ga:Math.round((t-b)/DAY), dpa, toDpa:Math.round((dpa-today())/DAY)};
+}
+function uterusCic(p){ return (+p.cesariennes>0) || !!p.uterusCicatriciel; }
+function applies(p,c){
+  switch(c){ case 'rhneg': return p.rhesus==='-'; case 'cesar': return uterusCic(p); case 'dgrisk': return !!p.dgRisk;
+    case 'multi': return +p.parite>0; case 'primi': return !(+p.parite>0); case 'multiple': return +p.multiple>1; default: return true; }
+}
+function milestonesFor(p,inf){
+  const t=today(); const out=[];
+  for(const m of S.settings.milestones){
+    if(!applies(p,m.cond)) continue;
+    const s=inf.base+m.s*DAY, e=inf.base+((m.e==null?m.s:m.e))*DAY;
+    const done=(p.done||{})[m.id];
+    const st= done?'fait': t<s?'avenir': t<=e?'encours':'depasse';
+    out.push({kind:'ms', id:m.id, name:m.name, sDays:m.s, eDays:m.e, s, e, st, done, byEval:!!(p.doneBy||{})[m.id], idealDays:m.ideal, ideal:m.ideal!=null?inf.base+m.ideal*DAY:null});
+  }
+  const pl=p.planned;
+  if(pl && pl.type){
+    const s=inf.base+266*DAY, e=inf.base+273*DAY, d=parseD(pl.date); const done=(p.done||{}).plan;
+    const ref=d!=null?d:e;
+    out.push({kind:'plan', id:'plan', name:pl.type+(planMotifs(pl).length?' – '+planMotifs(pl).join(', '):''), sDays:266, eDays:273, s, e, st:done?'fait':today()<(d!=null?d:s)?'avenir':today()<=ref?'encours':'depasse', done, exact:d});
+  }
+  const V=S.settings.vacc||{};
+  for(const [k,id,name,sa0,sa1] of [['grippe','vgrippe','Vaccin grippe',14,null],['covid','vcovid','Vaccin Covid-19',14,null],['vrs','vrs','Vaccin VRS',224,258]]){
+    const c=V[k]; if(!c||!c.on||!/^\d{2}-\d{2}$/.test(c.from||'')||!/^\d{2}-\d{2}$/.test(c.to||'')) continue;
+    const A=inf.base+sa0*DAY, B=sa1==null?inf.dpa:inf.base+sa1*DAY;
+    const [fm,fdd]=c.from.split('-').map(Number), [tm,tdd]=c.to.split('-').map(Number);
+    for(let y=new Date(A).getUTCFullYear()-1;y<=new Date(B).getUTCFullYear();y++){
+      const ss=Date.UTC(y,fm-1,fdd), se=Date.UTC((tm*100+tdd)<(fm*100+fdd)?y+1:y,tm-1,tdd);
+      const s=Math.max(A,ss), e=Math.min(B,se); if(s>e) continue;
+      const mid=id+'-'+y; const done=(p.done||{})[mid];
+      const yy=new Date(ss).getUTCFullYear(), ye=new Date(se).getUTCFullYear();
+      out.push({kind:'ms',id:mid,name:name+' (campagne '+(yy===ye?yy:yy+'-'+ye)+')',sDays:Math.round((s-inf.base)/DAY),eDays:Math.round((e-inf.base)/DAY),s,e,st:done?'fait':t<s?'avenir':t<=e?'encours':'depasse',done});
+    }
+  }
+  for(const ev of (p.events||[])){
+    const d=parseD(ev.date); if(d==null) continue;
+    const done=(p.done||{})[ev.id];
+    out.push({kind:'ev', id:ev.id, name:ev.name, s:d, e:d, st: done?'fait': d<t?'depasse': d===t?'encours':'avenir', done, ga:Math.round((d-inf.base)/DAY)});
+  }
+  out.push({kind:'dpa', id:'dpa', name:'Jour du terme prévu', s:inf.dpa, e:inf.dpa, sDays:S.settings.termDays, st: t>inf.dpa?'depasse':t===inf.dpa?'encours':'avenir'});
+  out.sort((a,b)=>a.s-b.s || a.e-b.e);
+  return out;
+}
+function conge(p,inf){
+  const mult=+p.multiple||1, par=+p.parite||0;
+  let pre, post;
+  if(mult>=3){ pre=24; post=22; } else if(mult===2){ pre=12; post=22; } else if(par>=2){ pre=8; post=18; } else { pre=6; post=10; }
+  return {pre, post, start:inf.dpa-pre*7*DAY, end:inf.dpa+post*7*DAY};
+}
+
+/* ---------- Navigation ---------- */
+let CUR=(location.hash||'').slice(1);
+function route(){
+  const h=CUR;
+  if(h.startsWith('patient-')){ const id=h.slice(8); return {v:'patient', id}; }
+  if(h==='agenda' || h==='reglages' || h==='analyse') return {v:h};
+  return {v:'liste'};
+}
+function go(h){
+  const changed=CUR!==h; CUR=h;
+  if(changed){ S.asOf=null; S.addingEvent=false; }
+  try{ if(location.hash.slice(1)!==h) history.replaceState(null,'','#'+h); }catch(e){}
+  render(); if(changed) window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h===CUR) return; CUR=h; S.asOf=null; S.addingEvent=false; render(); window.scrollTo(0,0); });
+$$('[data-nav]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.nav)));
+$('#btnNew').addEventListener('click',()=>openEditor(null));
+
+function render(){
+  $('#view').onchange=null;
+  if(route().v!=='liste'){ S.selecting=false; S.sel=new Set(); }
+  const r=route();
+  $$('[data-nav]').forEach(b=>{ const cur=(r.v==='patient'?'liste':r.v)===b.dataset.nav; if(cur) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+  if(r.v==='patient') renderPatient(r.id);
+  else if(r.v==='agenda') renderAgenda();
+  else if(r.v==='reglages') renderSettings();
+  else if(r.v==='analyse') renderAnalyse();
+  else renderList();
+}
+
+/* ---------- Liste ---------- */
+function rowHTML(p){
+  const inf=info(p); const c=colorFor(p.id);
+  const flags=[];
+  if(p.gestite!=='' && p.gestite!=null) flags.push(`<span class="tag">G${esc(p.gestite)}P${esc(p.parite||0)}</span>`);
+  if(uterusCic(p)) flags.push(`<span class="tag warn">Utérus cicatriciel${+p.cesariennes>0?' · '+esc(p.cesariennes)+' césar.':''}</span>`.replace(' · ',' – '));
+  if(p.rhesus==='-') flags.push('<span class="tag acc">Rh−</span>');
+  if(+p.multiple>1) flags.push(`<span class="tag acc">${+p.multiple===2?'Gémellaire':'Multiple'}</span>`);
+  const np=(p.pathoMat||[]).length+(p.pathoFoet||[]).length; if(np) flags.push(`<span class="tag bad">${np} pathologie${np>1?'s':''}</span>`);
+  if(p.allergies) flags.push('<span class="tag allergy">⚠ Allergie</span>');
+  if(p.planned&&p.planned.type&&p.status!=='archived') flags.push(`<span class="tag acc">${p.planned.type==='Césarienne programmée'?'Césarienne prog.':'Déclenchement prog.'}${p.planned.date?' le '+fd(parseD(p.planned.date)):' (date à fixer)'}</span>`);
+  if(p.lieu) flags.push(`<span class="tag">${esc(lieuLabel(p))}</span>`);
+  if(dupesOf(p).length) flags.push('<span class="tag bad">Doublon possible</span>');
+  if(p.status==='archived') flags.push(`<span class="tag ${p.issue&&BIRTH.has(p.issue.type)?'ok':''}">${esc(p.issue&&p.issue.type?p.issue.type+(p.issue.date?' – '+fd(parseD(p.issue.date)):''):'Archivée')}</span>`);
+  const nr=related(p).length; if(nr) flags.push(`<span class="tag acc">${nr} autre${nr>1?'s':''} grossesse${nr>1?'s':''}</span>`);
+  let trio='<div class="trio"><span><small>Datation</small>à compléter</span></div>', prog='';
+  if(inf.ok){
+    trio=`<div class="trio num">${(p.datingMethod||'ddr')==='ddr'?`<span><small>DDR</small>${fd(parseD(p.ddr))}</span>`:`<span><small>Début gross.</small>${fd(inf.base+14*DAY)}</span>`}<span><small>AG</small>${p.status==='archived'?'—':sa(inf.ga)}</span><span><small>Terme prévu</small>${fd(inf.dpa)}</span></div>`;
+    if(p.status!=='archived'){ const pct=Math.max(0,Math.min(100,inf.ga/S.settings.termDays*100)); prog=`<span class="prog ${inf.toDpa<0?'over':''}"><i style="width:${pct.toFixed(1)}%"></i></span>`; }
+  }
+  if(S.selecting){ const on=S.sel.has(p.id); return `<button class="row ${on?'sel-on':''}" data-pick="${esc(p.id)}" aria-pressed="${on}"><span class="selbox" aria-hidden="true">${on?'✓':''}</span><span class="rmain"><span class="nm">${esc(fullName(p))}</span>${trio}${flags.length?`<span class="flags">${flags.join('')}</span>`:''}</span></button>`; }
+  return `<button class="row" data-open="${esc(p.id)}"><span class="av" style="--c:${c}">${esc(initials(p))}</span><span class="rmain"><span class="nm">${esc(fullName(p))}${age(p.naissance)!=null?` <small class="agec">${age(p.naissance)} ans</small>`:''}</span>${trio}${flags.length?`<span class="flags">${flags.join('')}</span>`:''}${prog}</span></button>`;
+}
+function bindRows(root){ $$('[data-open]',root).forEach(b=>b.addEventListener('click',()=>go('patient-'+b.dataset.open))); }
+function critSelect(){
+  const P=S.patients;
+  const groups={}; 
+  for(const d of DIMS){
+    const present=new Set();
+    for(const p of P){ if(d.lvl==='k'){ for(const k of kidsOf(p)) dimVals(d,p,k).forEach(v=>present.add(v)); } else dimVals(d,p).forEach(v=>present.add(v)); }
+    const items=dimOpts(d).filter(v=>present.has(v) && !S.crits.includes(d.k+':'+v)).map(v=>`<option value="${esc(d.k+':'+v)}">${esc(v)}</option>`);
+    if(items.length) (groups[d.g]=groups[d.g]||[]).push(`<optgroup label="${esc(d.l)}">${items.join('')}</optgroup>`);
+  }
+  const html=`<select id="crit" aria-label="Ajouter un critère de recherche" style="width:100%;margin-top:8px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 8px"><option value="">＋ Ajouter un critère…</option>${Object.values(groups).flat().join('')}</select>`;
+  const chipsH=S.crits.length?`<div class="flags" style="margin-top:8px;align-items:center">${S.crits.map(c=>`<button class="tag acc" data-uncrit="${esc(c)}" style="border:0;cursor:pointer" aria-label="Retirer le critère ${esc(critLabel(c))}">${esc(critLabel(c))} ✕</button>`).join('')}${S.crits.length>1?'<button class="link" id="clearCrit" style="font-size:.85rem">Tout effacer</button>':''}</div>`:'';
+  return html+chipsH;
+}
+function critLabel(c){ const i=c.indexOf(':'), d=DIM[c.slice(0,i)], v=c.slice(i+1); if(!d) return v; return d.short?d.short+' : '+v : (d.k==='flags'||d.k==='pm'||d.k==='pf')?v:d.l+' : '+v; }
+function matchCrit(p){ return S.crits.every(c=>matchOne(p,c)); }
+function matchOne(p,c){
+  if(!c) return true; const i=c.indexOf(':'), d=DIM[c.slice(0,i)], v=c.slice(i+1); if(!d) return true;
+  if(d.lvl==='k') return kidsOf(p).some(k=>dimVals(d,p,k).includes(v));
+  return dimVals(d,p).includes(v);
+}
+function matches(p,q){ if(!q) return true; q=q.toLowerCase(); return [p.nom,p.prenom,p.lieu,p.lieuPrec,p.telephone,...list(p.corr).map(c=>c.nom)].some(x=>(x||'').toLowerCase().includes(q)); }
+
+function renderList(){
+  const v=$('#view');
+  const act=S.patients.filter(p=>!p.status || p.status==='active');
+  const actI=act.map(p=>({p,inf:info(p)}));
+  const due30=actI.filter(x=>x.inf.ok && x.inf.toDpa>=0 && x.inf.toDpa<=30).length;
+  let html=`<div class="summary"><strong class="num">${act.length} grossesse${act.length>1?'s':''} en cours</strong>${due30} à terme dans les 30 jours</div>`;
+  if(MODE==='local' && S.patients.length && (!S.lastBackup || Date.now()-S.lastBackup>7*DAY)) html+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:180px">${S.lastBackup?'Dernière sauvegarde le '+fd(localDay(S.lastBackup))+'.':'Aucune sauvegarde exportée pour l’instant.'} Vos dossiers ne sont enregistrés que sur cet appareil.</span><button class="btn small" id="quickBackup">Sauvegarder maintenant</button></div>`;
+  if(MODE==='memory') html+=`<div class="banner">Aucun stockage durable n’est disponible dans cette vue : les dossiers saisis seront perdus à la fermeture. Ouvrez l’application depuis son lien en étant connectée à votre compte Claude.</div>`;
+  if(S.saveError) html+=`<div class="banner">Au moins un enregistrement a échoué. Rouvrez la fiche concernée et enregistrez-la de nouveau.</div>`;
+  html+=`<div class="search"><input type="search" id="q" placeholder="Rechercher un nom, une maternité…" value="${esc(S.q)}" aria-label="Rechercher"><select id="filt" aria-label="Filtrer"><option value="active">En cours</option><option value="archived">Archivées</option><option value="all">Toutes</option></select><button class="btn" id="selMode">${S.selecting?'Terminer':'Sélectionner'}</button></div><div class="quick">${[['plan:Déclenchement programmé','Déclenchements programmés'],['plan:Césarienne programmée','Césariennes programmées']].map(([v,l])=>`<button class="btn small ${S.crits.includes(v)?'primary':''}" data-quick="${esc(v)}">${l}</button>`).join('')}</div><div id="critBox">${critSelect()}</div><label class="sortrow"><span>Trier :</span><select id="sort" aria-label="Ordre de tri">${Object.entries(SORTS).map(([k,o])=>`<option value="${k}" ${S.sort===k?'selected':''}>${o.l}</option>`).join('')}</select></label>`;
+  html+='<div id="lst"></div><div id="selbar"></div>';
+  v.innerHTML=html;
+  $('#filt').value=S.filter;
+  $('#q').addEventListener('input',e=>{ S.q=e.target.value; drawList(); });
+  $('#filt').addEventListener('change',e=>{ S.filter=e.target.value; drawList(); });
+  const qb=$('#quickBackup'); if(qb) qb.addEventListener('click',async()=>{ await exportBackup(); renderList(); });
+  const refreshCrit=()=>{ const old=$('#critBox'); old.innerHTML=critSelect(); bindCrit(); $$('[data-quick]').forEach(b=>b.classList.toggle('primary',S.crits.includes(b.dataset.quick))); drawList(); };
+  const bindCrit=()=>{
+    $('#crit').addEventListener('change',e=>{ const v=e.target.value; if(!v) return; if(!S.crits.includes(v)) S.crits.push(v); if(/^(cm|cn|mode):/.test(v) && S.filter==='active'){ S.filter='all'; $('#filt').value='all'; } refreshCrit(); });
+    $$('[data-uncrit]').forEach(b=>b.addEventListener('click',()=>{ S.crits=S.crits.filter(x=>x!==b.dataset.uncrit); refreshCrit(); }));
+    const cc=$('#clearCrit'); if(cc) cc.addEventListener('click',()=>{ S.crits=[]; refreshCrit(); });
+  };
+  bindCrit();
+  $$('[data-quick]').forEach(b=>b.addEventListener('click',()=>{ const v=b.dataset.quick; if(S.crits.includes(v)) S.crits=S.crits.filter(x=>x!==v); else { S.crits=S.crits.filter(x=>!x.startsWith('plan:')); S.crits.push(v); } renderList(); }));
+  $('#sort').addEventListener('change',e=>{ S.sort=e.target.value; try{ localStorage.setItem('sg-sort',S.sort); }catch(_){} drawList(); });
+  $('#selMode').addEventListener('click',()=>{ S.selecting=!S.selecting; S.sel=new Set(); renderList(); });
+  drawList();
+}
+const nv=v=>v==null||v===''||isNaN(v)?null:+v;
+const asc=(x,y)=>{ x=nv(x); y=nv(y); return (x==null)-(y==null)||(x==null?0:x-y); };
+const desc=(x,y)=>{ x=nv(x); y=nv(y); return (x==null)-(y==null)||(x==null?0:y-x); };
+const ageDays=p=>{ const b=parseD(p.naissance); return b==null?null:today()-b; };
+const dpaOf=x=>x.inf.ok?x.inf.dpa:null;
+const SORTS={
+  terme:{l:'Terme le plus proche d’abord'},
+  termeInv:{l:'Grossesses les plus récentes d’abord',f:(a,b)=>desc(dpaOf(a),dpaOf(b))},
+  termeAsc:{l:'Terme le plus proche (liste simple)',f:(a,b)=>asc(dpaOf(a),dpaOf(b))},
+  ageAsc:{l:'Patientes les plus jeunes d’abord',f:(a,b)=>asc(ageDays(a.p),ageDays(b.p))},
+  ageDesc:{l:'Patientes les plus âgées d’abord',f:(a,b)=>desc(ageDays(a.p),ageDays(b.p))},
+  nom:{l:'Nom (A → Z)',f:(a,b)=>fullName(a.p).localeCompare(fullName(b.p),'fr')},
+  parAsc:{l:'Parité croissante',f:(a,b)=>asc(a.p.parite,b.p.parite)||asc(dpaOf(a),dpaOf(b))},
+  parDesc:{l:'Parité décroissante',f:(a,b)=>desc(a.p.parite,b.p.parite)||asc(dpaOf(a),dpaOf(b))},
+  lieu:{l:'Lieu d’accouchement',f:(a,b)=>(lieuLabel(a.p)||'~').localeCompare(lieuLabel(b.p)||'~','fr')||asc(dpaOf(a),dpaOf(b))},
+  planDate:{l:'Date de déclenchement / césarienne programmée',f:(a,b)=>asc(parseD(a.p.planned&&a.p.planned.date),parseD(b.p.planned&&b.p.planned.date))||asc(dpaOf(a),dpaOf(b))},
+  modif:{l:'Dernière modification',f:(a,b)=>(b.p.updatedAt||0)-(a.p.updatedAt||0)},
+  cree:{l:'Date de création (récente d’abord)',f:(a,b)=>(b.p.createdAt||0)-(a.p.createdAt||0)}
+};
+function drawList(){
+  const box=$('#lst'); if(!box) return;
+  const list=S.patients.filter(p=>matches(p,S.q)).filter(p=>S.filter==='all' || (p.status||'active')===S.filter).filter(matchCrit);
+  if(!S.patients.length){ box.innerHTML=`<div class="card empty" style="margin-top:16px">Aucune patiente enregistrée.<br>Ajoutez la première pour calculer automatiquement son calendrier de suivi.<br><button class="btn primary" id="emptyNew">Ajouter une patiente</button></div>`; $('#emptyNew').addEventListener('click',()=>openEditor(null)); return; }
+  if(!list.length){ box.innerHTML='<div class="card empty" style="margin-top:16px">Aucune patiente ne correspond.</div>'; const sb=$('#selbar'); if(sb) sb.innerHTML=''; return; }
+  const withI=list.map(p=>({p,inf:info(p)}));
+  const byDpa=(a,b)=>(a.inf.ok?a.inf.dpa:Infinity)-(b.inf.ok?b.inf.dpa:Infinity);
+  let html='';
+  const planCrit=S.crits.some(c=>c.startsWith('plan:'));
+  const sortK=planCrit&&S.sort==='terme'?'planDate':S.sort;
+  if(S.filter==='active' && sortK==='terme'){
+    const g={over:[],d14:[],d30:[],later:[],nod:[]};
+    for(const x of withI){ if(!x.inf.ok) g.nod.push(x); else if(x.inf.toDpa<0) g.over.push(x); else if(x.inf.toDpa<=14) g.d14.push(x); else if(x.inf.toDpa<=30) g.d30.push(x); else g.later.push(x); }
+    const grp=(key,title,arr,toggle)=>{ if(!arr.length) return ''; arr.sort(byDpa); const hidden=toggle && !S.showOver;
+      return `<section class="group"><div class="group-h"><h2>${title} <span class="num">(${arr.length})</span></h2>${toggle?`<button class="link" id="togOver">${hidden?'Afficher':'Masquer'}</button>`:''}</div>${hidden?'':`<div class="card">${arr.map(x=>rowHTML(x.p)).join('')}</div>`}</section>`; };
+    html+=grp('over','Terme dépassé',g.over,true)+grp('d14','Terme dans les 14 jours',g.d14)+grp('d30','Terme dans 15 à 30 jours',g.d30)+grp('later','Plus tard',g.later)+grp('nod','Datation à compléter',g.nod);
+  } else {
+    withI.sort(SORTS[sortK]&&sortK!=='terme'?SORTS[sortK].f:(a,b)=>pDate(b.p)-pDate(a.p));
+    html=`<section class="group"><div class="card">${withI.map(x=>rowHTML(x.p)).join('')}</div></section>`;
+  }
+  if(S.crits.length || S.q) html=`<p class="note" style="margin-top:12px"><b class="num">${list.length}</b> dossier${list.length>1?'s correspondent':' correspond'} à la recherche${sortK==='planDate'?', classés de la date programmée la plus proche à la plus éloignée':''}.</p>`+html;
+  box.innerHTML=html;
+  const t=$('#togOver'); if(t) t.addEventListener('click',()=>{ S.showOver=!S.showOver; drawList(); });
+  bindRows(box);
+  $$('[data-pick]',box).forEach(b=>b.addEventListener('click',()=>{ const id=b.dataset.pick; if(S.sel.has(id)) S.sel.delete(id); else S.sel.add(id); drawList(); }));
+  const bar=$('#selbar');
+  if(bar){ if(!S.selecting){ bar.innerHTML=''; } else {
+    const visible=$$('[data-pick]',box).map(b=>b.dataset.pick); const n=S.sel.size;
+    bar.innerHTML=`<div class="selbar"><b>${n} dossier${n>1?'s':''} sélectionné${n>1?'s':''}</b><button class="btn small" id="selAll">${visible.length&&visible.every(id=>S.sel.has(id))?'Tout désélectionner':'Tout sélectionner'}</button><button class="btn small danger" id="selDel" ${n?'':'disabled'}>Supprimer</button></div>`;
+    $('#selAll').addEventListener('click',()=>{ const all=visible.every(id=>S.sel.has(id)); visible.forEach(id=>all?S.sel.delete(id):S.sel.add(id)); drawList(); });
+    $('#selDel').addEventListener('click',async()=>{ const ids=[...S.sel]; if(!ids.length) return;
+      if(!await ask({title:`Supprimer ${ids.length} dossier${ids.length>1?'s':''} ?`,body:'Ces dossiers et leurs documents PDF seront définitivement effacés. Cette action est irréversible.',ok:'Supprimer',danger:true})) return;
+      const n=await deletePatients(ids); S.sel=new Set(); S.selecting=false; toast(n+' dossier'+(n>1?'s supprimés':' supprimé')); renderList(); });
+  } }
+}
+async function deletePatients(ids){
+  let n=0;
+  for(const id of ids){ try{ for(const f of await filesFor(id)) await del('files',f.id); await del('patients',id); S.patients=S.patients.filter(x=>x.id!==id); n++; }catch(e){ toast('Un dossier n’a pas pu être supprimé, réessayez'); } }
+  return n;
+}
+
+/* ---------- Fiche patiente ---------- */
+function rulerSVG(items,inf){
+  const W=360, x0=14, x1=346, max=294; const X=d=>x0+(Math.max(0,Math.min(max,d))/max)*(x1-x0);
+  const ms=items.filter(i=>i.kind==='ms');
+  const lanes=[]; const placed=[];
+  for(const m of ms){ const a=m.sDays, b=(m.eDays==null?m.sDays:m.eDays); let l=0; while(lanes[l]!=null && lanes[l]>a-2) l++; lanes[l]=b; placed.push({m,l,a,b}); }
+  const nl=Math.max(1,lanes.length); const top=26, lh=8; const H=top+nl*lh+30;
+  const col={fait:'var(--ok)',encours:'var(--accent)',avenir:'var(--muted)',depasse:'var(--bad)'};
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Frise de la grossesse de 0 à 42 SA">`;
+  s+=`<rect x="${X(0)}" y="${top-6}" width="${X(98)-X(0)}" height="${nl*lh+8}" fill="var(--surface-2)" opacity=".55"/>`;
+  s+=`<rect x="${X(196)}" y="${top-6}" width="${X(max)-X(196)}" height="${nl*lh+8}" fill="var(--surface-2)" opacity=".55"/>`;
+  [['T1',49],['T2',147],['T3',245]].forEach(([l,d])=>{ s+=`<text x="${X(d)}" y="12" text-anchor="middle" font-size="10" fill="var(--muted)" font-weight="700">${l}</text>`; });
+  for(const p of placed){ const y=top+p.l*lh; const w=Math.max(4,X(p.b)-X(p.a)); s+=`<rect x="${X(p.a)}" y="${y}" width="${w}" height="5" rx="2.5" fill="${col[p.m.st]}" opacity="${p.m.st==='avenir'?.45:1}"><title>${esc(p.m.name)}</title></rect>`; }
+  const by=top+nl*lh+6;
+  s+=`<line x1="${x0}" x2="${x1}" y1="${by}" y2="${by}" stroke="var(--line)" stroke-width="1.5"/>`;
+  for(let w=0;w<=42;w+=2){ const x=X(w*7); s+=`<line x1="${x}" x2="${x}" y1="${by}" y2="${by+(w%4?3:6)}" stroke="var(--muted)" stroke-width="1"/>`; if(w%8===0 || w===42) s+=`<text x="${x}" y="${by+17}" text-anchor="middle" font-size="9.5" fill="var(--muted)">${w}</text>`; }
+  const dx=X(S.settings.termDays); s+=`<line x1="${dx}" x2="${dx}" y1="${top-8}" y2="${by}" stroke="var(--ink)" stroke-dasharray="2 2" stroke-width="1"/>`;
+  if(inf.ga>=0){ const tx=X(inf.ga); s+=`<line x1="${tx}" x2="${tx}" y1="${top-10}" y2="${by+2}" stroke="var(--accent)" stroke-width="2.5"/><circle cx="${tx}" cy="${top-10}" r="3.5" fill="var(--accent)"/>`; }
+  return s+'</svg>';
+}
+function stLabel(it){
+  if(it.st==='fait') return `<small style="color:var(--ok);font-weight:700">✓ Fait le ${fd(parseD(it.done))}${it.byEval?' (évaluation)':''}</small>`;
+  if(S.closed) return '';
+  const t=today();
+  if(it.st==='encours'){ const r=Math.round((it.e-t)/DAY); return `<small style="color:var(--accent)">${it.kind==='dpa'?'Aujourd’hui':r===0?'Dernier jour':'Encore '+r+' j'}</small>`; }
+  if(it.st==='depasse') return `<small style="color:var(--bad)">${it.kind==='dpa'?'Dépassé de '+Math.round((t-it.e)/DAY)+' j':'Non validé'}</small>`;
+  const r=Math.round(((it.exact!=null?it.exact:it.s)-t)/DAY); return `<small style="color:var(--muted)">Dans ${r} j</small>`;
+}
+function list(arr){ return (arr||[]).filter(Boolean); }
+
+function evalLine(e,p){
+  const inf=info(p); const d=parseD(e.date); const parts=[];
+  if(numv(e.poidsM)!=null) parts.push('poids '+frn(numv(e.poidsM))+' kg'); if(numv(e.pas)!=null) parts.push('TA '+frn(numv(e.pas),0)+'/'+(numv(e.pad)!=null?frn(numv(e.pad),0):'?'));
+  if(e.presentation) parts.push(e.presentation);
+  if(e.tv) parts.push('TV'+(numv(e.bishop)!=null?' : Bishop '+e.bishop:'')+(e.tvNotes?' ('+e.tvNotes+')':''));
+  if(numv(e.epf)!=null) parts.push('EPF '+frn(numv(e.epf),0)+' g'+(numv(e.pct)!=null?' ('+frn(numv(e.pct),0)+'e p.)':''));
+  if(e.placIns) parts.push('placenta '+(e.placPos?e.placPos.toLowerCase()+', ':'')+e.placIns.toLowerCase()+(numv(e.placDist)!=null?' à '+frn(numv(e.placDist),0)+' mm de l’OI':''));
+  if(numv(e.colLong)!=null) parts.push('col '+frn(numv(e.colLong),0)+' mm'+(e.oi?', OI '+e.oi.toLowerCase()+(e.oi==='Ouvert'&&numv(e.oiMm)!=null?' de '+frn(numv(e.oiMm),0)+' mm':''):''));
+  return {when:(d!=null?fd(d):'Date ?')+(d!=null&&inf.ok?' – '+sa(Math.round((d-inf.base)/DAY)):''), txt:parts.join(' ; ')||'—'};
+}
+function prevLine(o){
+  const a=[o.issue, o.terme, o.presentation, o.sexe?(SEXE[o.sexe]||o.sexe):'', o.prenom, numv(o.poids)!=null?frn(numv(o.poids),0)+' g':'', o.anesth?('analgésie : '+o.anesth.toLowerCase()):'', o.perinee?('périnée : '+o.perinee.toLowerCase()):'', o.delivrance&&o.delivrance!=='Normale'?o.delivrance.toLowerCase():'', o.grossesse==='Pathologique'?'grossesse pathologique'+(o.grossessePrec?' ('+o.grossessePrec+')':''):'', o.suites==='Pathologiques'?'suites pathologiques'+(o.suitesPrec?' ('+o.suitesPrec+')':''):'', o.allaitement].filter(Boolean);
+  return {title:[o.annee,o.lieu].filter(Boolean).join(' – ')||'Grossesse antérieure', txt:a.join(', ')};
+}
+async function renderPatient(id){
+  const p=S.patients.find(x=>x.id===id); const v=$('#view');
+  if(!p){ v.innerHTML='<div class="card empty" style="margin-top:16px">Patiente introuvable.<br><button class="btn" id="bk">Retour à la liste</button></div>'; $('#bk').addEventListener('click',()=>go('liste')); return; }
+  const issueD=p.status==='archived'&&p.issue?parseD(p.issue.date):null; const at=S.asOf||issueD||today(); const inf=info(p,at); S.closed=p.status==='archived'; const a=age(p.naissance);
+  const bmi=imc(p);
+  let h=`<div class="back" style="display:flex;justify-content:space-between"><button class="btn ghost" id="bk">‹ Patientes</button><button class="btn small" id="pdfTop">Imprimer / PDF</button></div>`;
+  h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):''].filter(Boolean).join(' – ')}</div>`;
+  const fl=[];
+  const ADD=addictTags(p); ADD.forEach(x=>fl.push(`<span class="tag warn">${esc(x)}</span>`));
+  sexfArr(p).forEach((s,i,arr)=>{ if(s) fl.push(`<span class="tag acc">${arr.length>1?'Fœtus '+(i+1)+' : ':'Sexe fœtal : '}${esc(SEXF[s]||s)}</span>`); });
+  if(uterusCic(p)) fl.push(`<span class="tag warn">Utérus cicatriciel${+p.cesariennes>0?' ('+esc(p.cesariennes)+' césarienne'+(+p.cesariennes>1?'s':'')+')':''}</span>`);
+  if(+p.multiple>1) fl.push(`<span class="tag acc">${+p.multiple===2?'Grossesse gémellaire':'Grossesse multiple'}</span>`);
+  if(p.avisRef) fl.push(`<span class="tag warn">Avis écho de référence${p.avisRefMotif?' : '+esc(p.avisRefMotif):''}</span>`);
+  if(p.dgRisk) fl.push('<span class="tag">Facteurs de risque de DG</span>');
+  if(p.status!=='archived'){
+    const lp=lastField(p,'presentation'); if(lp) fl.push(`<span class="tag ${lp.v==='Céphalique'?'':'warn'}">${esc(lp.v)}</span>`);
+    const lc=lastField(p,'pct'); const cc=lc&&croisCat(lc.v); if(cc) fl.push(`<span class="tag ${/Eutrophe/.test(cc)?'':'warn'}">${esc(cc)}</span>`);
+    const li=lastField(p,'placIns'); if(li && li.v!=='Normalement inséré') fl.push(`<span class="tag bad">Placenta ${esc(li.v.toLowerCase())}</span>`);
+    const lcol=lastField(p,'colLong'); if(lcol && numv(lcol.v)!=null && numv(lcol.v)<=25) fl.push(`<span class="tag bad">Col ${frn(numv(lcol.v),0)} mm</span>`);
+  }
+  if(p.planned&&p.planned.type&&p.status!=='archived') fl.push(`<span class="tag acc">${esc(p.planned.type)}${p.planned.date?' le '+fds(parseD(p.planned.date)):''}${planMotifs(p.planned).length?' – '+esc(planMotifs(p.planned).join(', ')):''}</span>`);
+  const nh=list(p.hospits).length; if(nh) fl.push(`<span class="tag warn">${nh} hospitalisation${nh>1?'s':''}</span>`);
+  list(p.pathoMat).forEach(x=>fl.push(`<span class="tag bad">${esc(x)}</span>`));
+  list(p.pathoFoet).forEach(x=>fl.push(`<span class="tag bad">${esc(x)}</span>`));
+  if(p.status==='archived') fl.push('<span class="tag">Dossier archivé</span>');
+  const lw=lastField(p,'poidsM'), lt=lastField(p,'pas');
+  const vit=[]; if(lw){ const pa=numv(p.poidsAvant), g=pa!=null?numv(lw.v)-pa:null; vit.push(`<span class="vit"><small>Poids</small>${frn(numv(lw.v))} kg${g!=null?` <b>(${g>=0?'+':''}${frn(g)} kg)</b>`:''}<em>${fds(parseD(lw.ev.date))}</em></span>`); }
+  if(lt){ const s1=numv(lt.v), s2=numv(lt.ev.pad); const hi=s1>=140||(s2!=null&&s2>=90); vit.push(`<span class="vit ${hi?'hi':''}"><small>Tension artérielle</small>${frn(s1,0)}/${s2!=null?frn(s2,0):'?'} mmHg<em>${fds(parseD(lt.ev.date))}</em></span>`); }
+  if(vit.length) h+=`<div class="vits num">${vit.join('')}</div>`;
+  if(fl.length) h+=`<div class="flags" style="margin-top:10px">${fl.join('')}</div>`;
+  const dd=dupesOf(p); if(dd.length) h+=`<div class="banner">Doublon possible : ${dd.length>1?dd.length+' autres dossiers en cours portent':'un autre dossier en cours porte'} la même identité. ${dd.map(x=>`<button class="link" style="padding:0 4px" data-open="${esc(x.id)}">Ouvrir ${x.createdAt?'(créé le '+fd(localDay(x.createdAt))+')':''}</button>`).join(' ')} Supprimez celui qui est en trop.</div>`;
+  if(inf.ok){
+    const w=efw(inf.ga);
+    h+=`<div class="ga-big num"><div><div class="l">${p.status==='archived'&&!S.asOf&&issueD!=null?'Terme à l’issue, le':'Âge gestationnel au'} <input type="date" id="asOf" value="${iso(at)}" style="border:0;background:var(--surface-2);border-radius:8px;padding:2px 6px;font:inherit;color:inherit"></div><div class="v">${sa(inf.ga)}</div></div><div><div class="l">Terme prévu</div><div style="font-weight:700;font-size:1.15rem">${fd(inf.dpa)}</div></div>${w&&p.status!=='archived'?`<div><div class="l">Poids fœtal médian (OMS)</div><div style="font-weight:700;font-size:1.15rem">${w.toLocaleString('fr-FR')} g</div></div>`:''}</div>`;
+    h+=`<div class="ruler">${rulerSVG(milestonesFor(p,inf),inf)}</div>`;
+  } else h+=`<div class="banner">Datation incomplète : renseignez la DDR, la date de début de grossesse, une échographie de datation ou le terme prévu.</div>`;
+  h+='</section>';
+
+  if(inf.ok){
+    const meth={ddr:'DDR'+(p.cycle && +p.cycle!==28?' (cycle '+esc(p.cycle)+' j)':''),dg:'Début de grossesse',echo:'Échographie de datation',dpa:'Terme prévu saisi'}[p.datingMethod||'ddr'];
+    h+=`<section class="sec"><h2>Datation</h2><div class="card num"><div class="kv"><span class="k">Méthode</span><span class="v">${meth}</span></div>`;
+    if(p.datingMethod==='echo') h+=`<div class="kv"><span class="k">Échographie</span><span class="v">${fd(parseD(p.echoDate))} à ${sa((+p.echoSA||0)*7+(+p.echoJ||0))}</span></div>`;
+    if((p.datingMethod||'ddr')==='ddr') h+=`<div class="kv"><span class="k">DDR</span><span class="v">${fd(parseD(p.ddr))}</span></div>`;
+    h+=`<div class="kv"><span class="k">Début de grossesse</span><span class="v">${fd(inf.base+14*DAY)}</span></div><div class="kv"><span class="k">Terme prévu d’accouchement (41 SA)</span><span class="v">${fd(inf.dpa)}</span></div></div></section>`;
+
+    const items=milestonesFor(p,inf);
+    h+=`<section class="sec"><h2>Dates importantes <span style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${p.planned&&p.planned.type?'':'<button class="link" data-plan>＋ Déclenchement / césarienne prog.</button>'}<button class="link" id="addEv">＋ Rendez-vous</button></span></h2><div class="card" id="msList">`;
+    if(S.addingEvent) h+=`<div class="inline-form"><input id="evName" placeholder="Intitulé (ex. RDV cardiologue)" aria-label="Intitulé"><input type="date" id="evDate" aria-label="Date"><button class="btn small primary" id="evOk">Ajouter</button></div>`;
+    for(const it of items){
+      const sub = it.kind==='plan' ? '38 SA – 39 SA' : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? 'Rendez-vous – '+sa(it.ga) : sa(it.sDays);
+      const chk = it.kind==='dpa' ? `<span class="chk" aria-hidden="true" style="border-style:dashed"></span>` : `<button class="chk" data-done="${esc(it.id)}" aria-pressed="${it.st==='fait'}" aria-label="${it.st==='fait'?'Annuler la validation':'Marquer comme fait'} : ${esc(it.name)}">${it.st==='fait'?'✓':''}</button>`;
+      const delEv = it.kind==='ev' ? `<button class="x" data-delev="${esc(it.id)}" aria-label="Supprimer ce rendez-vous">×</button>` : '';
+      h+=`<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${it.ideal!=null?`<small class="ideal num">(${sa(it.idealDays)} : ${fd(it.ideal)})</small>`:''}${it.kind==='plan'?`<small class="ideal num">${it.exact!=null?'(prévu le '+fd(it.exact)+' – '+sa(Math.round((it.exact-info(p).base)/DAY))+')':'(date exacte à fixer)'}</small> <button class="link" data-plan style="padding:0;font-size:.85rem">Modifier</button>`:''}</div><div class="md num">${range(it.s,it.e===it.s?null:it.e)}${stLabel(it)}</div>${delEv}</div>`;
+    }
+    h+='</div></section>';
+  }
+
+  // Suivi échographique
+  const evs=evalsOf(p);
+  h+=`<section class="sec"><h2>Suivi clinique et échographique <button class="link" id="addEval">＋ Nouvelle évaluation</button></h2><div class="card">`;
+  if(!evs.length) h+='<div class="txt" style="color:var(--muted)">Aucune évaluation. Ajoutez le poids et la tension de la patiente, la présentation, l’estimation de poids fœtal (percentile OMS calculé automatiquement), le placenta et le col.</div>';
+  else {
+    const kv=(k,v)=>v?`<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`:'';
+    const lp=lastField(p,'presentation'), le=lastField(p,'epf'), lpc=lastField(p,'pct'), lpl=lastField(p,'placIns'), lcol=lastField(p,'colLong');
+    const ag=e=>{ const d=parseD(e.date); return d!=null&&info(p).ok?' <small style="font-weight:400;color:var(--muted)">('+fds(d)+' – '+sa(Math.round((d-info(p).base)/DAY))+')</small>':''; };
+    h+=`<div class="txt" style="padding-bottom:0"><span class="k">Dernières données connues</span></div>`;
+    const lw=lastField(p,'poidsM'), lt=lastField(p,'pas');
+    if(lw){ const pa=numv(p.poidsAvant); h+=kv('Poids maternel',frn(numv(lw.v))+' kg'+(pa!=null?' ('+(numv(lw.v)-pa>=0?'+':'')+frn(numv(lw.v)-pa)+' kg)':'')+ag(lw.ev)); }
+    if(lt) h+=kv('Tension artérielle',frn(numv(lt.v),0)+'/'+(numv(lt.ev.pad)!=null?frn(numv(lt.ev.pad),0):'?')+' mmHg'+ag(lt.ev));
+    h+=kv('Présentation',lp?esc(lp.v)+ag(lp.ev):'');
+    const lb=lastField(p,'bishop'); if(lb) h+=kv('Toucher vaginal','Bishop <b>'+esc(lb.v)+'</b> / 13'+ag(lb.ev));
+    if(le||lpc){ const e=(le||lpc).ev; const cat=croisCat(e.pct); h+=kv('Poids fœtal estimé',(numv(e.epf)!=null?frn(numv(e.epf),0)+' g':'—')+(numv(e.pct)!=null?' – '+frn(numv(e.pct),0)+'e percentile':'')+(cat?'<br><b>'+esc(cat)+'</b>':'')+ag(e)); }
+    if(lpl){ const e=lpl.ev; h+=kv('Placenta',esc([e.placPos,e.placIns].filter(Boolean).join(', '))+(numv(e.placDist)!=null?' – '+frn(numv(e.placDist),0)+' mm de l’OI':'')+ag(e)); }
+    if(lcol){ const e=lcol.ev; h+=kv('Col',frn(numv(e.colLong),0)+' mm'+(e.oi?' – OI '+esc(e.oi.toLowerCase())+(e.oi==='Ouvert'&&numv(e.oiMm)!=null?' de '+frn(numv(e.oiMm),0)+' mm':''):'')+ag(e)); }
+    h+=`<div class="txt" style="padding-bottom:0"><span class="k">Historique</span></div>`;
+    h+=evs.map(e=>{ const l=evalLine(e,p); return `<button class="row" data-ev="${esc(e.id)}"><span class="rmain"><span class="nm num" style="font-size:.95rem">${esc(l.when)}</span><span style="color:var(--muted);font-size:.9rem">${esc(l.txt)}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join('');
+  }
+  h+='</div></section>';
+
+  // Hospitalisations
+  const hs=list(p.hospits).slice().sort((x,y)=>(y.debut||'').localeCompare(x.debut||''));
+  if(hs.length) h+=`<section class="sec"><h2>Hospitalisations pendant la grossesse</h2><div class="card">${hs.map(x=>`<div class="txt"><span class="k num">${x.debut?fd(parseD(x.debut)):'?'}${x.fin?' → '+fd(parseD(x.fin)):''}${x.lieu?' – '+esc(x.lieu):''}</span>${esc(x.motif||'Motif non précisé')}</div>`).join('')}</div></section>`;
+
+  if(inf.ok && S.settings.conge && p.status!=='archived'){
+    const c=conge(p,inf);
+    h+=`<section class="sec"><h2>Congé maternité (estimation)</h2><div class="card num"><div class="kv"><span class="k">Congé prénatal (${c.pre} sem.)</span><span class="v">dès le ${fd(c.start)}</span></div><div class="kv"><span class="k">Congé postnatal (${c.post} sem.)</span><span class="v">jusqu’au ${fd(c.end)}</span></div></div><p class="note">Durées légales selon la parité et le nombre de fœtus, à confirmer auprès de la CPAM.</p></section>`;
+  }
+
+  const tx=(k,val)=> val ? `<div class="txt"><span class="k">${k}</span>${esc(val)}</div>` : '';
+  const ant = (p.allergies?`<div class="txt allergy-line"><span class="k">⚠ Allergies</span>${esc(p.allergies)}</div>`:'')+tx('Tabac, alcool, toxiques',addictText(p))+tx('Médicaux',p.atcdMed)+tx('Chirurgicaux',p.atcdChir)+tx('Obstétricaux (précisions)',p.atcdObst);
+  h+=`<section class="sec"><h2>Antécédents</h2><div class="card">${ant||'<div class="txt" style="color:var(--muted)">Non renseignés</div>'}</div></section>`;
+  const pps=list(p.prevPreg);
+  if(pps.length) h+=`<section class="sec"><h2>Grossesses antérieures</h2><div class="card">${pps.map(o=>{ const l=prevLine(o); return `<div class="txt"><span class="k">${esc(l.title)}</span>${esc(l.txt||'—')}</div>`; }).join('')}</div></section>`;
+  const tr=(arr,withDate)=>list(arr).map(t=>`<div class="kv"><span>${esc(t.nom)}${t.poso?`<br><small style="color:var(--muted)">${esc(t.poso)}</small>`:''}</span>${withDate&&t.debut?`<span class="v num" style="font-weight:400;color:var(--muted)">depuis le ${fd(parseD(t.debut))}</span>`:''}</div>`).join('');
+  const tf=tr(p.ttFond), tg=tr(p.ttGross,true);
+  h+=`<section class="sec"><h2>Traitements</h2><div class="card">${tf?`<div class="txt" style="padding-bottom:0"><span class="k">De fond</span></div>${tf}`:''}${tg?`<div class="txt" style="padding-bottom:0"><span class="k">Instaurés pendant la grossesse</span></div>${tg}`:''}${!tf&&!tg?'<div class="txt" style="color:var(--muted)">Aucun traitement</div>':''}</div></section>`;
+  const pm=list(p.pathoMat), pf=list(p.pathoFoet);
+  h+=`<section class="sec"><h2>Pathologies de la grossesse</h2><div class="card">${pm.length?`<div class="txt"><span class="k">Maternelles</span>${esc(pm.join(', '))}</div>`:''}${pf.length?`<div class="txt"><span class="k">Fœtales et annexielles</span>${esc(pf.join(', '))}</div>`:''}${p.pathoNotes?tx('Précisions',p.pathoNotes):''}${!pm.length&&!pf.length&&!p.pathoNotes?'<div class="txt" style="color:var(--muted)">Aucune pathologie signalée</div>':''}</div></section>`;
+  if(p.status==='archived') h+=issueHTML(p,inf);
+  h+=`<section class="sec"><h2>Accouchement prévu</h2><div class="card"><div class="kv"><span class="k">Lieu prévu</span><span class="v">${esc(lieuLabel(p)||'Non renseigné')}${p.niveau?' (type '+esc(p.niveau)+')':''}</span></div></div></section>`;
+  const cr=list(p.corr).filter(c=>c.nom||c.contact);
+  h+=`<section class="sec"><h2>Correspondants</h2><div class="card">${cr.length?cr.map(c=>`<div class="kv"><span class="k">${esc(c.role||'Autre')}</span><span class="v">${esc(c.nom||'')}${c.contact?`<br><small style="font-weight:400;color:var(--muted)">${esc(c.contact)}</small>`:''}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun correspondant renseigné.</div>'}</div></section>`;
+  const rel=related(p);
+  h+=`<section class="sec"><h2>Autres dossiers de la patiente</h2><div class="card">${rel.length?rel.map(x=>`<button class="row" data-open="${esc(x.id)}"><span class="rmain"><span class="nm">${esc(pregLabel(x))}</span><span style="color:var(--muted);font-size:.92rem">${esc(issueSummary(x)||(x.status==='archived'?'Archivée sans issue renseignée':'Grossesse en cours'))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun autre dossier pour cette patiente.</div>'}</div></section>`;
+  if(p.notes) h+=`<section class="sec"><h2>Notes</h2><div class="card">${tx('',p.notes).replace('<span class="k"></span>','')}</div></section>`;
+  h+=`<section class="sec"><h2>Documents PDF <button class="link" id="addPdf">＋ Ajouter</button></h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
+  h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
+  v.innerHTML=h;
+
+  $('#bk').addEventListener('click',()=>go('liste'));
+  $('#edit').addEventListener('click',()=>openEditor(p));
+  $('#pdfTop').addEventListener('click',()=>openPrint(p));
+  $('#pdfBtn').addEventListener('click',()=>openPrint(p));
+  $('#addEval').addEventListener('click',()=>openEval(p,null));
+  $$('[data-ev]').forEach(b=>b.addEventListener('click',()=>openEval(p,b.dataset.ev)));
+  const ao=$('#asOf'); if(ao) ao.addEventListener('change',e=>{ const d=parseD(e.target.value); S.asOf=d; renderPatient(id); });
+  $$('[data-done]').forEach(b=>b.addEventListener('click',async()=>{ p.done=p.done||{}; const k=b.dataset.done; if(p.done[k]) delete p.done[k]; else p.done[k]=iso(today()); await savePatient(p); renderPatient(id); }));
+  $$('[data-delev]').forEach(b=>b.addEventListener('click',async()=>{ p.events=(p.events||[]).filter(e=>e.id!==b.dataset.delev); await savePatient(p); renderPatient(id); }));
+  $$('[data-plan]').forEach(b=>b.addEventListener('click',()=>openPlan(p)));
+  const ae=$('#addEv'); if(ae) ae.addEventListener('click',()=>{ S.addingEvent=!S.addingEvent; renderPatient(id); if(S.addingEvent) $('#evName').focus(); });
+  const eo=$('#evOk'); if(eo) eo.addEventListener('click',async()=>{ const n=$('#evName').value.trim(), d=$('#evDate').value; if(!n||!d){ toast('Indiquez un intitulé et une date'); return; } p.events=p.events||[]; p.events.push({id:uid('ev'),name:n,date:d}); S.addingEvent=false; await savePatient(p); renderPatient(id); });
+  const ar=$('#arch'); if(ar) ar.addEventListener('click',()=>openOutcome(p));
+  const eo2=$('#editIssue'); if(eo2) eo2.addEventListener('click',()=>openOutcome(p));
+  const un=$('#unarch'); if(un) un.addEventListener('click',async()=>{ if(!await ask({title:'Rouvrir ce dossier ?',body:'La grossesse repassera dans les dossiers en cours. L’issue saisie est conservée.',ok:'Rouvrir'})) return; p.status='active'; await savePatient(p); toast('Dossier rouvert'); renderPatient(id); });
+  const np=$('#newPreg'); if(np) np.addEventListener('click',()=>openEditor(null,prefillFrom(p)));
+  bindRows($('#view'));
+  $('#delP').addEventListener('click',async()=>{ if(!await ask({title:'Supprimer ce dossier ?',body:`Le dossier de ${fullName(p)} et ses documents PDF seront définitivement effacés. Cette action est irréversible.`,ok:'Supprimer',danger:true})) return;
+    if(await deletePatients([p.id])){ toast('Dossier supprimé'); go('liste'); } });
+  $('#addPdf').addEventListener('click',()=>{ const i=$('#pdfInput'); i.value=''; i.onchange=()=>addPdfs(p,i.files); i.click(); });
+  drawDocs(p);
+}
+
+/* ---------- Évaluation échographique ---------- */
+const BISHOP_ITEMS=[['bDil','Dilatation',[['0','Fermé'],['1','1–2 cm'],['2','3–4 cm'],['3','≥ 5 cm']]],['bEff','Effacement',[['0','0–30 %'],['1','40–50 %'],['2','60–70 %'],['3','≥ 80 %']]],['bHaut','Hauteur de la présentation',[['0','Mobile (−3)'],['1','Amorcée (−2)'],['2','Fixée (−1/0)'],['3','Engagée (+1/+2)']]],['bCons','Consistance',[['0','Ferme'],['1','Moyenne'],['2','Molle']]],['bPos','Position du col',[['0','Postérieur'],['1','Intermédiaire'],['2','Antérieur']]]];
+function bishopOf(e){ if(!e||!e.tv) return null; const v=BISHOP_ITEMS.map(([k])=>e[k]); if(v.some(x=>x===''||x==null)) return null; return v.reduce((a,x)=>a+(+x),0); }
+function applyEvalValidation(p,e){
+  p.done=p.done||{}; p.doneBy=p.doneBy||{}; const names=[];
+  for(const [k,v] of Object.entries(p.doneBy)) if(v===e.id){ delete p.doneBy[k]; delete p.done[k]; }
+  const inf=info(p), d=parseD(e.date); if(!inf.ok||d==null) return names;
+  for(const m of S.settings.milestones){
+    if(!m.auto||!applies(p,m.cond)) continue;
+    if(!((m.auto==='consult'&&e.consult)||(m.auto==='echo'&&e.echo))) continue;
+    const s=inf.base+m.s*DAY, en=inf.base+((m.e==null?m.s:m.e))*DAY;
+    if(d<s||d>en||p.done[m.id]) continue;
+    p.done[m.id]=e.date; p.doneBy[m.id]=e.id; names.push(m.name);
+  }
+  return names;
+}
+function planMotifs(pl){ return [...list(pl&&pl.motifs),...(pl&&pl.autre?pl.autre.split(',').map(x=>x.trim()).filter(Boolean):[])]; }
+function openPlan(p){
+  const pl=Object.assign({type:'Déclenchement programmé',motifs:[],autre:'',date:'',notes:''},JSON.parse(JSON.stringify(p.planned||{})));
+  const inf=info(p); const sh=$('#sheet');
+  const win=inf.ok?' : du '+fd(inf.base+266*DAY)+' au '+fd(inf.base+273*DAY):'';
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="pCancel">Annuler</button><h2 id="sheetTitle">Accouchement programmé</h2><button class="btn primary" id="pSave">Enregistrer</button></div>
+  <div class="form">
+   <fieldset><legend>Type</legend><div class="fbox">${radios('ptype',[['Déclenchement programmé','Déclenchement programmé'],['Césarienne programmée','Césarienne programmée']],pl.type)}
+    <div class="note" style="margin:8px 0 0">Fenêtre habituelle 38 SA – 39 SA${win}.</div></div></fieldset>
+   <fieldset><legend>Motif</legend><div class="fbox"><div id="pMot"></div>${F('Autre(s) motif(s) (séparés par des virgules)','<input name="pAutre" value="'+esc(pl.autre||'')+'">')}</div></fieldset>
+   <fieldset><legend>Date</legend><div class="fbox">${F('Date exacte prévue','<input type="date" name="pDate" value="'+esc(pl.date||'')+'">')}<div class="preview num" id="pAg" style="display:none"></div>
+    ${F('Remarques','<input name="pNotes" value="'+esc(pl.notes||'')+'">')}</div></fieldset>
+   ${p.planned&&p.planned.type?'<div class="actions"><button class="btn danger" id="pDel">Retirer la programmation</button></div>':''}
+  </div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  const val=n=>{ const r=sh.querySelector(`[name="${n}"]:checked`); if(r) return r.value; const el=sh.querySelector(`[name="${n}"]`); return el&&el.type!=='radio'?el.value.trim():''; };
+  let curType='';
+  const sync=()=>{ const t=val('ptype'); if(t!==curType){ const keep=$$('[name="pm2"]:checked',sh).map(c=>c.value); const base=t==='Césarienne programmée'?CES_PROG:DECL_MOTIFS; $('#pMot').innerHTML=chips('pm2',base,curType?keep:list(pl.motifs)); curType=t; }
+    const d=parseD(val('pDate')), ag=$('#pAg'); if(d!=null&&inf.ok){ ag.style.display=''; ag.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else ag.style.display='none'; };
+  sh.oninput=sync; sh.onchange=sync; sync();
+  const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
+  $('#pCancel').addEventListener('click',close);
+  $('#pSave').addEventListener('click',async()=>{ p.planned={type:val('ptype'),motifs:$$('[name="pm2"]:checked',sh).map(c=>c.value),autre:val('pAutre'),date:val('pDate'),notes:val('pNotes')}; await savePatient(p); close(); toast('Programmation enregistrée'); renderPatient(p.id); });
+  const d=$('#pDel'); if(d) d.addEventListener('click',async()=>{ if(!await ask({title:'Retirer la programmation ?',body:'Le déclenchement ou la césarienne programmée sera retiré des dates importantes.',ok:'Retirer',danger:true})) return; delete p.planned; if(p.done) delete p.done.plan; await savePatient(p); close(); renderPatient(p.id); });
+}
+function openEval(p,evId){
+  const ex=evId?list(p.evals).find(e=>e.id===evId):null;
+  const e=Object.assign({id:uid('e'),date:iso(today()),poidsM:'',pas:'',pad:'',presentation:'',epf:'',pct:'',placPos:'',placIns:'',placDist:'',colLong:'',oi:'',oiMm:'',notes:''},ex?JSON.parse(JSON.stringify(ex)):{});
+  const sh=$('#sheet');
+  const tin=(n,ph)=>`<input name="${n}" type="text" inputmode="decimal" placeholder="${ph||''}" value="${esc(e[n]??'')}">`;
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="eCancel">Annuler</button><h2 id="sheetTitle">${ex?'Évaluation':'Nouvelle évaluation'}</h2><button class="btn primary" id="eSave">Enregistrer</button></div>
+  <div class="form">
+   <fieldset><legend>Date</legend><div class="fbox">${F('Date de l’examen','<input type="date" name="date" value="'+esc(e.date)+'">')}<div class="preview num" id="eAg"></div></div></fieldset>
+   <fieldset><legend>Type d’examen</legend><div class="fbox">
+    <div class="seg"><label><input type="checkbox" name="etC" ${e.consult!==false?'checked':''}><span>Consultation</span></label><label><input type="checkbox" name="etE" ${e.echo?'checked':''}><span>Échographie</span></label></div>
+    <div class="note" style="margin:8px 0 0">L’évaluation valide automatiquement la consultation ou l’échographie prévue dont la fenêtre comprend sa date.</div>
+   </div></fieldset>
+   <fieldset><legend>Mère</legend><div class="fbox">
+    <div class="grid3">${F('Poids (kg)',tin('poidsM','ex. 68,5'))}${F('TA systolique',tin('pas','mmHg'))}${F('TA diastolique',tin('pad','mmHg'))}</div>
+    <div class="preview num" id="eGain" style="display:none"></div>
+   </div></fieldset>
+   <fieldset><legend>Fœtus</legend><div class="fbox">
+    <div class="f"><span>Présentation</span>${radios('presentation',PRES.map(x=>[x,x]),e.presentation)}</div>
+    <div class="grid2">${F('Poids fœtal estimé (g)',tin('epf','ex. 2350'))}${F('Percentile (calculé)',tin('pct','auto'))}</div>
+    <div class="note" id="ePctSrc" style="margin:6px 0 0"></div>
+    <div class="preview" id="eCat" style="display:none"></div>
+   </div></fieldset>
+   <fieldset><legend>Toucher vaginal</legend><div class="fbox">
+    <label class="chkline"><input type="checkbox" name="tv" ${e.tv?'checked':''}> TV réalisé</label>
+    <div id="tvBox">${BISHOP_ITEMS.map(([k,l,o])=>`<div class="f"><span>${l}</span>${radios(k,o.map(([v,t])=>[v,t+' ('+v+')']),e[k]??'')}</div>`).join('')}
+     <div class="preview num" id="bScore"></div>
+     ${F('Autres constatations (membranes, liquide…)','<input name="tvNotes" value="'+esc(e.tvNotes||'')+'">')}</div>
+   </div></fieldset>
+   <fieldset><legend>Placenta</legend><div class="fbox">
+    <div class="f"><span>Position</span>${radios('placPos',PLAC_POS.map(x=>[x,x]),e.placPos)}</div>
+    <div class="f"><span>Insertion</span>${radios('placIns',PLAC_INS.map(x=>[x,x]),e.placIns)}</div>
+    <div id="eDist">${F('Distance bord placentaire – orifice interne (mm)',tin('placDist'))}</div>
+   </div></fieldset>
+   <fieldset><legend>Col</legend><div class="fbox">
+    ${F('Longueur cervicale (mm)',tin('colLong'))}
+    <div class="f"><span>Orifice interne (OI)</span>${radios('oi',[['Fermé','Fermé'],['Ouvert','Ouvert']],e.oi)}</div>
+    <div id="eOi">${F('Ouverture de l’OI (mm)',tin('oiMm'))}</div>
+   </div></fieldset>
+   <fieldset><legend>Notes</legend><div class="fbox">${F('Remarques','<textarea name="notes">'+esc(e.notes||'')+'</textarea>')}</div></fieldset>
+   ${ex?'<div class="actions"><button class="btn danger" id="eDel">Supprimer cette évaluation</button></div>':''}
+  </div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  const val=n=>{ const r=sh.querySelector(`[name="${n}"]:checked`); if(r) return r.value; const el=sh.querySelector(`[name="${n}"]`); return el && el.type!=='radio' ? el.value.trim() : ''; };
+  let pctManual=!!(ex&&ex.pctManual); let echoTouched=!!ex;
+  sh.addEventListener('change',ev=>{ if(ev.target.name==='etE') echoTouched=true; },true);
+  sh.addEventListener('input',ev=>{ if(ev.target.name==='pct') pctManual=ev.target.value.trim()!==''; },true);
+  const sync=()=>{ const d=parseD(val('date')), inf=info(p); $('#eAg').textContent=d!=null&&inf.ok?'Âge gestationnel : '+sa(Math.round((d-inf.base)/DAY)):''; 
+    const g=numv(val('epf')), src=$('#ePctSrc'); const sf=(+p.multiple||1)===1?sexfArr(p)[0]:'';
+    if(g!=null && d!=null && inf.ok){ const r=whoPct(g,Math.round((d-inf.base)/DAY),sf);
+      if(r){ if(!pctManual) sh.querySelector('[name="pct"]').value=frn(r.pct,1); src.textContent='Percentile '+pctLabel(r.pct)+' ('+r.ref+(+p.multiple>1?' ; courbes établies pour grossesses uniques':'')+')'+(pctManual?' – valeur saisie manuellement conservée':''); }
+      else src.textContent='Calcul automatique possible de 14 à 40 SA uniquement.'; } else src.textContent='';
+    if(!echoTouched){ const hasEcho=['epf','pct','placDist','colLong'].some(k=>val(k)!=='')||val('placIns')||val('placPos'); sh.querySelector('[name="etE"]').checked=!!hasEcho; }
+    const tvOn=sh.querySelector('[name="tv"]').checked; $('#tvBox').style.display=tvOn?'':'none';
+    if(tvOn){ const tmpE={tv:true}; BISHOP_ITEMS.forEach(([k])=>tmpE[k]=val(k)); const b=bishopOf(tmpE); const done=BISHOP_ITEMS.filter(([k])=>val(k)!=='').length; $('#bScore').textContent=b!=null?'Score de Bishop : '+b+' / 13':'Score de Bishop : '+done+'/5 critères renseignés'; }
+    const pm=numv(val('poidsM')), pa=numv(p.poidsAvant), eg=$('#eGain'); eg.style.display=pm!=null&&pa!=null?'':'none'; if(pm!=null&&pa!=null) eg.textContent='Prise de poids : '+(pm-pa>=0?'+':'')+frn(pm-pa)+' kg';
+    const c=croisCat(val('pct')); const ec=$('#eCat'); ec.style.display=c?'':'none'; ec.textContent=c?'Classement : '+c:'';
+    $('#eDist').style.display=/^Bas/.test(val('placIns'))?'':'none'; $('#eOi').style.display=val('oi')==='Ouvert'?'':'none'; };
+  sh.oninput=sync; sh.onchange=sync; sync();
+  const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
+  $('#eCancel').addEventListener('click',close);
+  $('#eSave').addEventListener('click',async()=>{
+    for(const k of ['date','presentation','placPos','placIns','oi','notes']) e[k]=val(k);
+    for(const k of ['epf','pct','placDist','colLong','oiMm','poidsM','pas','pad']) e[k]=nstr(val(k)); e.pctManual=pctManual;
+    e.consult=sh.querySelector('[name="etC"]').checked; e.echo=sh.querySelector('[name="etE"]').checked;
+    e.tv=sh.querySelector('[name="tv"]').checked; for(const [k] of BISHOP_ITEMS) e[k]=e.tv?val(k):''; e.tvNotes=e.tv?val('tvNotes'):''; e.bishop=bishopOf(e); if(e.bishop==null) e.bishop='';
+    if(!/^Bas/.test(e.placIns)) e.placDist=''; if(e.oi!=='Ouvert') e.oiMm='';
+    p.evals=list(p.evals).filter(x=>x.id!==e.id); p.evals.push(e);
+    const val_=applyEvalValidation(p,e); if(val_.length) setTimeout(()=>toast('Validé : '+val_.join(', ')),400);
+    await savePatient(p); close(); toast('Évaluation enregistrée'); renderPatient(p.id);
+  });
+  const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
+}
+async function drawDocs(p){
+  const box=$('#docs'); if(!box) return;
+  let fs=[]; try{ fs=await filesFor(p.id); }catch(e){}
+  fs.sort((a,b)=>b.addedAt-a.addedAt);
+  box.innerHTML = fs.length ? fs.map(f=>`<div class="doc"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button><small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))}</small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')
+    : '<div class="txt" style="color:var(--muted)">Aucun document. Ajoutez des comptes rendus d’échographie, des bilans ou des courriers.</div>';
+  $$('[data-view]',box).forEach(b=>b.addEventListener('click',()=>viewPdf(b.dataset.view)));
+  $$('[data-delf]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.delf); if(!await ask({title:'Supprimer ce document ?',body:f.name,ok:'Supprimer',danger:true})) return; await del('files',f.id); drawDocs(p); }));
+}
+async function addPdfs(p,files){
+  let n=0;
+  for(const file of files){
+    if(!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)){ toast(file.name+' n’est pas un PDF'); continue; }
+    try{ const buf=await file.arrayBuffer(); await put('files',{id:uid('f'),patientId:p.id,name:file.name,type:'application/pdf',size:file.size,addedAt:Date.now(),data:buf}); n++; }
+    catch(e){ toast('Impossible d’enregistrer '+file.name+' (espace insuffisant ?)'); }
+  }
+  if(n) toast(n+' document'+(n>1?'s ajoutés':' ajouté'));
+  drawDocs(p);
+}
+let viewing=null;
+async function viewPdf(fid){
+  const f=await get('files',fid); if(!f) return; viewing=f;
+  const url=URL.createObjectURL(new Blob([f.data],{type:'application/pdf'}));
+  $('#vName').textContent=f.name; $('#vFrame').src=url; $('#viewer').classList.add('open');
+}
+$('#vClose').addEventListener('click',()=>{ const fr=$('#vFrame'); if(fr.src.startsWith('blob:')) URL.revokeObjectURL(fr.src); fr.removeAttribute('src'); $('#viewer').classList.remove('open'); viewing=null; });
+$('#vOpen').addEventListener('click',()=>{ const src=$('#vFrame').src; if(src) window.open(src,'_blank'); });
+$('#vSave').addEventListener('click',()=>{ if(viewing) saveFile(viewing.name.match(/\.pdf$/i)?viewing.name:viewing.name+'.pdf', new Blob([viewing.data],{type:'application/pdf'})); });
+
+/* ---------- Dossiers liés et issue ---------- */
+function idKey(p){ const n=(p.nom||'').trim().toLowerCase(), q=(p.prenom||'').trim().toLowerCase(); return n&&q&&p.naissance ? n+'|'+q+'|'+p.naissance : null; }
+function related(p){ const g=p.groupId||p.id, k=idKey(p); return S.patients.filter(x=>x.id!==p.id && ((x.groupId||x.id)===g || (k && idKey(x)===k))).sort((a,b)=>pDate(b)-pDate(a)); }
+function pDate(x){ const d=x.issue&&parseD(x.issue.date); if(d!=null) return d; const i=info(x); return i.ok?i.dpa:(x.createdAt||0); }
+function pregLabel(x){ const i=info(x); const y=new Date(pDate(x)).getUTCFullYear(); return x.status==='archived' ? 'Grossesse '+y : i.ok ? 'En cours – DPA '+fd(i.dpa) : 'En cours'; }
+function issueSummary(x){
+  const o=x.issue; if(!o || !o.type) return '';
+  const i=info(x), d=parseD(o.date); const parts=[o.type];
+  if(d!=null) parts.push(fd(d)); if(d!=null && i.ok) parts.push(sa(Math.round((d-i.base)/DAY)));
+  for(const e of (o.enfants||[])){ const t=[SEXE[e.sexe]||'', e.prenom||'', e.poids?(+e.poids).toLocaleString('fr-FR')+' g':''].filter(Boolean).join(' '); if(t) parts.push(t.toLowerCase().startsWith('fille')||t.toLowerCase().startsWith('garçon')?t.charAt(0).toLowerCase()+t.slice(1):t); }
+  return parts.join(', ');
+}
+function prevFromIssue(prev){
+  const o=prev.issue||{}; const k=list(o.enfants)[0]||{}; const i=info(prev), d=parseD(o.date);
+  const pm=[...list(prev.pathoMat),...list(prev.pathoFoet)], cm=complMat(prev);
+  return { annee:String(d!=null?new Date(d).getUTCFullYear():new Date(pDate(prev)).getUTCFullYear()), lieu:lieuLabel(o)||lieuLabel(prev), issue:o.type||'',
+    terme:d!=null&&i.ok?sa(Math.round((d-i.base)/DAY)):'', presentation:o.presentation||'', sexe:k.sexe||'', prenom:k.prenom||'', poids:k.poids||'',
+    anesth:o.analgesie||'', perinee:o.perinee||'', delivrance:o.hdd==='oui'?'Hémorragie de la délivrance':o.delivrance==='Délivrance artificielle'?'Délivrance artificielle':o.delivrance==='Révision utérine'?'Révision utérine':(o.type?'Normale':''),
+    grossesse:o.type?(pm.length?'Pathologique':'Normale'):'', grossessePrec:pm.join(', '), suites:o.type?(cm.length?'Pathologiques':'Normales'):'', suitesPrec:cm.join(', '), allaitement:o.alim||'' };
+}
+function prefillFrom(prev){
+  const o=prev.issue||{}; const birth=BIRTH.has(o.type), ces=/Césarienne/.test(o.type||'');
+  const num=v=>v===''||v==null?null:+v;
+  const g=num(prev.gestite), pa=num(prev.parite);
+  return {
+    groupId:prev.groupId||prev.id, nom:prev.nom, prenom:prev.prenom, naissance:prev.naissance, telephone:prev.telephone, taille:prev.taille,
+    groupe:prev.groupe, rhesus:prev.rhesus, atcdMed:prev.atcdMed, atcdChir:prev.atcdChir, allergies:prev.allergies, atcdObst:prev.atcdObst,
+    prevPreg:[...JSON.parse(JSON.stringify(list(prev.prevPreg))), prevFromIssue(prev)],
+    ttFond:JSON.parse(JSON.stringify(prev.ttFond||[])), uterusCicatriciel:prev.uterusCicatriciel,
+    gestite: g==null?'':g+1, parite: pa==null?(birth?1:''):pa+(birth?1:0), cesariennes:(+prev.cesariennes||0)+(ces?1:0),
+    lieu:prev.lieu, lieuPrec:prev.lieuPrec, niveau:prev.niveau, corr:JSON.parse(JSON.stringify(prev.corr||[]))
+  };
+}
+function kidText(e){ return [SEXE[e.sexe]||'', e.prenom||'', numv(e.poids)!=null?frn(numv(e.poids),0)+' g':'', numv(e.ph)!=null?'pH '+frn(numv(e.ph),2):'', numv(e.lact)!=null?'lactates '+frn(numv(e.lact))+' mmol/L':'', [e.apg1,e.apg5,e.apg10].some(x=>x!==''&&x!=null)?'Apgar '+[e.apg1,e.apg5,e.apg10].map(x=>x===''||x==null?'–':x).join('/'):''].filter(Boolean).join(' – '); }
+function issueRows(p,inf){
+  const o=p.issue||{}; const d=parseD(o.date); const rows=[];
+  const add=(k,v)=>{ if(v) rows.push([k,v]); };
+  add('Issue',o.type); add('Date',d!=null?fd(d):''); add('Terme',d!=null&&inf.ok?sa(Math.round((d-inf.base)/DAY)):''); add('Lieu',lieuLabel(o));
+  add('Entrée en travail',o.travail);
+  if(o.travail==='Déclenchement'){ add('Motif du déclenchement',list(o.declMotifs).join(', ')); add('Méthode',list(o.declMeth).join(', ')); }
+  add('Présentation à la naissance',o.presentation);
+  if(/Césarienne/.test(o.type||'')){ add('Motif de la césarienne',list(o.cesMotifs).join(', ')); if(o.code) add('Code d’urgence','Code '+o.code.toLowerCase()); if(numv(o.delai)!=null) add('Délai décision – naissance',frn(numv(o.delai),0)+' min'+(o.hDec&&o.hNais?' ('+o.hDec+' → '+o.hNais+')':'')); }
+  if(o.type==='Voie basse instrumentale'){ add('Instrument',o.instrument); add('Motif de l’extraction',list(o.instrMotifs).join(', ')); }
+  add('Analgésie',o.analgesie); add('Périnée',o.perinee); add('Délivrance',o.delivrance);
+  add('Hémorragie de la délivrance',o.hdd==='oui'?'Oui'+(o.hddVol?' ('+frn(numv(o.hddVol),0)+' mL)':''):o.hdd==='non'?'Non':'');
+  list(o.enfants).forEach((e,i,a)=>add(a.length>1?'Enfant '+(i+1):'Enfant',kidText(e)));
+  add('Alimentation',o.alim); add('Complications maternelles',complMat(p).join(', ')); add('Complications néonatales',list(o.complNeo).join(', ')); add('Notes',o.notes);
+  return rows;
+}
+function issueHTML(p,inf){
+  const o=p.issue||{}; const rows=issueRows(p,inf);
+  const code=o.code&&/Césarienne/.test(o.type||'')?`<div class="txt"><span class="tag ${codeCls(o.code)}">Code ${esc(o.code.toLowerCase())}</span></div>`:'';
+  const body=rows.map(([k,v])=>k==='Notes'?`<div class="txt"><span class="k">Notes</span>${esc(v)}</div>`:`<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('');
+  return `<section class="sec"><h2>Issue de la grossesse <button class="link" id="editIssue">${rows.length?'Modifier':'Renseigner'}</button></h2><div class="card num">${code}${body||'<div class="txt" style="color:var(--muted)">Dossier archivé sans renseignement.</div>'}</div></section>`;
+}
+function kidRow(e,i){
+  const t=(k,ph,mode)=>`<label class="f"><span>${ph}</span><input data-k="${k}" type="text" inputmode="${mode||'decimal'}" value="${esc(e[k]??'')}"></label>`;
+  return `<div class="kid"><div class="kid-h"><b>Enfant</b><button type="button" class="x" data-rmk aria-label="Retirer cet enfant">×</button></div>
+  <div class="grid3"><label class="f"><span>Sexe</span><select data-k="sexe"><option value=""></option>${Object.entries(SEXE).map(([k,l])=>`<option value="${k}" ${e.sexe===k?'selected':''}>${l}</option>`).join('')}</select></label>
+  <label class="f"><span>Prénom</span><input data-k="prenom" value="${esc(e.prenom||'')}"></label>${t('poids','Poids (g)','numeric')}</div>
+  <div class="grid2">${t('ph','pH au cordon')}${t('lact','Lactates (mmol/L)')}</div>
+  <div class="grid3">${t('apg1','Apgar 1 min','numeric')}${t('apg5','Apgar 5 min','numeric')}${t('apg10','Apgar 10 min','numeric')}</div></div>`;
+}
+function openOutcome(p){
+  const wasActive=p.status!=='archived';
+  const o=Object.assign({type:'',date:'',hdd:'',hddVol:'',perinee:'',analgesie:'',delivrance:'',lieu:p.lieu||'',lieuPrec:p.lieuPrec||'',enfants:[],alim:'',notes:'',complMat:[],complNeo:[],travail:'',declMotifs:[],declMeth:[],cesMotifs:[],code:'',hDec:'',hNais:'',delai:'',instrument:'',instrMotifs:[],presentation:''},JSON.parse(JSON.stringify(p.issue||{})));
+  if(!o.enfants.length){ const sf=sexfArr(p); o.enfants=sf.map(s=>({sexe:s==='F'||s==='M'?s:''})); }
+  if(!p.issue && p.planned && p.planned.type){ const pl=p.planned;
+    if(pl.type==='Déclenchement programmé'){ o.travail='Déclenchement'; o.declMotifs=planMotifs(pl); }
+    else { o.type='Césarienne programmée'; o.travail='Césarienne avant travail'; o.cesMotifs=planMotifs(pl); }
+    if(pl.date && !o.date) o.date=pl.date; }
+  if(!o.presentation){ const lp=lastField(p,'presentation'); if(lp && lp.v!=='Instable') o.presentation=lp.v; }
+  const sh=$('#sheet');
+  const sel=(n,opts,v)=>`<select name="${n}"><option value="">—</option>${opts.map(x=>`<option ${v===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`;
+  const other=(n,arr,base)=>F('Autre(s) (séparés par des virgules)',`<input name="${n}" value="${esc(list(arr).filter(x=>!base.includes(x)).join(', '))}">`);
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="oCancel">Annuler</button><h2 id="sheetTitle">Issue de la grossesse</h2><button class="btn primary" id="oSave">${wasActive?'Archiver':'Enregistrer'}</button></div>
+  <div class="form">
+   ${wasActive?'<div class="banner" style="background:var(--surface);color:var(--ink)">Tous les champs sont facultatifs. <button type="button" class="link" id="oQuick">Archiver sans rien renseigner</button></div>':''}
+   <fieldset><legend>Issue</legend><div class="fbox">
+    <label class="f"><span>Issue</span><select name="type"><option value="">—</option>${ISSUE_GROUPS.map(([g,a])=>`<optgroup label="${g}">${a.map(x=>`<option ${o.type===x?'selected':''}>${esc(x)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    ${F('Date','<input type="date" name="date" value="'+esc(o.date)+'">')}
+    <div class="f"><span>Lieu</span>${radios('lieu',LIEUX.map(x=>[x,x]),o.lieu)}</div>
+    ${F('Précision (autre établissement)','<input name="lieuPrec" value="'+esc(o.lieuPrec||'')+'">')}
+    <div class="preview num" id="oTerm" style="display:none"></div>
+   </div></fieldset>
+   <div id="birthBox">
+   <fieldset><legend>Travail</legend><div class="fbox">
+    <div class="f"><span>Entrée en travail</span>${radios('travail',TRAVAIL.map(x=>[x,x]),o.travail)}</div>
+    <div id="declBox"><div class="f"><span>Motif(s) du déclenchement</span>${chips('decl',DECL_MOTIFS,list(o.declMotifs))}</div>${other('declOther',o.declMotifs,DECL_MOTIFS)}
+     <div class="f"><span>Méthode</span>${chips('declMeth',DECL_METH,list(o.declMeth))}</div></div>
+    <div class="f"><span>Présentation à la naissance</span>${radios('presentation',[['Céphalique','Céphalique'],['Siège','Siège'],['Transverse','Transverse']],o.presentation)}</div>
+   </div></fieldset>
+   <fieldset id="cesBox"><legend>Césarienne</legend><div class="fbox">
+    <div id="cesProgBox"><div class="f"><span>Motif(s) de la césarienne programmée</span>${chips('cesP',CES_PROG,list(o.cesMotifs))}</div>${other('cesOther',o.cesMotifs,[...CES_PROG,...CES_URG_ALL])}</div>
+    <div id="urgBox"><div class="f"><span>Code d’urgence</span>${radios('code',CODES.map(c=>[c,'Code '+c.toLowerCase()]),o.code)}</div>
+     ${CODES.map(c=>`<div class="ucode" data-code="${c}"><div class="ucode-h"><span class="tag ${codeCls(c)}">Code ${c.toLowerCase()}</span> <small>${esc(CES_URG[c].t)}</small></div>${chips('cesU',CES_URG[c].m,list(o.cesMotifs))}</div>`).join('')}
+     ${other('cesUOther',o.cesMotifs,[...CES_PROG,...CES_URG_ALL])}
+     <div class="grid3">${F('Heure de décision','<input type="time" name="hDec" value="'+esc(o.hDec)+'">')}${F('Heure de naissance','<input type="time" name="hNais" value="'+esc(o.hNais)+'">')}${F('Délai (min)','<input name="delai" type="text" inputmode="numeric" value="'+esc(o.delai)+'">')}</div></div>
+   </div></fieldset>
+   <fieldset id="instrBox"><legend>Extraction instrumentale</legend><div class="fbox">
+    <div class="f"><span>Instrument</span>${radios('instrument',INSTR.map(x=>[x,x]),o.instrument)}</div>
+    <div class="f"><span>Motif(s)</span>${chips('instr',INSTR_MOTIFS,list(o.instrMotifs))}</div>${other('instrOther',o.instrMotifs,INSTR_MOTIFS)}
+   </div></fieldset>
+   <fieldset><legend>Accouchement</legend><div class="fbox">
+    <div class="f"><span>Analgésie / anesthésie</span>${radios('analgesie',ANALG.map(x=>[x,x]),o.analgesie)}</div>
+    <label class="f" id="perBox"><span>Périnée</span>${sel('perinee',PERINEE,o.perinee)}</label>
+    <div class="f"><span>Délivrance</span>${radios('delivrance',DELIV.map(x=>[x,x]),o.delivrance)}</div>
+    <div class="f"><span>Hémorragie de la délivrance</span>${radios('hdd',[['non','Non'],['oui','Oui']],o.hdd)}</div>
+    <div id="hddVolBox">${F('Pertes estimées (mL)','<input type="text" inputmode="numeric" name="hddVol" value="'+esc(o.hddVol)+'">')}</div>
+   </div></fieldset>
+   <fieldset><legend>Nouveau-né${(+p.multiple||1)>1?'s':''}</legend><div class="fbox">
+    <div id="kids">${o.enfants.map(kidRow).join('')}</div><button type="button" class="btn small" id="addKid" style="margin-top:8px">＋ Ajouter un enfant</button>
+    <div class="f"><span>Alimentation</span>${radios('alim',ALIM.map(x=>[x,x]),o.alim)}</div>
+    <div class="f"><span>Complications néonatales</span>${chips('cno',NEONAT,list(o.complNeo))}</div>
+    ${other('cnoOther',o.complNeo,NEONAT)}
+   </div></fieldset>
+   </div>
+   <fieldset><legend>Complications maternelles</legend><div class="fbox">
+    <div class="f"><span>Hors hémorragie de la délivrance</span>${chips('cmo',COMPL_MAT,list(o.complMat))}</div>
+    ${other('cmoOther',o.complMat,COMPL_MAT)}
+   </div></fieldset>
+   <fieldset><legend>Notes</legend><div class="fbox">${F('Suites, post-partum, remarques','<textarea name="notes">'+esc(o.notes)+'</textarea>')}</div></fieldset>
+  </div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  const val=n=>{ const r=sh.querySelector(`[name="${n}"]:checked`); if(r) return r.value; const el=sh.querySelector(`[name="${n}"]`); return el && el.type!=='radio' && el.type!=='checkbox' ? el.value.trim() : ''; };
+  const show=(id,on)=>{ const el=$('#'+id); if(el) el.style.display=on?'':'none'; };
+  let lastTimes='';
+  const sync=()=>{ const t=val('type');
+    show('birthBox',BIRTH.has(t)); show('declBox',val('travail')==='Déclenchement'); show('cesBox',/Césarienne/.test(t)); show('urgBox',t==='Césarienne en urgence'); show('cesProgBox',t==='Césarienne programmée');
+    const cd=val('code'); $$('.ucode',sh).forEach(u=>u.classList.toggle('on',u.dataset.code===cd));
+    show('instrBox',t==='Voie basse instrumentale'); show('perBox',/^Voie basse/.test(t)); show('hddVolBox',val('hdd')==='oui');
+    const a=val('hDec'), b=val('hNais'); const key=a+'|'+b;
+    if(a&&b&&key!==lastTimes){ const [h1,m1]=a.split(':').map(Number),[h2,m2]=b.split(':').map(Number); let dm=(h2*60+m2)-(h1*60+m1); if(dm<0) dm+=1440; sh.querySelector('[name="delai"]').value=dm; }
+    lastTimes=key;
+    const d=parseD(val('date')), inf=info(p); const ot=$('#oTerm'); if(d!=null && inf.ok){ ot.style.display=''; ot.textContent='Terme à l’issue : '+sa(Math.round((d-inf.base)/DAY)); } else ot.style.display='none'; };
+  sh.oninput=sync; sh.onchange=e=>{ const t=e&&e.target; if(t&&t.name==='cesU'&&t.checked&&!val('code')){ const c=t.closest('.ucode').dataset.code; const r=sh.querySelector(`[name="code"][value="${c}"]`); if(r) r.checked=true; } sync(); }; sync();
+  sh.onclick=e=>{ const r=e.target.closest('[data-rmk]'); if(r) r.closest('.kid').remove(); };
+  $('#addKid').addEventListener('click',()=>$('#kids').insertAdjacentHTML('beforeend',kidRow({})));
+  const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
+  const finish=async(withData)=>{
+    if(withData){
+      const t=val('type'), birth=BIRTH.has(t);
+      const sp=x=>x.split(',').map(y=>y.trim()).filter(Boolean);
+      const ck=n=>$$(`[name="${n}"]:checked`,sh).map(c=>c.value);
+      const out={type:t,date:val('date'),lieu:val('lieu'),lieuPrec:val('lieuPrec'),notes:val('notes'),complMat:[...ck('cmo'),...sp(val('cmoOther'))]};
+      if(birth){
+        Object.assign(out,{travail:val('travail'),presentation:val('presentation'),analgesie:val('analgesie'),delivrance:val('delivrance'),hdd:val('hdd'),hddVol:val('hdd')==='oui'?nstr(val('hddVol')):'',alim:val('alim'),
+          enfants:$$('#kids .kid',sh).map(c=>{ const g=k=>(c.querySelector(`[data-k="${k}"]`)||{}).value||''; return {sexe:g('sexe'),prenom:g('prenom').trim(),poids:nstr(g('poids')),ph:nstr(g('ph')),lact:nstr(g('lact')),apg1:nstr(g('apg1')),apg5:nstr(g('apg5')),apg10:nstr(g('apg10'))}; }).filter(e=>Object.values(e).some(x=>x!=='')),
+          complNeo:[...ck('cno'),...sp(val('cnoOther'))]});
+        if(/^Voie basse/.test(t)) out.perinee=val('perinee');
+        if(out.travail==='Déclenchement'){ out.declMotifs=[...ck('decl'),...sp(val('declOther'))]; out.declMeth=ck('declMeth'); }
+        if(/Césarienne/.test(t)){ out.cesMotifs=t==='Césarienne programmée'?[...ck('cesP'),...sp(val('cesOther'))]:[...ck('cesU'),...sp(val('cesUOther'))]; if(t==='Césarienne en urgence'){ out.code=val('code'); out.hDec=val('hDec'); out.hNais=val('hNais'); out.delai=nstr(val('delai')); } }
+        if(t==='Voie basse instrumentale'){ out.instrument=val('instrument'); out.instrMotifs=[...ck('instr'),...sp(val('instrOther'))]; }
+      }
+      p.issue=out;
+    }
+    if(wasActive){ p.status='archived'; p.archivedAt=Date.now(); }
+    await savePatient(p); close(); toast(wasActive?'Dossier archivé':'Issue enregistrée'); renderPatient(p.id);
+  };
+  $('#oCancel').addEventListener('click',close);
+  $('#oSave').addEventListener('click',()=>finish(true));
+  const q=$('#oQuick'); if(q) q.addEventListener('click',()=>finish(false));
+}
+
+/* ---------- Impression / PDF ---------- */
+const PRINT_SECTIONS=[['ident','Identité, datation et alertes'],['ant','Antécédents et grossesses antérieures'],['tt','Traitements'],['patho','Pathologies de la grossesse'],['suivi','Suivi clinique et échographique'],['hosp','Hospitalisations'],['dates','Dates importantes'],['acc','Accouchement prévu et correspondants'],['issue','Issue de la grossesse'],['notes','Notes']];
+function pdfSections(p){
+  const inf=info(p), a=age(p.naissance), bmi=imc(p), S2=[];
+  const sec=(id,title,rows)=>{ rows=rows.filter(r=>r&&r[1]); if(rows.length) S2.push({id,title,rows}); };
+  sec('ident','Identité et datation',[
+    ['Patiente',fullName(p)],['Née le',p.naissance?fd(parseD(p.naissance))+(a!=null?' ('+a+' ans)':''):''],['Téléphone',p.telephone],
+    ['Gestité / parité',p.gestite!==''&&p.gestite!=null?'G'+p.gestite+' P'+(p.parite||0):''],['Césariennes antérieures',+p.cesariennes>0?String(p.cesariennes):''],
+    ['Groupe / rhésus',(p.groupe||'')+(p.rhesus?(p.rhesus==='-'?' Rh négatif':' Rh positif'):'')],['Taille / poids avant grossesse',(p.taille?p.taille+' cm':'')+(p.poidsAvant?' – '+p.poidsAvant+' kg':'')+(bmi!=null?' (IMC '+frn(bmi)+')':'')],
+    ['ALLERGIES',p.allergies],['Tabac, alcool, toxiques',addictText(p)],['Dernier poids',(()=>{ const x=lastField(p,'poidsM'); if(!x) return ''; const pa=numv(p.poidsAvant); return frn(numv(x.v))+' kg'+(pa!=null?' (prise de poids '+(numv(x.v)-pa>=0?'+':'')+frn(numv(x.v)-pa)+' kg)':'')+' le '+fd(parseD(x.ev.date)); })()],['Dernière tension artérielle',(()=>{ const x=lastField(p,'pas'); return x?frn(numv(x.v),0)+'/'+(numv(x.ev.pad)!=null?frn(numv(x.ev.pad),0):'?')+' mmHg le '+fd(parseD(x.ev.date)):''; })()],['Nombre de fœtus',+p.multiple>1?String(p.multiple):'1'],['Sexe fœtal',sexfArr(p).map(s=>SEXF[s]||'Non connu').join(' / ')],
+    ['Avis échographique de référence',p.avisRef?'Oui'+(p.avisRefMotif?' – '+p.avisRefMotif:''):''],['Facteurs de risque de DG',p.dgRisk?'Oui':''],
+    ['Début de grossesse',inf.ok?fd(inf.base+14*DAY):''],['Terme prévu d’accouchement (41 SA)',inf.ok?fd(inf.dpa):''],['Âge gestationnel ce jour',inf.ok&&p.status!=='archived'?sa(inf.ga):'']]);
+  sec('ant','Antécédents',[['Médicaux',p.atcdMed],['Chirurgicaux',p.atcdChir],['Obstétricaux',p.atcdObst],...list(p.prevPreg).map(o=>{ const l=prevLine(o); return [l.title,l.txt]; })]);
+  sec('tt','Traitements',[...list(p.ttFond).map(t=>['De fond',t.nom+(t.poso?' – '+t.poso:'')]),...list(p.ttGross).map(t=>['Pendant la grossesse',t.nom+(t.poso?' – '+t.poso:'')+(t.debut?' (depuis le '+fd(parseD(t.debut))+')':'')])]);
+  sec('patho','Pathologies de la grossesse',[['Maternelles',list(p.pathoMat).join(', ')],['Fœtales et annexielles',list(p.pathoFoet).join(', ')],['Précisions',p.pathoNotes]]);
+  sec('suivi','Suivi clinique et échographique',evalsOf(p).map(e=>{ const l=evalLine(e,p); return [l.when,l.txt]; }));
+  sec('hosp','Hospitalisations',list(p.hospits).map(x=>[(x.debut?fd(parseD(x.debut)):'?')+(x.fin?' au '+fd(parseD(x.fin)):''),(x.motif||'Motif non précisé')+(x.lieu?' – '+x.lieu:'')]));
+  if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.st==='fait'?' – fait le '+fd(parseD(it.done)):'')]));
+  sec('acc','Accouchement prévu et correspondants',[['Lieu prévu',lieuLabel(p)+(p.niveau?' (type '+p.niveau+')':'')],...list(p.corr).filter(c=>c.nom).map(c=>[c.role,c.nom+(c.contact?' – '+c.contact:'')])]);
+  if(p.status==='archived') sec('issue','Issue de la grossesse',issueRows(p,inf));
+  sec('notes','Notes',[['Notes',p.notes]]);
+  return S2;
+}
+let jsPDFp=null;
+function loadJsPDF(){ if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF); if(!jsPDFp) jsPDFp=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=()=>res(window.jspdf.jsPDF); s.onerror=()=>{ jsPDFp=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsPDFp; }
+function pdfTxt(s){ return String(s==null?'':s).replace(/[\u202F\u00A0]/g,' ').replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/−/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/→/g,'->').replace(/✓/g,'x').replace(/²/g,'2'); }
+async function makePDF(p,ids){
+  const JsPDF=await loadJsPDF();
+  const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210, M=16, KW=58; let y=18;
+  const page=()=>{ doc.addPage(); y=18; };
+  const need=hh=>{ if(y+hh>282) page(); };
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(pdfTxt('Dossier de suivi de grossesse'),M,y); y+=8;
+  doc.setFontSize(12); doc.text(pdfTxt(fullName(p)),M,y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfTxt('Document édité le '+fd(today())+' – informations confidentielles'),M,y); doc.setTextColor(0); y+=8;
+  for(const s of pdfSections(p).filter(s=>ids.includes(s.id))){
+    need(14); doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(122,46,99); doc.text(pdfTxt(s.title),M,y); doc.setTextColor(0); y+=2; doc.setDrawColor(200); doc.line(M,y,W-M,y); y+=5;
+    doc.setFontSize(9.5);
+    for(const [k,v] of s.rows){
+      doc.setFont('helvetica','bold'); const kl=doc.splitTextToSize(pdfTxt(k),KW-3);
+      doc.setFont('helvetica','normal'); const vl=doc.splitTextToSize(pdfTxt(v),W-2*M-KW);
+      const hh=Math.max(kl.length,vl.length)*4.4+1.6; need(hh);
+      doc.setFont('helvetica','bold'); if(k==='ALLERGIES') doc.setTextColor(180,35,24); doc.text(kl,M,y); doc.setFont('helvetica','normal'); doc.text(vl,M+KW,y); doc.setTextColor(0); y+=hh;
+    }
+    y+=4;
+  }
+  const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text(pdfTxt(fullName(p)+' – page '+i+'/'+n),W-M,291,{align:'right'}); }
+  return doc.output('blob');
+}
+function printFallback(p,ids){
+  let el=document.getElementById('printArea'); if(!el){ el=document.createElement('div'); el.id='printArea'; document.body.appendChild(el); }
+  el.innerHTML=`<h1>Dossier de suivi de grossesse</h1><h2>${esc(fullName(p))}</h2><p class="pmeta">Document édité le ${fd(today())} – informations confidentielles</p>`+
+    pdfSections(p).filter(s=>ids.includes(s.id)).map(s=>`<h3>${esc(s.title)}</h3><table>${s.rows.map(([k,v])=>`<tr><th${k==='ALLERGIES'?' class="pal"':''}>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('');
+  document.body.classList.add('printing');
+  const done=()=>{ document.body.classList.remove('printing'); window.removeEventListener('afterprint',done); };
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{ window.print(); setTimeout(done,1500); },100);
+  toast('Dans la fenêtre d’impression, choisissez « Enregistrer en PDF » ou partagez');
+}
+function openPrint(p){
+  const m=$('#modal'), b=$('#modalBox'); const avail=new Set(pdfSections(p).map(s=>s.id));
+  b.innerHTML=`<h3>Imprimer / exporter en PDF</h3><p>Choisissez les parties du dossier à inclure.</p><div class="seg" style="flex-direction:column;align-items:stretch">${PRINT_SECTIONS.filter(([k])=>avail.has(k)).map(([k,l])=>`<label><input type="checkbox" data-ps value="${k}" checked><span style="display:block">${esc(l)}</span></label>`).join('')}</div>
+  <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Créer le PDF</button></div>`;
+  m.classList.add('open');
+  m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a){ if(e.target===m){ m.classList.remove('open'); m.onclick=null; } return; }
+    if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
+    const ids=$$('[data-ps]:checked',b).map(c=>c.value); if(!ids.length){ toast('Cochez au moins une partie'); return; }
+    a.disabled=true; a.textContent='Création…';
+    try{ const blob=await makePDF(p,ids); m.classList.remove('open'); m.onclick=null;
+      const name='dossier-'+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.pdf';
+      if(await saveFile(name,blob)) toast('PDF créé');
+    }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids); }
+  };
+}
+/* ---------- Analyse : recherche et statistiques ---------- */
+const A={period:'dpa',from:'',to:'',status:'all',sel:{},view:'stats',xr:'decl',xc:'poids'};
+const PERIODS={dg:'Conception',dpa:'Terme prévu',issue:'Date d’issue'};
+function perDate(p,type){ if(type==='issue') return p.issue?parseD(p.issue.date):null; const i=info(p); if(!i.ok) return null; return type==='dg'?i.base+14*DAY:i.dpa; }
+function complMat(p){ const o=p.issue||{}; const a=list(o.complMat).slice(); if(o.hdd==='oui') a.unshift('Hémorragie de la délivrance'); return a; }
+function lieuEff(p){ return (p.issue&&p.issue.lieu)||p.lieu||'Non renseigné'; }
+function modeOf(p){ return (p.issue&&p.issue.type)||(p.status==='archived'?'Issue non renseignée':'Grossesse en cours'); }
+function isBirth(p){ return p.status==='archived' && p.issue && BIRTH.has(p.issue.type); }
+const uniq=a=>[...new Set(a.filter(Boolean))];
+const iss=p=>isBirth(p)?p.issue:null;
+const one=x=>x?[x]:[];
+function termeN(p){ const o=iss(p); if(!o) return null; const d=parseD(o.date), i=info(p); return d!=null&&i.ok?Math.round((d-i.base)/DAY):null; }
+const apgCls=x=>{ const n=numv(x); return n==null?[]:[n<=3?'0 à 3':n<=6?'4 à 6':'7 à 10']; };
+const RCF='Anomalies du RCF';
+const DIMS=[
+  {k:'par',g:'Grossesse',l:'Parité',opts:['P0','P1','P2','P3 et plus'],f:p=>p.parite===''||p.parite==null?[]:[+p.parite>=3?'P3 et plus':'P'+(+p.parite)]},
+  {k:'flags',g:'Grossesse',l:'Particularités',opts:['Utérus cicatriciel','Rh−','Grossesse multiple','Facteurs de risque de DG','Avis échographique de référence','Hospitalisation pendant la grossesse','Allergie(s)','Au moins une pathologie','Doublon possible'],
+    f:p=>[uterusCic(p)&&'Utérus cicatriciel',p.rhesus==='-'&&'Rh−',+p.multiple>1&&'Grossesse multiple',p.dgRisk&&'Facteurs de risque de DG',p.avisRef&&'Avis échographique de référence',list(p.hospits).length&&'Hospitalisation pendant la grossesse',p.allergies&&'Allergie(s)',(list(p.pathoMat).length+list(p.pathoFoet).length)&&'Au moins une pathologie',dupesOf(p).length&&'Doublon possible'].filter(Boolean)},
+  {k:'addict',g:'Grossesse',l:'Tabac, alcool, toxiques',short:'Consommation',opts:['Tabac actif','Tabac arrêté pendant la grossesse','Alcool','Toxiques actifs','Toxiques arrêtés pendant la grossesse','Aucune consommation déclarée'],
+    f:p=>{ if(!p.tabac&&!p.alcool&&!p.toxiques) return []; const a=[p.tabac==='Actif'&&'Tabac actif',p.tabac==='Arrêté pendant la grossesse'&&'Tabac arrêté pendant la grossesse',(p.alcool==='Occasionnel'||p.alcool==='Régulier')&&'Alcool',p.toxiques==='Actif'&&'Toxiques actifs',p.toxiques==='Arrêté pendant la grossesse'&&'Toxiques arrêtés pendant la grossesse'].filter(Boolean); return a.length?a:['Aucune consommation déclarée']; }},
+  {k:'ta',g:'Suivi',l:'Dernière tension artérielle',short:'TA',opts:['< 140/90','≥ 140/90'],f:p=>{ const x=lastField(p,'pas'); if(!x) return []; const s1=numv(x.v), s2=numv(x.ev.pad); return [s1>=140||(s2!=null&&s2>=90)?'≥ 140/90':'< 140/90']; }},
+  {k:'imc',g:'Grossesse',l:'IMC avant grossesse',opts:['< 18,5','18,5 à 24,9','25 à 29,9','≥ 30'],f:p=>{ const x=imc(p); return x==null?[]:[x<18.5?'< 18,5':x<25?'18,5 à 24,9':x<30?'25 à 29,9':'≥ 30']; }},
+  {k:'pm',g:'Grossesse',l:'Pathologies maternelles',base:PATHO_MAT,dyn:p=>list(p.pathoMat),den:'all'},
+  {k:'pf',g:'Grossesse',l:'Pathologies fœtales',base:PATHO_FOET,dyn:p=>list(p.pathoFoet),den:'all'},
+  {k:'sexf',g:'Suivi',l:'Sexe fœtal annoncé',opts:[...Object.values(SEXF),'Non connu'],f:p=>uniq(sexfArr(p).map(s=>SEXF[s]||'Non connu'))},
+  {k:'pres',g:'Suivi',l:'Dernière présentation',opts:PRES,f:p=>{ const x=lastField(p,'presentation'); return x?[x.v]:[]; }},
+  {k:'crois',g:'Suivi',l:'Croissance estimée',short:'Croissance',opts:['Hypotrophe (< 10e p.)','Eutrophe (10e–90e p.)','Macrosome (> 90e p.)'],f:p=>{ const x=lastField(p,'pct'); const c=x&&croisCat(x.v); return c?[c]:[]; }},
+  {k:'plac',g:'Suivi',l:'Insertion placentaire',short:'Placenta',opts:PLAC_INS,f:p=>{ const x=lastField(p,'placIns'); return x?[x.v]:[]; }},
+  {k:'bishop',g:'Suivi',l:'Score de Bishop (dernier TV)',short:'Bishop',opts:['0 à 4','5 à 6','≥ 7'],f:p=>{ const x=lastField(p,'bishop'); const n=x&&numv(x.v); return n==null?[]:[n<=4?'0 à 4':n<=6?'5 à 6':'≥ 7']; }},
+  {k:'col',g:'Suivi',l:'Longueur du col (dernière mesure)',short:'Col',opts:['≤ 25 mm','26 à 34 mm','≥ 35 mm'],f:p=>{ const x=lastField(p,'colLong'); const n=x&&numv(x.v); return n==null?[]:[n<=25?'≤ 25 mm':n<35?'26 à 34 mm':'≥ 35 mm']; }},
+  {k:'plan',g:'Accouchement',l:'Déclenchement / césarienne programmé(e)',short:'Programmé',opts:['Déclenchement programmé','Césarienne programmée'],f:p=>one(p.planned&&p.planned.type)},
+  {k:'planM',g:'Accouchement',l:'Motif du déclenchement / de la césarienne programmé(e)',short:'Motif programmé',base:[...DECL_MOTIFS,...CES_PROG],dyn:p=>p.planned&&p.planned.type?planMotifs(p.planned):[]},
+  {k:'lieu',g:'Accouchement',l:'Lieu d’accouchement',short:'Lieu',opts:[...LIEUX,'Non renseigné'],f:p=>[lieuEff(p)]},
+  {k:'mode',g:'Accouchement',l:'Issue / mode d’accouchement',short:'Issue',opts:[...ISSUE_GROUPS.flatMap(g=>g[1]),'Issue non renseignée','Grossesse en cours'],f:p=>[modeOf(p)]},
+  {k:'travail',g:'Accouchement',l:'Entrée en travail',opts:TRAVAIL,f:p=>one(iss(p)&&iss(p).travail)},
+  {k:'decl',g:'Accouchement',l:'Motif de déclenchement',short:'Déclenchement',base:DECL_MOTIFS,dyn:p=>iss(p)&&iss(p).travail==='Déclenchement'?list(iss(p).declMotifs):[]},
+  {k:'ces',g:'Accouchement',l:'Motif de césarienne programmée',short:'Césarienne prog.',base:CES_PROG,dyn:p=>iss(p)&&iss(p).type==='Césarienne programmée'?list(iss(p).cesMotifs):[]},
+  {k:'cesU',g:'Accouchement',l:'Motif de césarienne en cours de travail',short:'Césarienne en travail',base:CES_URG_ALL,dyn:p=>iss(p)&&iss(p).type==='Césarienne en urgence'?list(iss(p).cesMotifs):[]},
+  {k:'code',g:'Accouchement',l:'Code d’urgence',opts:['Code rouge','Code orange','Code vert'],f:p=>iss(p)&&iss(p).type==='Césarienne en urgence'&&iss(p).code?['Code '+iss(p).code.toLowerCase()]:[]},
+  {k:'delai',g:'Accouchement',l:'Délai décision – naissance',short:'Délai',opts:['< 15 min','15 à 29 min','30 à 59 min','≥ 60 min'],f:p=>{ const o=iss(p); const n=o&&o.type==='Césarienne en urgence'?numv(o.delai):null; return n==null?[]:[n<15?'< 15 min':n<30?'15 à 29 min':n<60?'30 à 59 min':'≥ 60 min']; }},
+  {k:'instr',g:'Accouchement',l:'Motif d’extraction instrumentale',short:'Extraction',base:INSTR_MOTIFS,dyn:p=>iss(p)&&iss(p).type==='Voie basse instrumentale'?list(iss(p).instrMotifs):[]},
+  {k:'instrT',g:'Accouchement',l:'Instrument',opts:INSTR,f:p=>one(iss(p)&&iss(p).type==='Voie basse instrumentale'&&iss(p).instrument)},
+  {k:'rcf',g:'Accouchement',l:'Anomalies du RCF retenues comme motif',short:'Motif RCF',opts:['Oui','Non'],f:p=>{ const o=iss(p); if(!o) return []; return [[...list(o.declMotifs),...list(o.cesMotifs),...list(o.instrMotifs)].includes(RCF)?'Oui':'Non']; }},
+  {k:'analg',g:'Accouchement',l:'Analgésie / anesthésie',short:'Analgésie',opts:ANALG,f:p=>one(iss(p)&&iss(p).analgesie)},
+  {k:'perinee',g:'Accouchement',l:'Périnée',opts:PERINEE,f:p=>one(iss(p)&&/^Voie basse/.test(iss(p).type)&&iss(p).perinee)},
+  {k:'deliv',g:'Accouchement',l:'Délivrance',opts:DELIV,f:p=>one(iss(p)&&iss(p).delivrance)},
+  {k:'hdd',g:'Accouchement',l:'Hémorragie de la délivrance',short:'HDD',opts:['Oui','Non'],f:p=>{ const o=iss(p); return o&&o.hdd?[o.hdd==='oui'?'Oui':'Non']:[]; }},
+  {k:'cm',g:'Accouchement',l:'Complications maternelles',short:'Compl. maternelle',base:['Hémorragie de la délivrance',...COMPL_MAT],dyn:p=>p.status==='archived'?complMat(p):[],den:'arch'},
+  {k:'termeN',g:'Nouveau-né',l:'Terme à la naissance',short:'Terme',opts:['< 32 SA','32 à 36 SA + 6 j','37 à 38 SA + 6 j','39 à 40 SA + 6 j','41 SA et plus'],f:p=>{ const t=termeN(p); return t==null?[]:[t<224?'< 32 SA':t<259?'32 à 36 SA + 6 j':t<273?'37 à 38 SA + 6 j':t<287?'39 à 40 SA + 6 j':'41 SA et plus']; }},
+  {k:'poids',g:'Nouveau-né',lvl:'k',l:'Poids de naissance',short:'Poids',opts:['< 2 500 g','2 500 à 3 999 g','≥ 4 000 g'],f:(p,k)=>{ const n=numv(k&&k.poids); return n==null?[]:[n<2500?'< 2 500 g':n<4000?'2 500 à 3 999 g':'≥ 4 000 g']; }},
+  {k:'sexe',g:'Nouveau-né',lvl:'k',l:'Sexe du nouveau-né',short:'Sexe',opts:Object.values(SEXE),f:(p,k)=>one(k&&SEXE[k.sexe])},
+  {k:'apg1',g:'Nouveau-né',lvl:'k',l:'Apgar à 1 min',opts:['0 à 3','4 à 6','7 à 10'],f:(p,k)=>apgCls(k&&k.apg1)},
+  {k:'apg5',g:'Nouveau-né',lvl:'k',l:'Apgar à 5 min',opts:['0 à 3','4 à 6','7 à 10'],f:(p,k)=>apgCls(k&&k.apg5)},
+  {k:'ph',g:'Nouveau-né',lvl:'k',l:'pH au cordon',short:'pH',opts:['< 7,00','7,00 à 7,09','7,10 à 7,19','≥ 7,20'],f:(p,k)=>{ const n=numv(k&&k.ph); return n==null?[]:[n<7?'< 7,00':n<7.1?'7,00 à 7,09':n<7.2?'7,10 à 7,19':'≥ 7,20']; }},
+  {k:'lact',g:'Nouveau-né',lvl:'k',l:'Lactates au cordon',short:'Lactates',opts:['< 4 mmol/L','4 à 5,9 mmol/L','6 à 7,9 mmol/L','≥ 8 mmol/L'],f:(p,k)=>{ const n=numv(k&&k.lact); return n==null?[]:[n<4?'< 4 mmol/L':n<6?'4 à 5,9 mmol/L':n<8?'6 à 7,9 mmol/L':'≥ 8 mmol/L']; }},
+  {k:'alim',g:'Nouveau-né',l:'Alimentation',opts:ALIM,f:p=>one(iss(p)&&iss(p).alim)},
+  {k:'cn',g:'Nouveau-né',l:'Complications néonatales',short:'Compl. néonatale',base:NEONAT,dyn:p=>iss(p)?list(iss(p).complNeo):[],den:'births'}
+];
+const DIM=Object.fromEntries(DIMS.map(d=>[d.k,d]));
+function dimOpts(d){ return d.dyn?uniq([...d.base,...S.patients.flatMap(p=>d.dyn(p))]):d.opts; }
+function dimVals(d,p,k){ return (d.dyn?d.dyn(p):d.f(p,k))||[]; }
+function filtered(){
+  const f=parseD(A.from), t=parseD(A.to);
+  return S.patients.filter(p=>{
+    if(A.status!=='all' && (p.status==='archived'?'archived':'active')!==A.status) return false;
+    if(f!=null || t!=null){ const d=perDate(p,A.period); if(d==null) return false; if(f!=null&&d<f) return false; if(t!=null&&d>t) return false; }
+    for(const d of DIMS){ const sel=A.sel[d.k]; if(!sel||!sel.length) continue;
+      if(d.lvl==='k'){ if(!kidsOf(p).some(k=>dimVals(d,p,k).some(v=>sel.includes(v)))) return false; }
+      else if(!dimVals(d,p).some(v=>sel.includes(v))) return false; }
+    return true;
+  });
+}
+function renderAnalyse(){
+  const v=$('#view');
+  const det=d=>`<details class="flt"><summary>${esc(d.l)}<small data-cnt="${d.k}"></small></summary><div class="seg">${dimOpts(d).map(o=>`<label><input type="checkbox" data-f="${d.k}" value="${esc(o)}" ${(A.sel[d.k]||[]).includes(o)?'checked':''}><span>${esc(o)}</span></label>`).join('')}</div></details>`;
+  const groups=[...new Set(DIMS.map(d=>d.g))];
+  let h=`<div class="summary"><strong>Analyse</strong>Recherche multicritère et statistiques sur vos dossiers</div>`;
+  h+=`<section class="sec"><h2>Période</h2><div class="card"><div class="fpad">
+    ${radios('anPer',Object.entries(PERIODS),A.period)}
+    <div class="grid2" style="margin-top:10px"><label class="f" style="margin-top:0"><span>Du</span><input type="date" id="anFrom" value="${A.from}"></label><label class="f" style="margin-top:0"><span>Au</span><input type="date" id="anTo" value="${A.to}"></label></div>
+    <div class="seg"><button type="button" class="btn small" data-q="y0">Année en cours</button><button type="button" class="btn small" data-q="y1">Année précédente</button><button type="button" class="btn small" data-q="m12">12 derniers mois</button><button type="button" class="btn small" data-q="none">Toutes dates</button></div>
+  </div></div></section>`;
+  h+=`<section class="sec"><h2>Critères</h2><div class="card"><div class="fpad"><div class="f" style="margin-top:6px"><span>Dossiers</span>${radios('anSt',[['all','Tous'],['active','En cours'],['archived','Archivés']],A.status)}</div></div>
+    ${groups.map(g=>`<div class="fgrp">${esc(g)}</div>${DIMS.filter(d=>d.g===g).map(det).join('')}`).join('')}
+  <div class="fpad" style="border-top:1px solid var(--line);padding-top:12px"><button type="button" class="btn small" id="anReset">Effacer tous les critères</button></div></div>
+  <p class="note">Au sein d’une même rubrique, un dossier est retenu s’il présente l’un des éléments cochés ; entre rubriques, tous les critères doivent être remplis.</p></section>
+  <div id="anOut"></div>`;
+  v.innerHTML=h;
+  const upd=()=>{ A.period=(v.querySelector('[name="anPer"]:checked')||{}).value||'dpa'; A.status=(v.querySelector('[name="anSt"]:checked')||{}).value||'all';
+    A.from=$('#anFrom').value; A.to=$('#anTo').value;
+    A.sel={}; for(const d of DIMS){ const s=$$(`[data-f="${d.k}"]:checked`,v).map(c=>c.value); if(s.length) A.sel[d.k]=s; }
+    drawAn(); };
+  v.onchange=e=>{ if(e.target.closest('#anOut')) return; upd(); };
+  $$('[data-q]',v).forEach(b=>b.addEventListener('click',()=>{ const n=new Date(), y=n.getFullYear(); let a='',z='';
+    if(b.dataset.q==='y0'){ a=y+'-01-01'; z=y+'-12-31'; } else if(b.dataset.q==='y1'){ a=(y-1)+'-01-01'; z=(y-1)+'-12-31'; } else if(b.dataset.q==='m12'){ z=iso(today()); a=iso(today()-365*DAY); }
+    $('#anFrom').value=a; $('#anTo').value=z; upd(); }));
+  $('#anReset').addEventListener('click',()=>{ Object.assign(A,{from:'',to:'',status:'all',sel:{}}); renderAnalyse(); });
+  drawAn();
+}
+let BAR=new Map(), barSeq=0, HIST={}, XC=new Map();
+function drawAn(){
+  const out=$('#anOut'); if(!out) return;
+  for(const d of DIMS){ const c=$(`[data-cnt="${d.k}"]`); const n=(A.sel[d.k]||[]).length; if(c) c.textContent=n?n+' sélectionné'+(n>1?'s':''):''; }
+  const F=filtered();
+  let h=`<section class="sec"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${radios('anView',[['stats','Statistiques'],['list',`Dossiers (${F.length})`]],A.view).replace('class="seg"','class="seg" style="margin-top:0;flex:1"')}<button class="btn small" id="anCsv">Exporter (CSV)</button></div></section>`;
+  h+= A.view==='list' ? (F.length?`<section class="sec"><div class="card">${F.slice().sort((a,b)=>pDate(b)-pDate(a)).map(rowHTML).join('')}</div></section>`:'<div class="card empty" style="margin-top:12px">Aucun dossier ne correspond à ces critères.</div>') : statsHTML(F);
+  out.innerHTML=h;
+  $$('[name="anView"]',out).forEach(r=>r.addEventListener('change',e=>{ A.view=e.target.value; drawAn(); }));
+  $('#anCsv').addEventListener('click',()=>exportCSV(F));
+  bindRows(out); bindStats(out,F);
+}
+function bindStats(out,F){
+  $$('[data-bar]',out).forEach(b=>b.addEventListener('click',()=>{
+    const nx=b.nextElementSibling;
+    if(nx && nx.classList.contains('barlist')){ nx.remove(); b.setAttribute('aria-expanded','false'); return; }
+    const ps=(BAR.get(b.dataset.bar)||[]).map(id=>S.patients.find(x=>x.id===id)).filter(Boolean).sort((x,y)=>pDate(y)-pDate(x));
+    b.insertAdjacentHTML('afterend',`<div class="barlist card">${ps.map(rowHTML).join('')}</div>`); b.setAttribute('aria-expanded','true'); bindRows(b.nextElementSibling);
+  }));
+  $$('[data-h]',out).forEach(w=>bindHist(w.closest('.card'),w.dataset.h,false));
+  $$('[data-zoom]',out).forEach(b=>b.addEventListener('click',()=>openZoom(b.dataset.zoom)));
+  const xr=$('#xr',out), xc=$('#xc',out);
+  if(xr){ const ch=()=>{ A.xr=xr.value; A.xc=xc.value; $('#xtab',out).innerHTML=crossHTML(F); bindCross(out); }; xr.onchange=ch; xc.onchange=ch;
+    $$('[data-xp]',out).forEach(b=>b.addEventListener('click',()=>{ const [r,c]=b.dataset.xp.split('|'); xr.value=r; xc.value=c; ch(); })); bindCross(out); }
+}
+const pct=(n,d)=>d?(Math.round(n/d*1000)/10).toLocaleString('fr-FR')+' %':'—';
+function bars(title,entries,denom,note,keepOrder){
+  entries=entries.filter(e=>e[1]>0||keepOrder); if(!entries.some(e=>e[1]>0)) return '';
+  const e=keepOrder?entries:entries.slice().sort((a,b)=>b[1]-a[1]); const max=Math.max(1,...e.map(x=>x[1]));
+  return `<div class="bblock"><h3>${esc(title)}</h3>${note?`<div class="statnote">${note}</div>`:''}<div class="bars">${e.map(([l,c,ids])=>{ const k='b'+(barSeq++); BAR.set(k,ids||[]); const has=ids&&ids.length;
+    return `<button type="button" class="bar" data-bar="${k}" aria-expanded="false" ${has?'':'disabled'}><span class="bl">${esc(l)}</span><span class="bt"><i style="width:${(c/max*100).toFixed(1)}%"></i></span><span class="bv num">${c} <small>${denom?pct(c,denom):''}</small>${has?' <span aria-hidden="true" style="color:var(--muted)">›</span>':''}</span></button>`; }).join('')}</div></div>`;
+}
+function dimBars(d,F){
+  const recs = d.lvl==='k' ? F.flatMap(p=>kidsOf(p).map(k=>({p,k}))) : F.map(p=>({p,k:null}));
+  const m=new Map(); let filled=0;
+  for(const r of recs){ const vs=dimVals(d,r.p,r.k); if(vs.length) filled++; for(const v of uniq(vs)){ const e=m.get(v)||{n:0,ids:new Set()}; e.n++; e.ids.add(r.p.id); m.set(v,e); } }
+  if(!m.size) return '';
+  const den = d.den==='all'?F.length : d.den==='arch'?F.filter(p=>p.status==='archived').length : d.den==='births'?F.filter(isBirth).length : filled;
+  const unit = d.lvl==='k'?'enfant':(d.den==='births'?'accouchement':'dossier');
+  const fixed=!d.dyn; const opts=dimOpts(d);
+  const entries=(fixed?opts:[...m.keys()]).filter(v=>m.has(v)||fixed).map(v=>{ const e=m.get(v); return [v,e?e.n:0,e?[...e.ids]:[]]; });
+  return bars(d.l,entries,den,`Sur ${den} ${unit}${den>1?'s':''}${d.den?'':' renseigné'+(unit==='enfant'?'':'')+(den>1?'s':'')}.`,fixed);
+}
+/* Histogrammes */
+function histHTML(key){
+  const H=HIST[key]; const vs=H.vals.map(x=>x.v);
+  const mean=vs.reduce((s,x)=>s+x,0)/vs.length, sorted=vs.slice().sort((a,b)=>a-b), med=sorted[Math.floor((sorted.length-1)/2)];
+  return `<section class="sec"><h2>${esc(H.title)} <button class="link" data-zoom="${key}">Agrandir</button></h2><div class="card"><div class="statnote">n = ${vs.length} – moyenne ${H.fmt(mean)} – médiane ${H.fmt(med)} – extrêmes ${H.fmt(sorted[0])} et ${H.fmt(sorted[sorted.length-1])}. Touchez une barre pour voir les valeurs.</div><div class="hwrap" data-h="${key}">${histSVG(key,false)}</div><div class="hlist"></div></div></section>`;
+}
+function histBins(H){ const e=H.edges; return e.slice(0,-1).map((a,i)=>({a,b:e[i+1],items:H.vals.filter(x=>x.v>=a&&(i===e.length-2?x.v<=e[i+1]:x.v<e[i+1]))})); }
+function histSVG(key,big){
+  const H=HIST[key], bins=histBins(H); const W=big?720:360, Hh=big?300:170, L=28, R=8, T=10, B=34;
+  const max=Math.max(1,...bins.map(b=>b.items.length)); const bw=(W-L-R)/bins.length;
+  let s=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(H.title)}">`;
+  for(let g=0;g<=4;g++){ const y=T+(Hh-T-B)*(1-g/4); s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${L-4}" y="${y+3}" text-anchor="end" font-size="${big?11:9}" fill="var(--muted)">${Math.round(max*g/4)}</text>`; }
+  bins.forEach((b,i)=>{ const x=L+i*bw, hgt=(Hh-T-B)*b.items.length/max, y=Hh-B-hgt;
+    s+=`<g class="hb" data-hb="${i}"><rect x="${x}" y="${T}" width="${bw}" height="${Hh-T-B}" fill="transparent"/>${b.items.length?`<rect class="hbar" x="${x+1}" y="${y}" width="${Math.max(1,bw-2)}" height="${hgt}" rx="2" fill="var(--accent)"/>`:''}${b.items.length&&(big||bw>14)?`<text x="${x+bw/2}" y="${y-3}" text-anchor="middle" font-size="${big?11:9}" fill="var(--ink)">${b.items.length}</text>`:''}</g>`; });
+  const step=Math.ceil(bins.length/(big?12:6));
+  H.edges.forEach((e,i)=>{ if(i%step===0||i===H.edges.length-1){ const x=L+i*bw; s+=`<text x="${x}" y="${Hh-B+14}" text-anchor="middle" font-size="${big?11:9}" fill="var(--muted)">${H.tick(e)}</text>`; } });
+  s+=`<text x="${(W+L)/2}" y="${Hh-4}" text-anchor="middle" font-size="${big?11:9}" fill="var(--muted)">${esc(H.unit)}</text></svg>`;
+  return s;
+}
+function bindHist(root,key,big){
+  const list_=$('.hlist',root); const bins=histBins(HIST[key]);
+  $$('[data-hb]',root).forEach(g=>g.addEventListener('click',()=>{
+    $$('.hbar',root).forEach(r=>r.setAttribute('fill','var(--accent)')); const r=g.querySelector('.hbar'); if(r) r.setAttribute('fill','var(--warn)');
+    const b=bins[+g.dataset.hb]; const H=HIST[key];
+    list_.innerHTML=`<div class="statnote"><b>${H.fmt(b.a)} à ${H.fmt(b.b)}</b> – ${b.items.length} valeur${b.items.length>1?'s':''}</div>`+b.items.slice().sort((x,y)=>x.v-y.v).map(x=>{ const d=x.p.issue&&parseD(x.p.issue.date);
+      return `<button class="row" data-open="${esc(x.p.id)}"><span class="rmain"><span class="nm num">${H.fmt(x.v)} – ${esc(fullName(x.p))}</span><span style="color:var(--muted);font-size:.9rem">${esc([d!=null?fd(d):'',x.p.issue&&x.p.issue.type,x.k&&x.k.prenom].filter(Boolean).join(' – '))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join('');
+    bindRows(list_); if(big){ $$('[data-open]',list_).forEach(b=>b.addEventListener('click',closeZoom)); }
+  }));
+}
+function openZoom(key){
+  const z=$('#zoom'); z.innerHTML=`<header><b>${esc(HIST[key].title)}</b><button class="btn small" id="zClose">Fermer</button></header><div class="zbody"><div class="card"><div class="hwrap">${histSVG(key,true)}</div><div class="hlist"></div></div></div>`;
+  z.classList.add('open'); document.body.style.overflow='hidden'; $('#zClose').addEventListener('click',closeZoom); bindHist($('.card',z),key,true);
+}
+function closeZoom(){ const z=$('#zoom'); z.classList.remove('open'); z.innerHTML=''; document.body.style.overflow=''; }
+/* Croisements */
+function crossHTML(F){
+  const dr=DIM[A.xr], dc=DIM[A.xc]; if(!dr||!dc) return '';
+  const child=dr.lvl==='k'||dc.lvl==='k';
+  const recs=child?F.flatMap(p=>kidsOf(p).map(k=>({p,k}))):F.map(p=>({p,k:null}));
+  const cells=new Map(), rows=new Set(), cols=new Set(), rowTot=new Map();
+  for(const r of recs){ const rv=uniq(dimVals(dr,r.p,r.k)), cv=uniq(dimVals(dc,r.p,r.k)); if(!rv.length||!cv.length) continue;
+    for(const a of rv){ rows.add(a); rowTot.set(a,(rowTot.get(a)||0)+1); for(const b of cv){ cols.add(b); const key=a+'\u0001'+b; const e=cells.get(key)||{n:0,ids:new Set()}; e.n++; e.ids.add(r.p.id); cells.set(key,e); } } }
+  if(!rows.size) return '<div class="txt" style="color:var(--muted)">Aucun dossier ne renseigne ces deux éléments.</div>';
+  const ord=(d,set)=>{ const o=dimOpts(d); return [...set].sort((a,b)=>o.indexOf(a)-o.indexOf(b)); };
+  const R=ord(dr,rows), Cc=ord(dc,cols); XC=new Map(); let i=0;
+  let t=`<div class="xwrap"><table class="xt"><thead><tr><th>${esc(dr.short||dr.l)} \\ ${esc(dc.short||dc.l)}</th>${Cc.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  for(const r of R){ t+=`<tr><th>${esc(r)}</th>`; for(const c of Cc){ const e=cells.get(r+'\u0001'+c); if(e){ const k='x'+(i++); XC.set(k,[...e.ids]); t+=`<td><button class="xc" data-xc="${k}">${e.n}<small>${pct(e.n,rowTot.get(r))}</small></button></td>`; } else t+='<td class="z">0</td>'; } t+=`<td class="num"><b>${rowTot.get(r)}</b></td></tr>`; }
+  t+=`</tbody></table></div><div class="statnote">Unité : ${child?'enfant':'dossier'}. Pourcentages calculés par ligne. Touchez une case pour voir les dossiers.</div><div class="xlist"></div>`;
+  return t;
+}
+function bindCross(root){
+  $$('[data-xc]',root).forEach(b=>b.addEventListener('click',()=>{ $$('.xc',root).forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const ps=(XC.get(b.dataset.xc)||[]).map(id=>S.patients.find(x=>x.id===id)).filter(Boolean).sort((x,y)=>pDate(y)-pDate(x));
+    const box=$('.xlist',root); box.innerHTML=`<div class="card" style="border:1px solid var(--line);margin-top:8px">${ps.map(rowHTML).join('')}</div>`; bindRows(box); }));
+}
+function statsHTML(F){
+  BAR=new Map(); barSeq=0; HIST={};
+  if(!F.length) return '<div class="card empty" style="margin-top:12px">Aucun dossier ne correspond à ces critères.</div>';
+  const births=F.filter(isBirth), arch=F.filter(p=>p.status==='archived');
+  const women=new Set(F.map(p=>idKey(p)||p.groupId||p.id)).size;
+  const terms=births.map(termeN).filter(x=>x!=null);
+  const kids=births.flatMap(p=>kidsOf(p).map(k=>({p,k})));
+  const w=kids.map(x=>({v:numv(x.k.poids),p:x.p,k:x.k})).filter(x=>x.v>0);
+  const phs=kids.map(x=>({v:numv(x.k.ph),p:x.p,k:x.k})).filter(x=>x.v!=null&&x.v>6&&x.v<8);
+  const las=kids.map(x=>({v:numv(x.k.lact),p:x.p,k:x.k})).filter(x=>x.v!=null&&x.v>=0);
+  const a5=kids.map(x=>numv(x.k.apg5)).filter(x=>x!=null);
+  const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+  const ces=births.filter(p=>/Césarienne/.test(p.issue.type)).length, inst=births.filter(p=>p.issue.type==='Voie basse instrumentale').length;
+  const an=births.filter(p=>p.issue.analgesie), peri=an.filter(p=>p.issue.analgesie==='Péridurale').length;
+  const tr=births.filter(p=>p.issue.travail), decl=tr.filter(p=>p.issue.travail==='Déclenchement').length;
+  const tile=(v,l)=>`<div class="tile"><b class="num">${v}</b><span>${l}</span></div>`;
+  let h=`<div class="tiles">${tile(F.length,'dossiers')}${tile(women,'patientes distinctes')}${tile(F.length-arch.length,'grossesses en cours')}${tile(births.length,'accouchements')}${tile(births.length?pct(ces,births.length):'—','césariennes')}${tile(births.length?pct(inst,births.length):'—','extractions instrumentales')}${tile(tr.length?pct(decl,tr.length):'—','déclenchements'+(tr.length?' (sur '+tr.length+')':''))}${tile(an.length?pct(peri,an.length):'—','péridurales'+(an.length?' (sur '+an.length+')':''))}${tile(w.length?frn(Math.round(mean(w.map(x=>x.v))),0)+' g':'—','poids moyen'+(w.length?' (n = '+w.length+')':''))}${tile(terms.length?sa(Math.round(mean(terms))):'—','terme moyen')}${tile(terms.length?pct(terms.filter(t=>t<259).length,terms.length):'—','prématurité (< 37 SA)')}${tile(phs.length?pct(phs.filter(x=>x.v<7.1).length,phs.length):'—','pH < 7,10'+(phs.length?' (sur '+phs.length+')':''))}${tile(a5.length?pct(a5.filter(x=>x<7).length,a5.length):'—','Apgar 5 min < 7'+(a5.length?' (sur '+a5.length+')':''))}</div>`;
+  h+=`<p class="note">Touchez une ligne, une barre ou une case pour afficher les dossiers concernés et les ouvrir.</p>`;
+  const per=PERIODS[A.period].toLowerCase();
+  const mm=new Map(); for(const p of F){ const d=perDate(p,A.period); if(d==null) continue; const x=new Date(d); const k=Date.UTC(x.getUTCFullYear(),x.getUTCMonth(),1); const e=mm.get(k)||{n:0,ids:[]}; e.n++; e.ids.push(p.id); mm.set(k,e); }
+  const mt=[...mm.entries()].sort((a,b)=>a[0]-b[0]);
+  if(mt.length && mt.length<=36){ const mf=new Intl.DateTimeFormat('fr-FR',{month:'short',year:'numeric',timeZone:'UTC'}); h+=`<section class="sec"><div class="card">${bars(`Dossiers par mois (${per})`,mt.map(([d,e])=>[mf.format(d),e.n,e.ids]),0,null,true)}</div></section>`; }
+  const mkEdges=(lo,hi,step)=>{ const e=[]; for(let x=lo;x<=hi+1e-9;x=Math.round((x+step)*1000)/1000) e.push(x); return e; };
+  if(w.length){ const lo=Math.floor(Math.min(...w.map(x=>x.v))/250)*250, hi=Math.ceil((Math.max(...w.map(x=>x.v))+1)/250)*250; const step=(hi-lo)/250>24?500:250;
+    HIST.poids={title:'Répartition des poids de naissance',unit:'grammes',vals:w,edges:mkEdges(lo,Math.max(hi,lo+step),step),fmt:x=>frn(Math.round(x),0)+' g',tick:x=>frn(x,0)}; h+=histHTML('poids'); }
+  if(phs.length){ const lo=Math.floor(Math.min(...phs.map(x=>x.v))*20)/20, hi=Math.ceil((Math.max(...phs.map(x=>x.v))+0.001)*20)/20;
+    HIST.ph={title:'Répartition du pH au cordon',unit:'pH',vals:phs,edges:mkEdges(lo,Math.max(hi,lo+0.05),0.05),fmt:x=>frn(x,2),tick:x=>frn(x,2)}; h+=histHTML('ph'); }
+  if(las.length){ const hi=Math.ceil(Math.max(...las.map(x=>x.v))+0.001);
+    HIST.lact={title:'Répartition des lactates au cordon',unit:'mmol/L',vals:las,edges:mkEdges(0,Math.max(hi,1),1),fmt:x=>frn(x)+' mmol/L',tick:x=>frn(x,0)}; h+=histHTML('lact'); }
+  // Croisements
+  const opt=sel=>[...new Set(DIMS.map(d=>d.g))].map(g=>`<optgroup label="${esc(g)}">${DIMS.filter(d=>d.g===g).map(d=>`<option value="${d.k}" ${sel===d.k?'selected':''}>${esc(d.l)}</option>`).join('')}</optgroup>`).join('');
+  const presets=[['decl|poids','Déclenchement × poids'],['crois|poids','Croissance estimée × poids'],['rcf|apg5','Motif RCF × Apgar 5 min'],['rcf|ph','Motif RCF × pH'],['mode|ph','Mode × pH'],['mode|apg5','Mode × Apgar 5 min'],['decl|mode','Déclenchement × mode'],['code|delai','Code × délai'],['cesU|code','Motif en travail × code']];
+  h+=`<section class="sec"><h2>Croisements</h2><div class="card"><div class="fpad"><div class="seg" style="margin-top:6px">${presets.map(([v,l])=>`<button type="button" class="btn small" data-xp="${v}">${l}</button>`).join('')}</div>
+    <div class="grid2" style="margin-top:10px"><label class="f" style="margin-top:0"><span>Lignes</span><select id="xr" class="xsel">${opt(A.xr)}</select></label><label class="f" style="margin-top:0"><span>Colonnes</span><select id="xc" class="xsel">${opt(A.xc)}</select></label></div></div>
+    <div id="xtab" class="fpad">${crossHTML(F)}</div></div></section>`;
+  // Barres par rubrique
+  for(const g of [...new Set(DIMS.map(d=>d.g))]){
+    const inner=DIMS.filter(d=>d.g===g&&d.k!=='flags'||d.g===g&&d.k==='flags').map(d=>dimBars(d,F)).join('');
+    if(inner) h+=`<section class="sec"><details class="sgrp" ${g==='Accouchement'||g==='Nouveau-né'?'open':''}><summary>${esc(g)}</summary><div class="card">${inner}</div></details></section>`;
+  }
+  h+=`<p class="note">Les pourcentages sont calculés sur les dossiers (ou les enfants) où l’information est renseignée ; les données manquantes ne sont pas comptées.</p>`;
+  return h;
+}
+/* ---------- Agenda ---------- */
+function renderAgenda(){
+  const v=$('#view'); const t=today(), N=S.agendaDays;
+  const late=[], open=[], soon=[];
+  for(const p of S.patients){
+    if(p.status && p.status!=='active') continue;
+    const inf=info(p); if(!inf.ok) continue;
+    for(const it of milestonesFor(p,inf)){
+      if(it.st==='fait') continue;
+      const row={p,it};
+      if(it.kind==='dpa'){ if(it.s>=t && it.s<=t+N*DAY) soon.push(row); continue; }
+      if(it.e<t){ if(it.e>=t-30*DAY) late.push(row); }
+      else if(it.s<=t) open.push(row);
+      else if(it.s<=t+N*DAY) soon.push(row);
+    }
+  }
+  late.sort((a,b)=>b.it.e-a.it.e); open.sort((a,b)=>a.it.e-b.it.e); soon.sort((a,b)=>a.it.s-b.it.s);
+  const item=(r,mode)=>{ const it=r.it; let when;
+    if(mode==='late') when=`<small style="color:var(--bad)">fenêtre close le ${fds(it.e)}</small>`;
+    else if(mode==='open'){ const d=Math.round((it.e-t)/DAY); when=`<small style="color:${d<=7?'var(--warn)':'var(--accent)'}">${it.e===it.s?'aujourd’hui':d===0?'dernier jour':'jusqu’au '+fds(it.e)+' ('+d+' j)'}</small>`; }
+    else when=`<small style="color:var(--muted)">${fDl.format(it.s)}</small>`;
+    const can=it.kind!=='dpa';
+    return `<div class="ms">${can?`<button class="chk" data-ag="${esc(r.p.id)}|${esc(it.id)}" aria-pressed="false" aria-label="Marquer comme fait : ${esc(it.name)}"></button>`:'<span class="chk" aria-hidden="true" style="border-style:dashed"></span>'}<div class="mn"><b>${esc(it.name)}</b><button class="link" style="padding:0" data-open="${esc(r.p.id)}">${esc(fullName(r.p))}</button></div><div class="md num">${when}</div></div>`; };
+  const sec=(title,arr,mode,emptyMsg)=>`<section class="sec"><h2>${title} <span class="num" style="color:var(--muted);font-weight:400">${arr.length}</span></h2><div class="card">${arr.length?arr.map(r=>item(r,mode)).join(''):`<div class="txt" style="color:var(--muted)">${emptyMsg}</div>`}</div></section>`;
+  let h=`<div class="summary"><strong>Agenda</strong>Examens et rendez-vous des grossesses en cours</div>`;
+  h+=`<div class="seg" role="radiogroup" aria-label="Horizon">${[7,14,30,60].map(n=>`<label><input type="radio" name="hz" value="${n}" ${n===N?'checked':''}><span>${n} jours</span></label>`).join('')}</div>`;
+  h+=sec('Fenêtre en cours',open,'open','Aucun examen dont la fenêtre est ouverte.');
+  h+=sec(`À venir dans les ${N} jours`,soon,'soon','Rien de prévu sur cette période.');
+  h+=sec('Fenêtre dépassée, non validée (30 derniers jours)',late,'late','Aucun oubli récent.');
+  v.innerHTML=h;
+  $$('input[name="hz"]').forEach(r=>r.addEventListener('change',e=>{ S.agendaDays=+e.target.value; renderAgenda(); }));
+  bindRows(v);
+  $$('[data-ag]').forEach(b=>b.addEventListener('click',async()=>{ const [pid,mid]=b.dataset.ag.split('|'); const p=S.patients.find(x=>x.id===pid); p.done=p.done||{}; p.done[mid]=iso(today()); await savePatient(p); toast('Marqué comme fait'); renderAgenda(); }));
+}
+
+/* ---------- Éditeur ---------- */
+function chips(name,opts,sel){ return `<div class="seg">${opts.map(o=>`<label><input type="checkbox" name="${name}" value="${esc(o)}" ${sel.includes(o)?'checked':''}><span>${esc(o)}</span></label>`).join('')}</div>`; }
+function radios(name,opts,val){ return `<div class="seg">${opts.map(([v,l])=>`<label><input type="radio" name="${name}" value="${esc(v)}" ${String(val)===String(v)?'checked':''}><span>${esc(l)}</span></label>`).join('')}</div>`; }
+function ttRow(t,g){ return `<div class="trow ${g?'g':''}"><input data-tn placeholder="Médicament" value="${esc(t.nom||'')}" aria-label="Médicament"><input data-tp placeholder="Posologie" value="${esc(t.poso||'')}" aria-label="Posologie">${g?`<input type="date" data-td value="${esc(t.debut||'')}" aria-label="Date de début">`:''}<button type="button" class="x" data-rm aria-label="Retirer">×</button></div>`; }
+function corrRow(c){ return `<div class="trow g"><select data-cr aria-label="Rôle" style="border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg);min-width:0">${ROLES.map(r=>`<option ${c.role===r?'selected':''}>${r}</option>`).join('')}</select><input data-cn placeholder="Nom" value="${esc(c.nom||'')}" aria-label="Nom"><input data-cc placeholder="Tél. / ville" value="${esc(c.contact||'')}" aria-label="Coordonnées"><button type="button" class="x" data-rm aria-label="Retirer">×</button></div>`; }
+const F=(label,inner)=>`<label class="f"><span>${label}</span>${inner}</label>`;
+
+function hospRow(x){ return `<div class="hrow"><div class="grid2"><label class="f"><span>Entrée</span><input type="date" data-hd value="${esc(x.debut||'')}"></label><label class="f"><span>Sortie</span><input type="date" data-hf value="${esc(x.fin||'')}"></label></div><div class="grid2"><label class="f"><span>Motif</span><input data-hm value="${esc(x.motif||'')}"></label><label class="f"><span>Lieu</span><input data-hl value="${esc(x.lieu||'')}"></label></div><button type="button" class="link" data-rmcard style="color:var(--bad);padding:6px 0 0">Retirer</button></div>`; }
+function ppCard(o){
+  const s=(k,opts,lab)=>`<label class="f"><span>${lab}</span><select data-pf="${k}"><option value=""></option>${opts.map(x=>Array.isArray(x)?`<option value="${esc(x[0])}" ${o[k]===x[0]?'selected':''}>${esc(x[1])}</option>`:`<option ${o[k]===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>`;
+  const t=(k,lab,mode)=>`<label class="f"><span>${lab}</span><input data-pf="${k}" ${mode?`inputmode="${mode}"`:''} value="${esc(o[k]||'')}"></label>`;
+  return `<div class="ppc"><div class="grid2">${t('annee','Année ou date')}${t('lieu','Lieu')}</div>
+   <div class="grid2">${s('issue',[...ISSUE_GROUPS.flatMap(g=>g[1]),'Autre'],'Issue / mode')}${t('terme','Terme (ex. 39 SA + 2 j)')}</div>
+   <div class="grid3">${s('presentation',['Céphalique','Siège','Transverse'],'Présentation')}${s('sexe',Object.entries(SEXE),'Sexe')}${t('poids','Poids (g)','numeric')}</div>
+   <div class="grid2">${t('prenom','Prénom')}${s('anesth',ANALG,'Analgésie / anesthésie')}</div>
+   <div class="grid2">${s('perinee',PERINEE,'Périnée')}${s('delivrance',PP_DELIV,'Délivrance')}</div>
+   <div class="grid2">${s('grossesse',['Normale','Pathologique'],'Grossesse')}${t('grossessePrec','Précision')}</div>
+   <div class="grid2">${s('suites',['Normales','Pathologiques'],'Suites de couches')}${t('suitesPrec','Précision')}</div>
+   ${s('allaitement',ALIM,'Allaitement')}
+   <button type="button" class="link" data-rmcard style="color:var(--bad);padding:6px 0 0">Retirer cette grossesse</button></div>`;
+}
+function sexfHTML(n,arr){ return Array.from({length:n},(_,i)=>`<label class="f"><span>${n>1?'Sexe du fœtus '+(i+1):'Sexe fœtal'}</span><select data-sf><option value="">Non connu</option>${Object.entries(SEXF).map(([k,l])=>`<option value="${k}" ${arr[i]===k?'selected':''}>${l}</option>`).join('')}</select></label>`).join(''); }
+function openEditor(src,prefill){
+  const isNew=!src;
+  const p=src?JSON.parse(JSON.stringify(src)):Object.assign({id:uid('p'),createdAt:Date.now(),status:'active',datingMethod:'ddr',cycle:S.settings.cycle,gestite:'',parite:'',cesariennes:0,multiple:1,rhesus:'',groupe:'',pathoMat:[],pathoFoet:[],ttFond:[],ttGross:[],events:[],done:{}},prefill||{});
+  const sh=$('#sheet');
+  const otherM=list(p.pathoMat).filter(x=>!PATHO_MAT.includes(x)).join(', ');
+  const otherF=list(p.pathoFoet).filter(x=>!PATHO_FOET.includes(x)).join(', ');
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="cancel">Annuler</button><h2 id="sheetTitle">${isNew?'Nouvelle patiente':'Modifier la fiche'}</h2><button class="btn primary" id="save">Enregistrer</button></div>
+  <div class="form">
+   ${prefill?'<div class="banner">Identité, antécédents et traitements de fond repris du dossier précédent ; la grossesse précédente est ajoutée aux grossesses antérieures ; gestité, parité et césariennes mises à jour. Vérifiez-les.</div>':''}
+   <div class="banner" id="matchHint" style="display:none"></div>
+   <fieldset><legend>Identité</legend><div class="fbox">
+    <div class="grid2">${F('Nom','<input name="nom" autocomplete="off" value="'+esc(p.nom||'')+'">')}${F('Prénom','<input name="prenom" autocomplete="off" value="'+esc(p.prenom||'')+'">')}</div>
+    <div class="grid2">${F('Date de naissance','<input type="date" name="naissance" value="'+esc(p.naissance||'')+'">')}${F('Téléphone','<input type="tel" name="telephone" value="'+esc(p.telephone||'')+'">')}</div>
+    <div class="grid2">${F('Taille (cm)','<input name="taille" inputmode="numeric" value="'+esc(p.taille||'')+'">')}${F('Poids avant grossesse (kg)','<input name="poidsAvant" inputmode="decimal" value="'+esc(p.poidsAvant||'')+'">')}</div>
+    <div class="preview num" id="imcPrev" style="display:none"></div>
+    ${F('Allergies','<input name="allergies" value="'+esc(p.allergies||'')+'" placeholder="Aucune connue">')}
+   </div></fieldset>
+
+   <fieldset><legend>Datation</legend><div class="fbox">
+    ${radios('datingMethod',[['ddr','DDR'],['dg','Début de grossesse'],['echo','Échographie'],['dpa','Terme connu']],p.datingMethod||'ddr')}
+    <div data-m="ddr" class="grid2">${F('Date des dernières règles','<input type="date" name="ddr" value="'+esc(p.ddr||'')+'">')}${F('Durée du cycle (jours)','<input type="number" inputmode="numeric" min="20" max="45" name="cycle" value="'+esc(p.cycle||28)+'">')}</div>
+    <div data-m="dg">${F('Date de début de grossesse (conception)','<input type="date" name="dg" value="'+esc(p.dg||'')+'">')}</div>
+    <div data-m="echo"><div class="grid3">${F('Date de l’échographie','<input type="date" name="echoDate" value="'+esc(p.echoDate||'')+'">')}${F('Âge (SA)','<input type="number" inputmode="numeric" min="5" max="42" name="echoSA" value="'+esc(p.echoSA??'')+'">')}${F('+ jours','<input type="number" inputmode="numeric" min="0" max="6" name="echoJ" value="'+esc(p.echoJ??0)+'">')}</div></div>
+    <div data-m="dpa">${F('Terme prévu d’accouchement (41 SA)','<input type="date" name="dpaManual" value="'+esc(p.dpaManual||'')+'">')}</div>
+    <div class="preview num" id="prev"></div>
+   </div></fieldset>
+
+   <fieldset><legend>Grossesse actuelle</legend><div class="fbox">
+    <div class="grid3">${F('Gestité','<input type="number" inputmode="numeric" min="1" name="gestite" value="'+esc(p.gestite??'')+'">')}${F('Parité','<input type="number" inputmode="numeric" min="0" name="parite" value="'+esc(p.parite??'')+'">')}${F('Césariennes','<input type="number" inputmode="numeric" min="0" name="cesariennes" value="'+esc(p.cesariennes??0)+'">')}</div>
+    <label class="chkline"><input type="checkbox" name="uterusCicatriciel" ${p.uterusCicatriciel?'checked':''}> Autre cicatrice utérine (myomectomie, etc.)</label>
+    <div class="f"><span>Nombre de fœtus</span>${radios('multiple',[['1','Unique'],['2','Gémellaire'],['3','Triple ou plus']],p.multiple||1)}</div>
+    <div id="sexF" class="grid2">${sexfHTML(+p.multiple||1,sexfArr(p))}</div>
+    <div class="grid2">${F('Groupe sanguin','<select name="groupe">'+['','A','B','AB','O'].map(g=>`<option ${p.groupe===g?'selected':''} value="${g}">${g||'—'}</option>`).join('')+'</select>')}${F('Rhésus','<select name="rhesus"><option value="">—</option><option value="+" '+(p.rhesus==='+'?'selected':'')+'>Positif</option><option value="-" '+(p.rhesus==='-'?'selected':'')+'>Négatif</option></select>')}</div>
+    <label class="chkline"><input type="checkbox" name="dgRisk" ${p.dgRisk?'checked':''}> Facteurs de risque de diabète gestationnel (programme l’HGPO)</label>
+    <details class="dginfo"><summary>Rappel des critères de dépistage</summary><ul>${DG_CRITERIA.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p>Un seul critère suffit à proposer le dépistage.</p></details>
+    <div class="preview" id="dgHint" style="display:none"></div>
+    <label class="chkline"><input type="checkbox" name="avisRef" ${p.avisRef?'checked':''}> Avis échographique de référence</label>
+    <div id="avisBox">${F('Motif de l’avis de référence','<input name="avisRefMotif" value="'+esc(p.avisRefMotif||'')+'">')}</div>
+   </div></fieldset>
+
+   <fieldset><legend>Hospitalisations pendant la grossesse</legend><div class="fbox">
+    <div id="hosp">${list(p.hospits).map(hospRow).join('')}</div>
+    <button type="button" class="btn small" id="addHosp" style="margin-top:10px">＋ Ajouter une hospitalisation</button>
+   </div></fieldset>
+
+   <fieldset><legend>Antécédents</legend><div class="fbox">
+    ${F('Médicaux','<textarea name="atcdMed">'+esc(p.atcdMed||'')+'</textarea>')}
+    ${F('Chirurgicaux','<textarea name="atcdChir">'+esc(p.atcdChir||'')+'</textarea>')}
+    <div class="grid2">${F('Tabac','<select name="tabac">'+['','Non','Sevré avant la grossesse','Arrêté pendant la grossesse','Actif'].map(x=>`<option ${p.tabac===x?'selected':''} value="${esc(x)}">${x||'—'}</option>`).join('')+'</select>')}${F('Cigarettes par jour','<input name="tabacN" inputmode="numeric" value="'+esc(p.tabacN||'')+'">')}</div>
+    <div class="grid2">${F('Alcool','<select name="alcool">'+['','Non','Arrêté pendant la grossesse','Occasionnel','Régulier'].map(x=>`<option ${p.alcool===x?'selected':''} value="${esc(x)}">${x||'—'}</option>`).join('')+'</select>')}${F('Toxiques','<select name="toxiques">'+['','Non','Arrêté pendant la grossesse','Actif'].map(x=>`<option ${p.toxiques===x?'selected':''} value="${esc(x)}">${x||'—'}</option>`).join('')+'</select>')}</div>
+    ${F('Précisions (produits, quantités…)','<input name="toxPrec" value="'+esc(p.toxPrec||'')+'">')}
+    ${F('Obstétricaux (précisions libres)','<textarea name="atcdObst">'+esc(p.atcdObst||'')+'</textarea>')}
+   </div></fieldset>
+
+   <fieldset><legend>Grossesses antérieures (détail)</legend><div class="fbox">
+    <div id="pp">${list(p.prevPreg).map(ppCard).join('')}</div>
+    <button type="button" class="btn small" id="addPP" style="margin-top:10px">＋ Ajouter une grossesse antérieure</button>
+   </div></fieldset>
+
+   <fieldset><legend>Traitements</legend><div class="fbox">
+    <div class="f"><span>Traitements de fond</span><div id="ttF">${list(p.ttFond).map(t=>ttRow(t,false)).join('')}</div><button type="button" class="btn small" id="addTF" style="margin-top:8px">＋ Ajouter</button></div>
+    <div class="f"><span>Instaurés pendant la grossesse</span><div id="ttG">${list(p.ttGross).map(t=>ttRow(t,true)).join('')}</div><button type="button" class="btn small" id="addTG" style="margin-top:8px">＋ Ajouter</button></div>
+   </div></fieldset>
+
+   <fieldset><legend>Pathologies de la grossesse</legend><div class="fbox">
+    <div class="f"><span>Maternelles</span>${chips('pm',PATHO_MAT,list(p.pathoMat))}</div>
+    ${F('Autres pathologies maternelles (séparées par des virgules)','<input name="pmOther" value="'+esc(otherM)+'">')}
+    <div class="f"><span>Fœtales et annexielles</span>${chips('pf',PATHO_FOET,list(p.pathoFoet))}</div>
+    ${F('Autres pathologies fœtales (séparées par des virgules)','<input name="pfOther" value="'+esc(otherF)+'">')}
+    ${F('Précisions','<textarea name="pathoNotes">'+esc(p.pathoNotes||'')+'</textarea>')}
+   </div></fieldset>
+
+   <fieldset><legend>Accouchement prévu</legend><div class="fbox">
+    <div class="f"><span>Lieu prévu</span>${radios('lieu',LIEUX.map(x=>[x,x]),p.lieu||'')}</div>
+    ${F('Précision (autre établissement)','<input name="lieuPrec" value="'+esc(p.lieuPrec||'')+'">')}
+    ${F('Type de maternité','<select name="niveau">'+['','I','IIA','IIB','III'].map(n=>`<option ${p.niveau===n?'selected':''} value="${n}">${n||'—'}</option>`).join('')+'</select>')}
+   </div></fieldset>
+
+   <fieldset><legend>Correspondants</legend><div class="fbox">
+    <div id="corr">${(p.corr||[{role:'Sage-femme'},{role:'Gynécologue-obstétricien'},{role:'Médecin traitant'}]).map(corrRow).join('')}</div>
+    <button type="button" class="btn small" id="addCorr" style="margin-top:8px">＋ Ajouter un correspondant</button>
+   </div></fieldset>
+
+   <fieldset><legend>Notes</legend><div class="fbox">${F('Notes libres','<textarea name="notes">'+esc(p.notes||'')+'</textarea>')}</div></fieldset>
+  </div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  const val=n=>{ const el=sh.querySelector(`[name="${n}"]`); if(!el) return ''; if(el.type==='checkbox') return el.checked; if(el.type==='radio'){ const c=sh.querySelector(`[name="${n}"]:checked`); return c?c.value:''; } return el.value.trim(); };
+  let lastMult=+p.multiple||1;
+  const sync=()=>{
+    const m=val('datingMethod'); $$('[data-m]',sh).forEach(d=>d.style.display=d.dataset.m===m?'':'none');
+    const tmp={datingMethod:m,ddr:val('ddr'),cycle:val('cycle'),dg:val('dg'),echoDate:val('echoDate'),echoSA:val('echoSA'),echoJ:val('echoJ'),dpaManual:val('dpaManual')};
+    const inf=info(tmp); $('#prev').textContent = inf.ok ? `Aujourd’hui : ${sa(inf.ga)} – terme prévu le ${fd(inf.dpa)}` : 'Renseignez la date pour calculer le terme.';
+    const tp={taille:val('taille'),poidsAvant:val('poidsAvant'),naissance:val('naissance')}; const b=imc(tp); const ip=$('#imcPrev'); ip.style.display=b!=null?'':'none'; ip.textContent=b!=null?'IMC avant grossesse : '+frn(b):'';
+    const auto=dgAuto(tp); const dh=$('#dgHint'); dh.style.display=auto.length?'':'none'; dh.textContent=auto.length?'Critère présent d’après la fiche : '+auto.join(' ; ')+'.':'';
+    $('#avisBox').style.display=val('avisRef')?'':'none';
+    const mu=+val('multiple')||1; if(mu!==lastMult){ const cur=$$('[data-sf]',sh).map(s=>s.value); $('#sexF').innerHTML=sexfHTML(mu,cur); lastMult=mu; }
+    const mh=$('#matchHint');
+    if(isNew && !prefill){ const k=idKey({nom:val('nom'),prenom:val('prenom'),naissance:val('naissance')}); const prev=k?S.patients.filter(x=>idKey(x)===k).sort((a,b)=>pDate(b)-pDate(a))[0]:null;
+      if(prev){ mh.style.display=''; mh.innerHTML=`Un dossier existe déjà pour cette patiente (${esc(pregLabel(prev))}). <button type="button" class="link" id="usePrev">Reprendre ses antécédents</button>`; $('#usePrev').onclick=()=>{ close(); openEditor(null,prefillFrom(prev)); }; }
+      else mh.style.display='none'; }
+  };
+  const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
+  sh.oninput=sync; sh.onchange=sync; sync();
+  const addRow=(box,g)=>{ box.insertAdjacentHTML('beforeend',ttRow({},g)); box.lastElementChild.querySelector('input').focus(); };
+  $('#addTF').addEventListener('click',()=>addRow($('#ttF'),false));
+  $('#addTG').addEventListener('click',()=>addRow($('#ttG'),true));
+  $('#addCorr').addEventListener('click',()=>{ $('#corr').insertAdjacentHTML('beforeend',corrRow({role:'Autre'})); $('#corr').lastElementChild.querySelector('input').focus(); });
+  $('#addHosp').addEventListener('click',()=>{ $('#hosp').insertAdjacentHTML('beforeend',hospRow({})); $('#hosp').lastElementChild.querySelector('input').focus(); });
+  $('#addPP').addEventListener('click',()=>{ $('#pp').insertAdjacentHTML('beforeend',ppCard({})); $('#pp').lastElementChild.querySelector('input').focus(); });
+  sh.onclick=e=>{ const r=e.target.closest('[data-rm]'); if(r) r.parentElement.remove(); const c=e.target.closest('[data-rmcard]'); if(c) c.parentElement.remove(); };
+  $('#cancel').addEventListener('click',close);
+  let saving=false;
+  $('#save').addEventListener('click',async()=>{
+    if(saving) return;
+    if(!val('nom') && !val('prenom')){ toast('Indiquez au moins un nom'); return; }
+    if((p.status||'active')!=='archived'){
+      const d=dupesOf({id:p.id,nom:val('nom'),prenom:val('prenom'),naissance:val('naissance'),status:'active'});
+      if(d.length){ const x=d[0]; const i=info(x);
+        const c=await choose({title:'Ce dossier existe peut-être déjà',body:`Une grossesse en cours est déjà enregistrée pour ${fullName(x)}${x.naissance?', née le '+fd(parseD(x.naissance)):''}${i.ok?' (terme prévu le '+fd(i.dpa)+')':''}.`,buttons:[['open','Ouvrir le dossier existant','primary'],['save',isNew?'Créer quand même':'Enregistrer quand même',''],['cancel','Annuler','']]});
+        if(c==='open'){ close(); go('patient-'+x.id); return; }
+        if(c!=='save') return; } }
+    saving=true; $('#save').disabled=true;
+    ['nom','prenom','naissance','telephone','ddr','cycle','dg','echoDate','echoSA','echoJ','dpaManual','gestite','parite','cesariennes','groupe','rhesus','atcdMed','atcdChir','atcdObst','allergies','tabac','tabacN','alcool','toxiques','toxPrec','pathoNotes','lieu','lieuPrec','niveau','notes','avisRefMotif'].forEach(k=>p[k]=val(k));
+    p.taille=nstr(val('taille')); p.poidsAvant=nstr(val('poidsAvant'));
+    p.datingMethod=val('datingMethod')||'ddr'; p.multiple=+val('multiple')||1; p.status=p.status||'active';
+    p.uterusCicatriciel=val('uterusCicatriciel'); p.dgRisk=val('dgRisk'); p.avisRef=val('avisRef'); if(!p.avisRef) p.avisRefMotif='';
+    p.sexeF=$$('[data-sf]',sh).map(s=>s.value);
+    const split=s=>s.split(',').map(x=>x.trim()).filter(Boolean);
+    p.pathoMat=[...$$('[name="pm"]:checked',sh).map(c=>c.value),...split(val('pmOther'))];
+    p.pathoFoet=[...$$('[name="pf"]:checked',sh).map(c=>c.value),...split(val('pfOther'))];
+    const rows=(box,g)=>$$('.trow',box).map(r=>({nom:r.querySelector('[data-tn]').value.trim(),poso:r.querySelector('[data-tp]').value.trim(),debut:g?r.querySelector('[data-td]').value:undefined})).filter(t=>t.nom);
+    p.corr=$$('#corr .trow',sh).map(r=>({role:r.querySelector('[data-cr]').value,nom:r.querySelector('[data-cn]').value.trim(),contact:r.querySelector('[data-cc]').value.trim()})).filter(c=>c.nom||c.contact);
+    p.ttFond=rows($('#ttF'),false); p.ttGross=rows($('#ttG'),true);
+    p.hospits=$$('#hosp .hrow',sh).map(r=>({id:uid('h'),debut:r.querySelector('[data-hd]').value,fin:r.querySelector('[data-hf]').value,motif:r.querySelector('[data-hm]').value.trim(),lieu:r.querySelector('[data-hl]').value.trim()})).filter(x=>x.debut||x.motif);
+    p.prevPreg=$$('#pp .ppc',sh).map(c=>{ const o={}; $$('[data-pf]',c).forEach(i=>o[i.dataset.pf]=i.value.trim()); if(o.poids) o.poids=nstr(o.poids); return o; }).filter(o=>Object.values(o).some(Boolean));
+    await savePatient(p); close(); toast(isNew?'Patiente ajoutée':'Fiche enregistrée'); go('patient-'+p.id);
+  });
+  setTimeout(()=>{ const n=sh.querySelector('[name="nom"]'); if(isNew && n) n.focus(); },60);
+}
+
+/* ---------- Réglages ---------- */
+function wd(d){ return d==null?['','']:[Math.floor(d/7), d%7]; }
+function renderSettings(){
+  const v=$('#view'); const st=S.settings;
+  let h=`<div class="summary"><strong>Réglages</strong>Calendrier de suivi appliqué à toutes les patientes</div>`;
+  h+=`<section class="sec"><h2>Calcul du terme</h2><div class="card"><div class="msedit"><div>Terme prévu fixé à <b>41 SA</b> (usage français).</div><div class="nums" style="margin-top:12px">Cycle par défaut <input type="number" id="defCycle" min="20" max="45" value="${st.cycle}" aria-label="Cycle par défaut"> jours</div><label class="chkline"><input type="checkbox" id="congeChk" ${st.conge?'checked':''}> Afficher l’estimation du congé maternité</label></div></div></section>`;
+  h+=`<section class="sec"><h2>Examens et échéances <button class="link" id="addMs">＋ Ajouter</button></h2><div class="card" id="msEd">`;
+  st.milestones.forEach((m,i)=>{ const [sw,sd]=wd(m.s), [ew,ed]=wd(m.e);
+    h+=`<div class="msedit" data-i="${i}"><div style="display:flex;gap:8px"><input class="nmin" data-k="name" value="${esc(m.name)}" aria-label="Intitulé"><button class="x" data-rmms="${i}" aria-label="Supprimer ${esc(m.name)}">×</button></div>
+    <div class="nums">De <input type="number" data-k="sw" value="${sw}" min="0" max="44" aria-label="Début, semaines">+<input type="number" data-k="sd" value="${sd}" min="0" max="6" aria-label="Début, jours"> à <input type="number" data-k="ew" value="${ew}" min="0" max="44" placeholder="—" aria-label="Fin, semaines">+<input type="number" data-k="ed" value="${ed}" min="0" max="6" placeholder="—" aria-label="Fin, jours"> SA</div>
+    <div class="nums">Pour <select data-k="cond" aria-label="Concerne">${Object.entries(COND).map(([k,l])=>`<option value="${k}" ${m.cond===k?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="nums">Terme cible <input type="number" data-k="iw" value="${m.ideal!=null?Math.floor(m.ideal/7):''}" min="0" max="44" placeholder="—" aria-label="Terme cible, semaines">+<input type="number" data-k="id" value="${m.ideal!=null?m.ideal%7:''}" min="0" max="6" placeholder="—" aria-label="Terme cible, jours"> SA</div>
+    <div class="nums">Validé par <select data-k="auto" aria-label="Validation automatique"><option value="">— (manuellement)</option><option value="consult" ${m.auto==='consult'?'selected':''}>une consultation</option><option value="echo" ${m.auto==='echo'?'selected':''}>une échographie</option></select></div></div>`; });
+  h+=`</div><p class="note">Laissez la fin vide pour une date unique. Les fenêtres proposées par défaut reprennent les repères usuels du suivi en France : vérifiez-les et adaptez-les à vos protocoles.</p><div class="actions" style="margin-top:10px"><button class="btn" id="resetMs">Rétablir le calendrier par défaut</button></div></section>`;
+  const VC=st.vacc||{}; const dm=x=>x?x.split('-').reverse().join('/'):'';
+  h+=`<section class="sec"><h2>Vaccins saisonniers</h2><div class="card" id="vaccEd">${[['grippe','Grippe','pendant toute la grossesse'],['covid','Covid-19','pendant toute la grossesse'],['vrs','VRS','entre 32 et 36 SA + 6 j']].map(([k,l,w])=>`<div class="msedit" data-v="${k}"><label class="chkline" style="margin-top:0"><input type="checkbox" data-vk="on" ${VC[k]&&VC[k].on?'checked':''}> <b>${l}</b> <span style="color:var(--muted);font-size:.85rem">– ${w}</span></label><div class="nums">Campagne du <input data-vk="from" value="${dm(VC[k]&&VC[k].from)}" placeholder="JJ/MM" style="width:72px" aria-label="Début de campagne"> au <input data-vk="to" value="${dm(VC[k]&&VC[k].to)}" placeholder="JJ/MM" style="width:72px" aria-label="Fin de campagne"></div></div>`).join('')}</div>
+  <p class="note">Le vaccin n’apparaît dans les dates importantes que si la grossesse (ou la fenêtre 32–36 SA pour le VRS) croise la période de campagne. Dates par défaut : campagnes 2026-2027 en France hexagonale ; à mettre à jour chaque saison.</p></section>`;
+  h+=`<section class="sec"><h2>Données</h2><div class="card"><div class="txt">${MODE==='cloud'?'Les dossiers et les PDF sont enregistrés dans votre compte Claude, dans un espace privé de cette application : ils sont conservés d’une ouverture à l’autre et retrouvés sur vos autres appareils. Cet espace n’est pas un hébergement certifié HDS.':MODE==='local'?'Version autonome : les dossiers et les PDF sont enregistrés uniquement sur cet appareil, dans l’application. Rien n’est envoyé sur Internet. Ils ne sont ni synchronisés ni sauvegardés ailleurs : exportez une sauvegarde chaque semaine (Fichiers, iCloud Drive ou clé USB) et gardez-la en lieu sûr.':'Aucun stockage durable n’est disponible : les données seront perdues à la fermeture. Exportez une sauvegarde avant de quitter.'}<span class="k" id="quota" style="margin-top:6px"></span></div></div>
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
+  v.innerHTML=h;
+  $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
+  $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
+  $('#vaccEd').addEventListener('change',async e=>{ const box=e.target.closest('[data-v]'); if(!box) return; const k=box.dataset.v; st.vacc=st.vacc||{}; const c=st.vacc[k]=st.vacc[k]||{};
+    const md=x=>{ const m=String(x).trim().match(/^(\d{1,2})[\/.-](\d{1,2})$/); return m?String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0'):null; };
+    c.on=box.querySelector('[data-vk="on"]').checked; const fr=md(box.querySelector('[data-vk="from"]').value), to=md(box.querySelector('[data-vk="to"]').value);
+    if(fr) c.from=fr; if(to) c.to=to; if(!fr||!to) toast('Format attendu : JJ/MM'); await saveSettings(); });
+  const ed=$('#msEd');
+  ed.addEventListener('change',async e=>{ const box=e.target.closest('[data-i]'); if(!box) return; const m=st.milestones[+box.dataset.i]; const g=k=>box.querySelector(`[data-k="${k}"]`).value;
+    m.name=g('name').trim()||m.name; m.s=(+g('sw')||0)*7+(+g('sd')||0); m.e = g('ew')==='' ? null : (+g('ew')||0)*7+(+g('ed')||0); if(m.e!=null && m.e<m.s) m.e=m.s; m.cond=g('cond'); m.auto=g('auto')||undefined; m.ideal=g('iw')===''?undefined:(+g('iw')||0)*7+(+g('id')||0); await saveSettings(); });
+  $$('[data-rmms]').forEach(b=>b.addEventListener('click',async()=>{ const m=st.milestones[+b.dataset.rmms]; if(!await ask({title:'Retirer cette échéance ?',body:m.name,ok:'Retirer',danger:true})) return; st.milestones.splice(+b.dataset.rmms,1); await saveSettings(); renderSettings(); }));
+  $('#addMs').addEventListener('click',async()=>{ st.milestones.push({id:uid('ms'),name:'Nouvel examen',s:140,e:154,cond:'all'}); await saveSettings(); renderSettings(); const l=$$('.msedit [data-k="name"]'); const last=l[l.length-1]; last.focus(); last.select(); });
+  $('#resetMs').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir le calendrier par défaut ?',body:'Vos échéances personnalisées seront remplacées. Les validations déjà cochées sur les échéances par défaut sont conservées.',ok:'Rétablir'})) return; st.milestones=JSON.parse(JSON.stringify(DEFAULT_MS)); await saveSettings(); renderSettings(); });
+  $('#exp').addEventListener('click',exportBackup);
+  $('#imp').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importBackup(i.files[0]); i.click(); });
+  $('#csv').addEventListener('click',()=>exportCSV(S.patients));
+  $('#wipe').addEventListener('click',async()=>{ if(!await ask({title:'Effacer toutes les données ?',body:'Tous les dossiers, documents PDF et réglages seront supprimés de cet appareil. Exportez une sauvegarde avant si besoin.',ok:'Tout effacer',danger:true})) return; await clearAll(); S.patients=[]; S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); await saveSettings(); toast('Données effacées'); go('liste'); });
+  if(MODE==='local' && navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(e=>{ const q=$('#quota'); if(q && e.usage!=null) q.textContent=`Espace utilisé : ${fsize(e.usage)}${e.quota?' sur environ '+fsize(e.quota):''}.`; }).catch(()=>{});
+}
+
+/* ---------- Fichiers : export / import ---------- */
+async function saveFile(name,data){
+  const type=name.endsWith('.json')?'application/json':name.endsWith('.csv')?'text/csv':name.endsWith('.pdf')?'application/pdf':'application/octet-stream';
+  const blob=data instanceof Blob?data:new Blob([data],{type});
+  try{
+    const file=new File([blob],name,{type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return true; }
+  }catch(e){ if(e && e.name==='AbortError') return false; }
+  try{
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000); return true;
+  }catch(e){ toast('Enregistrement impossible sur cet appareil'); return false; }
+}
+async function exportBackup(){
+  toast('Préparation de la sauvegarde…');
+  const files=(await getAll('files')).map(f=>({id:f.id,patientId:f.patientId,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:b64(f.data)}));
+  const payload={app:'suivi-grossesse',version:1,exportedAt:new Date().toISOString(),settings:S.settings,patients:S.patients,files};
+  const ok=await saveFile(`sauvegarde-suivi-grossesse-${iso(today())}.json`, new Blob([JSON.stringify(payload)],{type:'application/json'}));
+  if(ok){ toast('Sauvegarde exportée'); try{ await put('kv',Date.now(),'lastBackup'); S.lastBackup=Date.now(); }catch(e){} }
+}
+async function importBackup(file){
+  if(!file) return;
+  let data; try{ data=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible : choisissez une sauvegarde .json de l’application'); return; }
+  if(!data || data.app!=='suivi-grossesse' || !Array.isArray(data.patients)){ toast('Ce fichier n’est pas une sauvegarde de l’application'); return; }
+  const nf=(data.files||[]).length;
+  if(!await ask({title:'Remplacer les données actuelles ?',body:`La sauvegarde contient ${data.patients.length} dossier(s) et ${nf} document(s). Les données présentes sur cet appareil seront remplacées.`,ok:'Importer'})) return;
+  try{
+    await clearAll();
+    S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),data.settings||{}); await saveSettings();
+    for(const p of data.patients) await put('patients',p);
+    for(const f of (data.files||[])) await put('files',{id:f.id,patientId:f.patientId,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,data:unb64(f.b64)});
+    S.patients=await getAll('patients'); toast('Sauvegarde importée'); go('liste');
+  }catch(e){ toast('Import interrompu : espace de stockage insuffisant ?'); S.patients=await getAll('patients'); }
+}
+async function exportCSV(arr){
+  const cols=['Nom','Prénom','Naissance','DDR','Début de grossesse','Terme prévu','Gestité','Parité','Césariennes','Groupe','Rhésus','IMC','Allergies','Tabac','Alcool','Toxiques','Dernier poids (kg)','Dernière TA','Sexe fœtal','Avis écho de référence','Hospitalisations','Dernière présentation','Croissance estimée','Lieu prévu','Programmation','Date programmée','Statut','Issue','Date de l’issue','Terme à l’issue','Lieu de l’issue','Entrée en travail','Motif déclenchement','Motif césarienne','Code urgence','Délai décision-naissance (min)','Instrument','Motif extraction','Analgésie','Périnée','Délivrance','HDD','Sexe','Poids (g)','pH','Lactates','Apgar 1','Apgar 5','Apgar 10','Alimentation','Pathologies maternelles','Pathologies fœtales','Complications maternelles','Complications néonatales','Traitements','Correspondants'];
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const lines=[cols.map(q).join(';')];
+  for(const p of arr){ const i=info(p), o=p.issue||{}, d=parseD(o.date), k=list(o.enfants), j=f=>k.map(e=>e[f]||'').join(' / '); const lp=lastField(p,'presentation'), lc=lastField(p,'pct'); const b=imc(p);
+    lines.push([p.nom,p.prenom,p.naissance,p.ddr||'',i.ok?iso(i.base+14*DAY):'',i.ok?iso(i.dpa):'',p.gestite,p.parite,p.cesariennes,p.groupe,p.rhesus,b!=null?frn(b):'',p.allergies,p.tabac,p.alcool,(p.toxiques||'')+(p.toxPrec?' – '+p.toxPrec:''),(lastField(p,'poidsM')||{}).v||'',(()=>{ const x=lastField(p,'pas'); return x?x.v+'/'+(x.ev.pad||''):''; })(),sexfArr(p).map(x=>SEXF[x]||'').join(' / '),p.avisRef?'Oui'+(p.avisRefMotif?' – '+p.avisRefMotif:''):'',list(p.hospits).map(h=>(h.debut||'')+' '+(h.motif||'')).join(' ; '),lp?lp.v:'',lc?croisCat(lc.v):'',lieuLabel(p),p.planned&&p.planned.type?p.planned.type+(planMotifs(p.planned).length?' – '+planMotifs(p.planned).join(', '):''):'',p.planned&&p.planned.date||'',(p.status==='archived'?'Archivée':'En cours'),o.type,o.date,d!=null&&i.ok?sa(Math.round((d-i.base)/DAY)):'',lieuLabel(o),o.travail,list(o.declMotifs).join(', '),list(o.cesMotifs).join(', '),o.code,o.delai,o.instrument,list(o.instrMotifs).join(', '),o.analgesie,o.perinee,o.delivrance,o.hdd,k.map(e=>SEXE[e.sexe]||'').join(' / '),j('poids'),j('ph'),j('lact'),j('apg1'),j('apg5'),j('apg10'),o.alim,list(p.pathoMat).join(', '),list(p.pathoFoet).join(', '),complMat(p).join(', '),list(o.complNeo).join(', '),[...list(p.ttFond),...list(p.ttGross)].map(t=>t.nom).join(', '),list(p.corr).map(c=>c.role+' : '+c.nom).join(' ; ')].map(q).join(';')); }
+  if(await saveFile(`patientes-${iso(today())}.csv`,'\uFEFF'+lines.join('\r\n'))) toast(arr.length+' dossier'+(arr.length>1?'s exportés':' exporté'));
+}
+
+/* ---------- Boîte de dialogue ---------- */
+function choose({title,body,buttons}){
+  return new Promise(res=>{
+    const m=$('#modal'), b=$('#modalBox');
+    b.innerHTML=`<h3>${esc(title)}</h3><p>${esc(body||'')}</p><div class="bx" style="flex-direction:column;align-items:stretch">${buttons.map(([v,l,c])=>`<button class="btn ${c}" data-v="${v}" style="justify-content:center">${esc(l)}</button>`).join('')}</div>`;
+    m.classList.add('open'); b.querySelector('[data-v]').focus();
+    const done=v=>{ m.classList.remove('open'); m.onclick=null; document.removeEventListener('keydown',key); res(v); };
+    const key=e=>{ if(e.key==='Escape') done('cancel'); };
+    document.addEventListener('keydown',key);
+    m.onclick=e=>{ const a=e.target.closest('[data-v]'); if(a) done(a.dataset.v); else if(e.target===m) done('cancel'); };
+  });
+}
+function ask({title,body,ok='Confirmer',danger=false}){
+  return new Promise(res=>{
+    const m=$('#modal'), b=$('#modalBox');
+    b.innerHTML=`<h3>${esc(title)}</h3><p>${esc(body||'')}</p><div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn ${danger?'danger':'primary'}" data-a="1">${esc(ok)}</button></div>`;
+    m.classList.add('open'); b.querySelector('[data-a="1"]').focus();
+    const done=v=>{ m.classList.remove('open'); m.onclick=null; document.removeEventListener('keydown',key); res(v); };
+    const key=e=>{ if(e.key==='Escape') done(false); };
+    document.addEventListener('keydown',key);
+    m.onclick=e=>{ const a=e.target.closest('[data-a]'); if(a) done(a.dataset.a==='1'); else if(e.target===m) done(false); };
+  });
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#viewer').classList.contains('open')) $('#vClose').click(); });
+
+/* ---------- Démarrage ---------- */
+(async function init(){
+  $('#view').innerHTML='<div class="card empty" style="margin-top:16px">Chargement des dossiers…</div>';
+  idb=await openDB();
+  if(false){ MODE='cloud'; const n=await migrateLocalToCloud(); if(n) setTimeout(()=>toast(n+' dossier'+(n>1?'s':'')+' de l’appareil copié'+(n>1?'s':'')+' dans votre compte'),600); }
+  else MODE=idb?'local':'memory';
+  try{ S.lastBackup=(idb && await rq(store('kv').get('lastBackup')))||null; }catch(e){}
+  if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+  try{ const s=await get('kv','settings'); S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),s||{}); }catch(e){ S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
+  if(S.settings.termDays!==287){ S.settings.termDays=287; await saveSettings(); }
+  if((S.settings.msVersion||1)<MS_VERSION){
+    const have=new Set(S.settings.milestones.map(m=>m.id));
+    DEFAULT_MS.filter(m=>m.id.startsWith('cm') && !have.has(m.id)).forEach(m=>S.settings.milestones.push(Object.assign({},m)));
+    if((S.settings.msVersion||1)<6){ S.settings.milestones.forEach(m=>{ if(m.id==='cm6'){ if(m.e===202) m.e=195; if(m.ideal===196) m.ideal=189; } }); }
+    if((S.settings.msVersion||1)<5){ S.settings.milestones.forEach(m=>{ if(IDEAL_IDS[m.id]!=null && m.ideal==null) m.ideal=IDEAL_IDS[m.id]; }); }
+    if((S.settings.msVersion||1)<4){ S.settings.milestones=S.settings.milestones.filter(m=>m.id!=='vrs'); S.settings.milestones.forEach(m=>{ if(AUTO_IDS[m.id] && !m.auto) m.auto=AUTO_IDS[m.id]; }); }
+    if((S.settings.msVersion||1)<3) S.settings.milestones=S.settings.milestones.filter(m=>!['epp','post','lim42'].includes(m.id));
+    S.settings.milestones.sort((a,b)=>a.s-b.s); S.settings.msVersion=MS_VERSION; await saveSettings();
+  }
+  try{ S.patients=await getAll('patients'); }catch(e){ S.patients=[]; }
+  for(const p of S.patients){ let ch=false;
+    if(p.lieu && !LIEUX.includes(p.lieu)){ p.lieuPrec=p.lieuPrec||p.lieu; p.lieu='Autre établissement'; ch=true; }
+    if(p.issue && p.issue.lieu && !LIEUX.includes(p.issue.lieu)){ p.issue.lieuPrec=p.issue.lieuPrec||p.issue.lieu; p.issue.lieu='Autre établissement'; ch=true; }
+    if(ch){ try{ await put('patients',p); }catch(e){} } }
+  for(const p of S.patients){ if(p.status==='delivered'){ p.status='archived'; p.issue=Object.assign({type:p.accVoie||'',date:p.accDate||'',notes:p.accNotes||''},p.issue||{}); try{ await put('patients',p); }catch(e){} } }
+  if(MODE==='local' && navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+  render();
+})();
+})();
+</script>
+</body>
+</html>
