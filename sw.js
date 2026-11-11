@@ -1,5 +1,5 @@
 /* Permet d’ouvrir l’application sans connexion Internet. Aucune donnée patiente ne passe par ce fichier. */
-const CACHE = 'suivi-grossesse-v2';
+const CACHE = 'suivi-grossesse-v5';
 const JSPDF = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
