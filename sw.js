@@ -1,5 +1,5 @@
 /* Permet d’ouvrir l’application sans connexion Internet. Aucune donnée patiente ne passe par ce fichier. */
-const CACHE = 'suivi-grossesse-v15';
+const CACHE = 'suivi-grossesse-v16';
 const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'];
 const FILES = ['./', './index.html', './patiente.html', './manifest.webmanifest', './manifest-patiente.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './icon-p-180.png', './icon-p-192.png', './icon-p-512.png'];
 self.addEventListener('install', e => {
