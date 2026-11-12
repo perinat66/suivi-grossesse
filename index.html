@@ -186,7 +186,9 @@ legend{font-weight:700;font-size:1.02rem;padding:0 4px 8px}
 .viewer.open{display:flex}
 .viewer header{display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;border-bottom:1px solid var(--line)}
 .viewer header b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.viewer iframe{flex:1;border:0;width:100%;background:#fff}
+.vpages{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);background:var(--surface-2)}
+.vpages canvas{display:block;margin:0 auto 10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);max-width:none}
+.vpages .vmsg{text-align:center;color:var(--muted);padding:30px 10px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px}
 .tile{background:var(--surface);border-radius:var(--radius);padding:12px 14px}
 .tile b{display:block;font-size:1.45rem;line-height:1.15}
@@ -277,6 +279,30 @@ details.sgrp > summary::after{content:"＋";color:var(--muted)} details.sgrp[ope
 .rdv{display:block;color:var(--accent);font-weight:700;font-size:.88rem;margin-top:2px}
 .rhbox{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.92rem}
 .kv.late{background:var(--bad-soft)}
+.qrbox{display:flex;justify-content:center;margin:14px 0 6px}
+.qrbox svg{width:min(260px,80vw);height:auto;border-radius:8px}
+.codebox{margin:10px 0;padding:12px;border-radius:12px;background:var(--accent-soft);text-align:center}
+.codebox small{display:block;color:var(--accent);font-weight:700}
+.codebox b{display:block;font-size:2rem;letter-spacing:.15em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dgrp{padding:10px 14px 4px;font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--line)}
+.card > .dgrp:first-child{border-top:0}
+.dgrp small{color:var(--muted);font-weight:400}
+.catlist{display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow-y:auto}
+.catlist label{display:flex;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}
+.catlist input{width:20px;height:20px;accent-color:var(--accent)}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap} .thumbs img{width:64px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.role-patient [data-nav="agenda"],.role-patient [data-nav="analyse"],.role-patient #edit,.role-patient #arch,.role-patient #unarch,.role-patient #newPreg,.role-patient #shareBtn,.role-patient #msgBtn,.role-patient #delP,.role-patient .newev,.role-patient [data-rdv],.role-patient [data-evedit],.role-patient [data-plan],.role-patient [data-recat],.role-patient [data-delf],.role-patient #addPdf,.role-patient #selMode,.role-patient .sortrow,.role-patient #critBox,.role-patient #cpj,.role-patient #addEv,.role-patient #editIssue,.role-patient .search select{display:none!important}
+.role-patient .chk{pointer-events:none}
+details.fiche{background:var(--surface);border-radius:var(--radius);padding:4px 14px 12px}
+details.fiche summary,details.fiche-pro summary{font-weight:700;padding:10px 0;cursor:pointer}
+details.fiche-pro{padding:2px 14px 8px;border-top:1px solid var(--line)} .card > details.fiche-pro:first-child{border-top:0}
+details.fiche-pro summary small{color:var(--muted);font-weight:400}
+details.fiche-pro input{width:18px;height:18px;accent-color:var(--accent);vertical-align:middle}
+.ftxt{white-space:pre-wrap;line-height:1.55}
+details.fiche-ed summary{cursor:pointer}
+#prevBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:16;background:var(--ink);color:var(--bg);border-radius:999px;padding:6px 6px 6px 16px;display:flex;gap:10px;align-items:center;font-weight:700;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.ptools{display:flex;flex-wrap:wrap;gap:8px}
+.ptools .btn{flex:1;justify-content:center;min-width:150px}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.92rem}
 @media (max-width:420px){
   .trio{grid-template-columns:auto auto auto;gap:2px 10px}
@@ -320,7 +346,7 @@ details.sgrp > summary::after{content:"＋";color:var(--muted)} details.sgrp[ope
 
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true"><div class="box" id="modalBox"></div></div>
-<div class="viewer" id="viewer"><header><b id="vName"></b><button class="btn small" id="vOpen">Ouvrir</button><button class="btn small" id="vSave">Partager</button><button class="btn small" id="vClose">Fermer</button></header><iframe id="vFrame" title="Document PDF"></iframe></div>
+<div class="viewer" id="viewer"><header><b id="vName"></b><button class="btn small" id="vZoom" aria-label="Agrandir">＋</button><button class="btn small" id="vSave">Partager</button><button class="btn small" id="vClose">Fermer</button></header><div id="vPages" class="vpages"></div></div>
 <div class="zoom" id="zoom" role="dialog" aria-modal="true"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden>
@@ -386,7 +412,10 @@ const DEFAULT_MS = [
 const MS_VERSION = 6;
 const IDEAL_IDS={"echo1": 84, "cm4": 126, "echo2": 154, "cm6": 189, "echo3": 224, "cm8": 252, "cm9": 273};
 const AUTO_IDS={cs1:'consult',cm4:'consult',cm6:'consult',cm8:'consult',cm9:'consult',echo1:'echo',echo2:'echo',echo3:'echo'};
+const APP_ROLE=(window.APP_ROLE==='patient')?'patient':'pro';
+function isPatient(){ return APP_ROLE==='patient'||!!S.preview; }
 const DEFAULT_SETTINGS = { termDays:287, cycle:28, milestones:DEFAULT_MS, conge:true, msVersion:MS_VERSION, vacc:{grippe:{on:true,from:'10-13',to:'01-31'},covid:{on:true,from:'10-13',to:'01-31'},vrs:{on:true,from:'09-14',to:'02-28'}} };
+DEFAULT_SETTINGS.signature=''; DEFAULT_SETTINGS.fiches=null; DEFAULT_SETTINGS.msgs=null;
 /* Issue de la grossesse */
 const ISSUE_GROUPS = [
   ['Naissance',['Voie basse spontanée','Voie basse instrumentale','Césarienne programmée','Césarienne en urgence']],
@@ -473,7 +502,7 @@ const withTimeout=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),
 async function openDB(){
   try{
     if(!('indexedDB' in window)) return null;
-    const r=indexedDB.open('suivi-grossesse',1);
+    const r=indexedDB.open(APP_ROLE==='patient'?'suivi-grossesse-patiente':'suivi-grossesse',1);
     r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('patients',{keyPath:'id'}); const f=d.createObjectStore('files',{keyPath:'id'}); f.createIndex('patientId','patientId'); d.createObjectStore('kv'); };
     const d=await withTimeout(rq(r),4000); if(!d) return null;
     const t=d.transaction('kv','readwrite').objectStore('kv'); await rq(t.put(Date.now(),'_test'));   // vérifie qu’on peut réellement écrire
@@ -634,6 +663,7 @@ function conge(p,inf){
 let CUR=(location.hash||'').slice(1);
 function route(){
   const h=CUR;
+  if(h.startsWith('carte.')) return {v:'carte',data:h.slice(6)};
   if(h.startsWith('patient-')){ const id=h.slice(8); return {v:'patient', id}; }
   if(h==='agenda' || h==='reglages' || h==='analyse') return {v:h};
   return {v:'liste'};
@@ -646,10 +676,15 @@ function go(h){
 }
 window.addEventListener('hashchange',()=>{ const h=location.hash.slice(1); if(h===CUR) return; CUR=h; S.asOf=null; S.addingEvent=false; render(); window.scrollTo(0,0); });
 $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.nav)));
-$('#btnNew').addEventListener('click',()=>openEditor(null));
+$('#btnNew').addEventListener('click',()=>isPatient()?pickDossier():openEditor(null));
+function pickDossier(){ const i=$('#importInput'); i.value=''; i.onchange=()=>importDossierFile(i.files[0]); i.click(); }
 
 function render(){
   $('#view').onchange=null;
+  document.body.classList.toggle('role-patient',isPatient());
+  $('#btnNew').textContent=isPatient()?'📥 Ouvrir un dossier':'＋ Patiente';
+  $('.brand').lastChild.textContent=isPatient()?' Mon suivi de grossesse':' Suivi de grossesse';
+  if(isPatient()&&['agenda','analyse'].includes(route().v)){ go('liste'); return; }
   if(route().v!=='liste'){ S.selecting=false; S.sel=new Set(); }
   const r=route();
   $$('[data-nav]').forEach(b=>{ const cur=(r.v==='patient'?'liste':r.v)===b.dataset.nav; if(cur) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
@@ -657,7 +692,11 @@ function render(){
   else if(r.v==='agenda') renderAgenda();
   else if(r.v==='reglages') renderSettings();
   else if(r.v==='analyse') renderAnalyse();
+  else if(r.v==='carte') renderCarte(r.data);
   else renderList();
+  let pb=document.getElementById('prevBar');
+  if(S.preview&&!pb){ document.body.insertAdjacentHTML('beforeend','<div id="prevBar">Aperçu de la version patiente <button class="btn small" id="quitPrev">Quitter l’aperçu</button></div>'); $('#quitPrev').addEventListener('click',()=>{ S.preview=false; go('reglages'); }); }
+  if(!S.preview&&pb) pb.remove();
 }
 
 /* ---------- Liste ---------- */
@@ -724,6 +763,7 @@ function matchOne(p,c){ const h=HC[c.slice(2)]; return h?!!h.f(p):true; }
 function matches(p,q){ if(!q) return true; q=q.toLowerCase(); return [p.nom,p.prenom,p.lieu,p.lieuPrec,p.telephone,...list(p.corr).map(c=>c.nom)].some(x=>(x||'').toLowerCase().includes(q)); }
 
 function renderList(){
+  if(isPatient()) return renderPatientHome();
   if(!SORTS[S.sort]) S.sort='terme';
   S.crits=S.crits.filter(c=>c.startsWith('h:'));
   const v=$('#view');
@@ -863,6 +903,14 @@ function prevLine(o){
 const ECHO_TYPES=['Datation','T1','T2 (morphologique)','T3','Contrôle de croissance','Doppler / bien-être fœtal','Autre'];
 const RDV_KINDS=[['consult','Consultation'],['echo','Échographie'],['autre','Autre (bilan, avis spécialisé…)']];
 const BIO_LIST=['Groupe sanguin ABO-RhD','RAI (agglutinines irrégulières)','Génotypage RhD fœtal','Toxoplasmose','Rubéole','Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C','CMV','NFS – plaquettes','Ferritine','Glycémie à jeun','HGPO 75 g','Dépistage combiné / marqueurs sériques','DPNI','ECBU','Protéinurie','TSH','Bilan de prééclampsie','Prélèvement vaginal strepto B'];
+function renderPatientHome(){
+  const v=$('#view'); const ps=S.patients.slice().sort((a,b)=>pDate(b)-pDate(a));
+  v.innerHTML=`<div class="summary"><strong>Mon suivi de grossesse</strong>${ps.length?'Touchez votre dossier pour l’ouvrir':'Ouvrez le dossier remis par votre sage-femme ou votre médecin'}</div>
+   ${ps.length?`<section class="group"><div class="card">${ps.map(rowHTML).join('')}</div></section>`:''}
+   <section class="sec"><div class="card"><div class="txt">Votre soignant vous remet un fichier « dossier » et un code à 6 caractères. Touchez le bouton ci-dessous, choisissez le fichier, puis saisissez le code. Pour mettre à jour votre dossier, faites de même avec le nouveau fichier.</div></div>
+   <div class="actions"><button class="btn primary" id="phImp">📥 Ouvrir un dossier reçu</button></div></section>`;
+  $('#phImp').addEventListener('click',pickDossier); bindRows(v);
+}
 const PTABS=[['synth','Synthèse'],['consult','Consultations & échos'],['agenda','Agenda'],['bio','Biologie'],['hosp','Hospitalisations'],['suites','Accouchement & suites'],['docs','Documents']];
 function rhdResults(p){ return list(p.bio).filter(b=>b.exam==='Génotypage RhD fœtal'&&b.res).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')); }
 function rhdNegConfirmed(p){ const R=rhdResults(p); return R.length>=2&&R[0].res==='Négatif'&&R[1].res==='Négatif'; }
@@ -900,7 +948,7 @@ async function renderPatient(id){
   const T=S.ptab||'synth';
   const issueD=p.status==='archived'&&p.issue?parseD(p.issue.date):null; const at=S.asOf||issueD||today(); const inf=info(p,at); S.closed=p.status==='archived'; const a=age(p.naissance);
   const bmi=imc(p);
-  let h=`<div class="back" style="display:flex;justify-content:space-between"><button class="btn ghost" id="bk">‹ Patientes</button><button class="btn small" id="pdfTop">Imprimer / PDF</button></div>`;
+  let h=`<div class="back" style="display:flex;justify-content:space-between"><button class="btn ghost" id="bk">‹ ${isPatient()?'Accueil':'Patientes'}</button><button class="btn small" id="pdfTop">Imprimer / PDF</button></div>`;
   h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):'', p.email?`<a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a>`:''].filter(Boolean).join(' – ')}</div>`;
   const fl=[];
   addictTags(p).forEach(x=>fl.push(`<span class="tag warn">${esc(x)}</span>`));
@@ -934,10 +982,12 @@ async function renderPatient(id){
   } else h+=`<div class="banner">Datation incomplète : renseignez la DDR, la date de début de grossesse, une échographie de datation ou le terme prévu.</div>`;
   h+='</section>';
   const cnt={consult:evalsOf(p).length,bio:list(p.bio).length,hosp:nh};
-  h+=`<nav class="ptabs" aria-label="Sous-dossiers">${PTABS.map(([k,l])=>`<button data-ptab="${k}" ${T===k?'aria-current="page"':''}>${l}${cnt[k]?` <small>${cnt[k]}</small>`:''}</button>`).join('')}</nav>`;
+  const TABS=isPatient()?[['synth','Mon suivi'],['agenda','Rendez-vous'],['conseils','Conseils'],['consult','Consultations'],['bio','Résultats'],['docs','Documents']]:[...PTABS.slice(0,5),['conseils','Conseils'],...PTABS.slice(5)];
+  h+=`<nav class="ptabs" aria-label="Sous-dossiers">${TABS.map(([k,l])=>`<button data-ptab="${k}" ${T===k?'aria-current="page"':''}>${l}${cnt[k]?` <small>${cnt[k]}</small>`:''}</button>`).join('')}</nav>`;
   const tx=(k,val)=> val ? `<div class="txt"><span class="k">${k}</span>${esc(val)}</div>` : '';
   const items=inf.ok?milestonesFor(p,inf):[];
 
+  if(T==='synth'&&isPatient()) h+=`<section class="sec"><div class="ptools"><button class="btn primary" id="pCard">🚨 Ma carte d’urgence</button><button class="btn" id="pShare">📤 Partager mon dossier</button></div></section>`;
   if(T==='synth'){
     if(inf.ok){
       const meth={ddr:'DDR'+(p.cycle && +p.cycle!==28?' (cycle '+esc(p.cycle)+' j)':''),dg:'Début de grossesse',echo:'Échographie de datation',dpa:'Terme prévu saisi'}[p.datingMethod||'ddr'];
@@ -968,14 +1018,15 @@ async function renderPatient(id){
     h+=`<section class="sec"><h2>Correspondants</h2><div class="card">${cr.length?cr.map(c=>`<div class="kv"><span class="k">${esc(c.role||'Autre')}</span><span class="v">${esc(c.nom||'')}${c.contact?`<br><small style="font-weight:400;color:var(--muted)">${esc(c.contact)}</small>`:''}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun correspondant renseigné.</div>'}</div></section>`;
     const rel=related(p);
     h+=`<section class="sec"><h2>Autres dossiers de la patiente</h2><div class="card">${rel.length?rel.map(x=>`<button class="row" data-open="${esc(x.id)}"><span class="rmain"><span class="nm">${esc(pregLabel(x))}</span><span style="color:var(--muted);font-size:.92rem">${esc(issueSummary(x)||(x.status==='archived'?'Archivée sans issue renseignée':'Grossesse en cours'))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun autre dossier pour cette patiente.</div>'}</div></section>`;
-    if(p.notes) h+=`<section class="sec"><h2>Notes</h2><div class="card"><div class="txt">${esc(p.notes)}</div></div></section>`;
-    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
+    if(p.notes||p.notesPriv) h+=`<section class="sec"><h2>Notes</h2><div class="card">${p.notes?`<div class="txt">${esc(p.notes)}</div>`:''}${p.notesPriv?`<div class="txt"><span class="k">🔒 Notes privées</span>${esc(p.notesPriv)}</div>`:''}</div></section>`;
+    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn" id="shareBtn">Remettre à la patiente</button><button class="btn" id="msgBtn">✉ Message</button><button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
   }
   else if(T==='consult'){
-    h+=`<section class="sec"><div class="newev"><button class="btn primary" data-newev="c|prog">＋ Consultation programmée</button><button class="btn" data-newev="c|urg">＋ Consultation d’urgence</button><button class="btn primary" data-newev="e|prog">＋ Échographie programmée</button><button class="btn" data-newev="e|urg">＋ Échographie d’urgence</button></div>
+    h+=`<section class="sec"><div class="newev"><button class="btn primary" data-newev="c|prog">＋ Consultation programmée</button><button class="btn" data-newev="c|urg">＋ Consultation d’urgence</button><button class="btn primary" data-newev="e|prog">＋ Échographie programmée</button><button class="btn" data-newev="e|urg">＋ Échographie d’urgence</button><button class="btn" id="addEchoPdf">＋ Compte rendu d’échographie (PDF ou photo)</button></div>
       <p class="note">Une consultation ou une échographie programmée valide automatiquement le rendez-vous prévu correspondant. Les venues en urgence ne valident aucun rendez-vous.</p></section>`;
     h+=`<section class="sec"><h2>Dernières données connues</h2><div class="card">${lastDataHTML(p)}</div></section>`;
     const evs=evalsOf(p);
+    h+=`<section class="sec"><h2>Comptes rendus d’échographie</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
     h+=`<section class="sec"><h2>Historique</h2><div class="card">${evs.length?evs.map(e=>{ const l=evalLine(e,p); const kinds=[e.consult!==false&&'Consultation',e.echo&&'Échographie'].filter(Boolean).join(' + ');
       return `<button class="row" data-ev="${esc(e.id)}"><span class="rmain"><span class="nm num" style="font-size:.95rem">${esc(l.when)}</span><span class="flags" style="margin-top:2px">${e.urg?'<span class="tag bad">Urgence</span>':'<span class="tag ok">Programmé</span>'}<span class="tag">${esc(kinds||'Évaluation')}</span></span>${e.urg&&e.motif?`<span style="font-size:.9rem">Motif : ${esc(e.motif)}</span>`:''}<span style="color:var(--muted);font-size:.9rem">${esc(l.txt)}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune consultation ni échographie enregistrée.</div>'}</div></section>`;
   }
@@ -990,11 +1041,11 @@ async function renderPatient(id){
     }
   }
   else if(T==='bio'){
-    h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un PDF de résultats</button></div></section>`;
+    h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un bilan (PDF ou photo)</button></div></section>`;
     if(p.rhesus==='-') h+=`<div class="rhbox" style="margin-top:12px">RhD− – ${esc(rhdStatus(p))}</div>`;
     const B=list(p.bio).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||''));
     h+=`<section class="sec"><h2>Résultats</h2><div class="card">${B.length?B.map(b=>`<button class="row" data-bio="${esc(b.id)}"><span class="rmain"><span class="nm">${esc(b.exam==='Autre'?b.examAutre||'Autre examen':b.exam)}</span><span class="num" style="font-size:.95rem">${esc([b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – '))||'—'}</span><span class="flags" style="margin-top:2px">${b.interp?`<span class="tag ${b.interp==='Normal'?'ok':b.interp==='Anormal'?'bad':'warn'}">${esc(b.interp)}</span>`:''}<span class="tag num">${b.date?fd(parseD(b.date)):'Date ?'}${b.date&&info(p).ok?' – '+sa(Math.round((parseD(b.date)-info(p).base)/DAY)):''}</span></span>${b.notes?`<span style="color:var(--muted);font-size:.9rem">${esc(b.notes)}</span>`:''}</span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun résultat enregistré.</div>'}</div></section>`;
-    h+=`<section class="sec"><h2>PDF de biologie</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
+    h+=`<section class="sec"><h2>Bilans et résultats en PDF</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
   }
   else if(T==='hosp'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addHosp2">＋ Ajouter une hospitalisation</button></div></section>`;
@@ -1006,15 +1057,21 @@ async function renderPatient(id){
     if(p.status==='archived') h+=issueHTML(p,inf);
     else h+=`<section class="sec"><div class="card"><div class="txt">La grossesse est en cours. L’accouchement et les suites de couches se renseignent à la clôture du dossier.</div></div><div class="actions"><button class="btn primary" id="arch">Clôturer la grossesse</button></div></section>`;
   }
+  else if(T==='conseils'){
+    const FS=isPatient()?fichesFor(p).filter(f=>!f.off):fichesFor(p);
+    if(isPatient()) h+=FS.length?FS.map(f=>`<section class="sec"><details class="fiche" open><summary>${esc(f.title)}</summary><div class="ftxt">${esc(f.text)}</div></details></section>`).join(''):'<div class="card empty" style="margin-top:12px">Aucun conseil transmis.</div>';
+    else { h+=`<section class="sec"><p class="note" style="margin:0 4px 8px">Fiches retenues d’après le dossier. Décochez celles à ne pas transmettre à cette patiente. Les textes se modifient dans Réglages → Fiches conseils.</p><div class="card">${FS.length?FS.map(f=>`<details class="fiche-pro"><summary><input type="checkbox" data-fiche="${esc(f.id)}" ${f.off?'':'checked'} aria-label="Transmettre ${esc(f.title)}"> <b>${esc(f.title)}</b> <small>${esc(FCOND[f.cond]?FCOND[f.cond][0]:'')}</small></summary><div class="ftxt">${esc(f.text)}</div></details>`).join(''):'<div class="txt" style="color:var(--muted)">Aucune fiche applicable.</div>'}</div></section>`; }
+  }
   else if(T==='docs'){
-    h+=`<section class="sec"><h2>Documents PDF <button class="link" id="addPdf">＋ Ajouter</button></h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
+    h+=`<section class="sec"><h2>Documents PDF <button class="link" id="addPdf">＋ Ajouter</button></h2><p class="note" style="margin:0 4px 8px">Astuce : pour un scan de qualité, utilisez l’app Fichiers (⋯ → Scanner des documents), puis « Choisir un PDF ».</p><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
   }
   v.innerHTML=h;
 
   const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click',fn); };
   on('#bk',()=>go('liste'));
   on('#edit',()=>openEditor(p));
-  on('#pdfTop',()=>openPrint(p)); on('#pdfBtn',()=>openPrint(p));
+  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#pCard',()=>openMyCard(p)); on('#pShare',()=>shareMyDossier(p)); on('#msgBtn',()=>openMessage(p));
+  $$('[data-fiche]').forEach(c=>{ c.addEventListener('click',e=>e.stopPropagation()); c.addEventListener('change',async()=>{ const id=c.dataset.fiche; p.fichesOff=list(p.fichesOff).filter(x=>x!==id); if(!c.checked) p.fichesOff.push(id); await savePatient(p); }); });
   $$('[data-ptab]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.ptab; renderPatient(id); const nav=$('.ptabs'); if(nav) nav.scrollIntoView({block:'start',behavior:'auto'}); }));
   $$('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.goto; renderPatient(id); }));
   $$('[data-newev]').forEach(b=>b.addEventListener('click',()=>{ const [k,u]=b.dataset.newev.split('|'); openEval(p,null,{consult:k==='c',echo:k==='e',urg:u==='urg'}); }));
@@ -1027,7 +1084,7 @@ async function renderPatient(id){
   on('#addEv',()=>openEvent(p,null));
   const cpj=$('#cpj'); if(cpj) cpj.addEventListener('change',async e=>{ p.congePathoJ=e.target.value; await savePatient(p); renderPatient(id); });
   on('#addBio',()=>openBio(p,null)); $$('[data-bio]').forEach(b=>b.addEventListener('click',()=>openBio(p,b.dataset.bio)));
-  on('#addBioPdf',()=>{ const i=$('#pdfInput'); i.value=''; i.onchange=()=>addPdfs(p,i.files,'bio'); i.click(); });
+  on('#addBioPdf',()=>openAddDoc(p,'Biologie','bio')); on('#addEchoPdf',()=>{ const ec=evalsOf(p).find(e=>e.echo); const map={'T1':'Échographie T1','T2 (morphologique)':'Échographie T2','T3':'Échographie T3'}; openAddDoc(p,ec&&map[ec.etype]||'Échographie de croissance / autre','echo'); });
   on('#addHosp2',()=>openHosp(p,null)); $$('[data-hosp]').forEach(b=>b.addEventListener('click',()=>openHosp(p,b.dataset.hosp)));
   on('#arch',()=>openOutcome(p)); on('#editIssue',()=>openOutcome(p));
   on('#unarch',async()=>{ if(!await ask({title:'Rouvrir ce dossier ?',body:'La grossesse repassera dans les dossiers en cours. L’issue saisie est conservée.',ok:'Rouvrir'})) return; p.status='active'; await savePatient(p); toast('Dossier rouvert'); renderPatient(id); });
@@ -1035,8 +1092,8 @@ async function renderPatient(id){
   bindRows($('#view'));
   on('#delP',async()=>{ if(!await ask({title:'Supprimer ce dossier ?',body:`Le dossier de ${fullName(p)} et ses documents PDF seront définitivement effacés. Cette action est irréversible.`,ok:'Supprimer',danger:true})) return;
     if(await deletePatients([p.id])){ toast('Dossier supprimé'); go('liste'); } });
-  on('#addPdf',()=>{ const i=$('#pdfInput'); i.value=''; i.onchange=()=>addPdfs(p,i.files,''); i.click(); });
-  if(T==='docs') drawDocs(p,null); if(T==='bio') drawDocs(p,'bio');
+  on('#addPdf',()=>openAddDoc(p,'Autre',null));
+  if(T==='docs') drawDocs(p,null); if(T==='bio') drawDocs(p,'bio'); if(T==='consult') drawDocs(p,'echo');
 }
 
 /* ---------- Rendez-vous, biologie, hospitalisations ---------- */
@@ -1052,6 +1109,7 @@ function miniSheet(title,body,onSave,onDel){
   return {sh,val};
 }
 function openRdv(p,msId){
+  if(isPatient()) return;
   const inf=info(p); const it=milestonesFor(p,inf).find(x=>x.id===msId); if(!it) return;
   const rv=(p.rdv||{})[msId]||{};
   const {sh,val}=miniSheet(it.name,`<fieldset><legend>Date du rendez-vous</legend><div class="fbox">
@@ -1066,6 +1124,7 @@ function openRdv(p,msId){
   sh.oninput=sync; sh.onchange=sync; sync();
 }
 function openEvent(p,evId){
+  if(isPatient()) return;
   const ex=evId?list(p.events).find(e=>e.id===evId):null; const e=Object.assign({kind:'consult',name:'',date:'',time:'',note:''},ex||{});
   const inf=info(p);
   const {sh,val}=miniSheet(ex?'Rendez-vous':'Nouveau rendez-vous',`<fieldset><legend>Rendez-vous</legend><div class="fbox">
@@ -1080,6 +1139,7 @@ function openEvent(p,evId){
   sh.oninput=sync; sh.onchange=sync; sync();
 }
 function openBio(p,bid){
+  if(isPatient()) return;
   const ex=bid?list(p.bio).find(b=>b.id===bid):null; const b=Object.assign({date:iso(today()),exam:'',examAutre:'',res:'',unit:'',interp:'',notes:''},ex||{});
   const inf=info(p);
   const {sh,val}=miniSheet(ex?'Résultat biologique':'Nouveau résultat',`<fieldset><legend>Examen</legend><div class="fbox">
@@ -1100,6 +1160,7 @@ function openBio(p,bid){
   sh.oninput=sync; sh.onchange=sync; sync();
 }
 function openHosp(p,hid){
+  if(isPatient()) return;
   const ex=hid?list(p.hospits).find(x=>x.id===hid):null; const x=Object.assign({debut:iso(today()),fin:'',motif:'',lieu:'',notes:''},ex||{});
   miniSheet(ex?'Hospitalisation':'Nouvelle hospitalisation',`<fieldset><legend>Hospitalisation</legend><div class="fbox">
     <div class="grid2">${F('Entrée','<input type="date" name="hd" value="'+esc(x.debut||'')+'">')}${F('Sortie','<input type="date" name="hf" value="'+esc(x.fin||'')+'">')}</div>
@@ -1134,6 +1195,7 @@ function applyEvalValidation(p,e){
 }
 function planMotifs(pl){ return [...list(pl&&pl.motifs),...(pl&&pl.autre?pl.autre.split(',').map(x=>x.trim()).filter(Boolean):[])]; }
 function openPlan(p){
+  if(isPatient()) return;
   const pl=Object.assign({type:'Déclenchement programmé',motifs:[],autre:'',date:'',notes:''},JSON.parse(JSON.stringify(p.planned||{})));
   const inf=info(p); const sh=$('#sheet');
   const win=inf.ok?' : du '+fd(inf.base+266*DAY)+' au '+fd(inf.base+273*DAY):'';
@@ -1158,6 +1220,7 @@ function openPlan(p){
   const d=$('#pDel'); if(d) d.addEventListener('click',async()=>{ if(!await ask({title:'Retirer la programmation ?',body:'Le déclenchement ou la césarienne programmée sera retiré des dates importantes.',ok:'Retirer',danger:true})) return; delete p.planned; if(p.done) delete p.done.plan; await savePatient(p); close(); renderPatient(p.id); });
 }
 function openEval(p,evId,preset){
+  if(isPatient()) return;
   const ex=evId?list(p.evals).find(e=>e.id===evId):null;
   const e=Object.assign({id:uid('e'),date:iso(today()),urg:!!(preset&&preset.urg),etype:'',motif:'',poidsM:'',pas:'',pad:'',presentation:'',epf:'',pct:'',placPos:'',placIns:'',placDist:'',colLong:'',oi:'',oiMm:'',notes:''},ex?JSON.parse(JSON.stringify(ex)):(preset?{consult:!!preset.consult,echo:!!preset.echo}:{}));
   const sh=$('#sheet');
@@ -1198,7 +1261,7 @@ function openEval(p,evId,preset){
     <div class="f"><span>Orifice interne (OI)</span>${radios('oi',[['Fermé','Fermé'],['Ouvert','Ouvert']],e.oi)}</div>
     <div id="eOi">${F('Ouverture de l’OI (mm)',tin('oiMm'))}</div>
    </div></fieldset>
-   <fieldset><legend>Notes</legend><div class="fbox">${F('Remarques','<textarea name="notes">'+esc(e.notes||'')+'</textarea>')}</div></fieldset>
+   <fieldset><legend>Notes</legend><div class="fbox">${F('Remarques','<textarea name="notes">'+esc(e.notes||'')+'</textarea>')}<label class="chkline"><input type="checkbox" name="enp" ${e.notesPriv?'checked':''}> 🔒 Remarque privée (non transmise à la patiente)</label></div></fieldset>
    ${ex?'<div class="actions"><button class="btn danger" id="eDel">Supprimer cette évaluation</button></div>':''}
   </div>`;
   sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
@@ -1222,7 +1285,7 @@ function openEval(p,evId,preset){
   const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
   $('#eCancel').addEventListener('click',close);
   $('#eSave').addEventListener('click',async()=>{
-    for(const k of ['date','presentation','placPos','placIns','oi','notes']) e[k]=val(k);
+    for(const k of ['date','presentation','placPos','placIns','oi','notes']) e[k]=val(k); e.notesPriv=sh.querySelector('[name="enp"]').checked;
     for(const k of ['epf','pct','placDist','colLong','oiMm','poidsM','pas','pad']) e[k]=nstr(val(k)); e.pctManual=pctManual;
     e.consult=sh.querySelector('[name="etC"]').checked; e.echo=sh.querySelector('[name="etE"]').checked;
     e.urg=val('eurg')==='urg'; e.etype=e.echo?val('etype'):''; e.motif=e.urg?val('eMotif'):'';
@@ -1234,34 +1297,105 @@ function openEval(p,evId,preset){
   });
   const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
 }
-async function drawDocs(p,cat){
+const DOC_CATS=['Déclaration de grossesse','Bilan du 1er trimestre','Bilan du 6e mois','Échographie T1','Échographie T2','Échographie T3','Échographie de croissance / autre','Biologie','Courrier','Compte rendu d’hospitalisation','Accouchement / suites','Autre'];
+const catOf=f=>f.cat==='bio'?'Biologie':(DOC_CATS.includes(f.cat)?f.cat:(f.cat||'Autre'));
+const DOC_FILTERS={bio:c=>c==='Biologie'||/^Bilan/.test(c)||c==='Déclaration de grossesse',echo:c=>/^Échographie/.test(c)};
+async function drawDocs(p,filter){
   const box=$('#docs'); if(!box) return;
   let fs=[]; try{ fs=await filesFor(p.id); }catch(e){}
-  if(cat) fs=fs.filter(f=>f.cat===cat);
+  if(filter&&DOC_FILTERS[filter]) fs=fs.filter(f=>DOC_FILTERS[filter](catOf(f)));
   fs.sort((a,b)=>b.addedAt-a.addedAt);
-  box.innerHTML = fs.length ? fs.map(f=>`<div class="doc"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button><small class="num">${f.cat==='bio'?'Biologie – ':''}${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))}</small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')
-    : '<div class="txt" style="color:var(--muted)">Aucun document. Ajoutez des comptes rendus d’échographie, des bilans ou des courriers.</div>';
+  const groups=DOC_CATS.concat([...new Set(fs.map(catOf))].filter(c=>!DOC_CATS.includes(c))).map(c=>[c,fs.filter(f=>catOf(f)===c)]).filter(g=>g[1].length);
+  box.innerHTML = fs.length ? groups.map(([c,arr])=>`<div class="dgrp">${esc(c)} <small>${arr.length}</small></div>`+arr.map(f=>`<div class="doc"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button><small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))} – <button class="link" data-recat="${esc(f.id)}" style="padding:0;font-size:.8rem">Changer de rubrique</button></small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')).join('')
+    : '<div class="txt" style="color:var(--muted)">Aucun document dans cette rubrique.</div>';
   $$('[data-view]',box).forEach(b=>b.addEventListener('click',()=>viewPdf(b.dataset.view)));
-  $$('[data-delf]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.delf); if(!await ask({title:'Supprimer ce document ?',body:f.name,ok:'Supprimer',danger:true})) return; await del('files',f.id); drawDocs(p,cat); }));
+  $$('[data-delf]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.delf); if(!await ask({title:'Supprimer ce document ?',body:f.name,ok:'Supprimer',danger:true})) return; await del('files',f.id); drawDocs(p,filter); }));
+  $$('[data-recat]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.recat); const c=await pickCat(catOf(f),'Rubrique du document'); if(!c||c===catOf(f)) return; await setFileCat(f.id,c); toast('Document classé dans « '+c+' »'); drawDocs(p,filter); }));
 }
-async function addPdfs(p,files,cat){
+async function setFileCat(fid,cat){
+  if(MODE==='cloud'){ const d=await C.col.doc(fid).get(); if(d.exists){ const o=JSON.parse(JSON.stringify(d.data())); o.cat=cat; await C.col.doc(fid).set(o); } return; }
+  const f=await get('files',fid); if(f){ f.cat=cat; await put('files',f); }
+}
+function pickCat(cur,title,withActions){
+  return new Promise(res=>{ const m=$('#modal'), b=$('#modalBox');
+    b.innerHTML=`<h3>${esc(title)}</h3><div class="catlist">${DOC_CATS.map(c=>`<label><input type="radio" name="pcat" value="${esc(c)}" ${c===cur?'checked':''}><span>${esc(c)}</span></label>`).join('')}</div>
+     <div class="bx">${withActions?'<button class="btn" data-a="0">Annuler</button><button class="btn" data-a="photo">📷 Photographier</button><button class="btn primary" data-a="pdf">Choisir un PDF</button>':'<button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Valider</button>'}</div>`;
+    m.classList.add('open');
+    m.onclick=e=>{ const a=e.target.closest('[data-a]'); if(!a){ if(e.target===m){ m.classList.remove('open'); m.onclick=null; res(null); } return; }
+      const c=(b.querySelector('[name="pcat"]:checked')||{}).value; m.classList.remove('open'); m.onclick=null;
+      if(a.dataset.a==='0') return res(null); if(!c){ toast('Choisissez une rubrique'); return res(null); }
+      res(withActions?{cat:c,how:a.dataset.a}:c); }; });
+}
+async function openAddDoc(p,defCat,filter){
+  const r=await pickCat(defCat,'Ajouter un document',true); if(!r) return;
+  if(r.how==='pdf'){ const i=$('#pdfInput'); i.value=''; i.onchange=()=>addPdfs(p,i.files,r.cat,filter); i.click(); }
+  else photoToPdf(p,r.cat,filter);
+}
+async function addPdfs(p,files,cat,filter){
   let n=0;
   for(const file of files){
     if(!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)){ toast(file.name+' n’est pas un PDF'); continue; }
-    try{ const buf=await file.arrayBuffer(); await put('files',{id:uid('f'),patientId:p.id,cat:cat||'',name:file.name,type:'application/pdf',size:file.size,addedAt:Date.now(),data:buf}); n++; }
+    try{ const buf=await file.arrayBuffer(); await put('files',{id:uid('f'),patientId:p.id,cat:cat||'Autre',name:file.name,type:'application/pdf',size:file.size,addedAt:Date.now(),data:buf}); n++; }
     catch(e){ toast('Impossible d’enregistrer '+file.name+' (espace insuffisant ?)'); }
   }
-  if(n) toast(n+' document'+(n>1?'s ajoutés':' ajouté'));
-  drawDocs(p,cat||null);
+  if(n) toast(n+' document'+(n>1?'s ajoutés':' ajouté')+' dans « '+cat+' »');
+  drawDocs(p,filter);
 }
-let viewing=null;
+/* Photos → PDF */
+function readImage(file){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const max=1700, k=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); res({data:c.toDataURL('image/jpeg',0.82),w:c.width,h:c.height}); }; im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('img')); }; im.src=url; }); }
+function photoToPdf(p,cat,filter){
+  const pages=[]; let inp=document.getElementById('photoInput');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); inp.id='photoInput'; inp.hidden=true; document.body.appendChild(inp); }
+  const m=$('#modal'), b=$('#modalBox');
+  const draw=()=>{ b.innerHTML=`<h3>Photographier un document</h3><p>Rubrique : <b>${esc(cat)}</b><br>${pages.length?pages.length+' page'+(pages.length>1?'s':'')+' prise'+(pages.length>1?'s':'')+'.':'Posez le document à plat, bien éclairé.'}</p>
+    <div class="thumbs">${pages.map(pg=>`<img src="${pg.data}" alt="">`).join('')}</div>
+    <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn" data-a="add">📷 ${pages.length?'Ajouter une page':'Prendre la photo'}</button>${pages.length?'<button class="btn primary" data-a="ok">Créer le PDF</button>':''}</div>`; m.classList.add('open'); };
+  inp.onchange=async()=>{ const files=[...inp.files]; for(const f of files){ try{ pages.push(await readImage(f)); }catch(e){ toast('Image illisible'); } } inp.value=''; draw(); };
+  m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return;
+    if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
+    if(a.dataset.a==='add'){ inp.click(); return; }
+    if(a.dataset.a==='ok'){ a.disabled=true; a.textContent='Création…';
+      try{ const JsPDF=await loadJsPDF(); const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210,H=297,M=8;
+        pages.forEach((pg,i)=>{ if(i) doc.addPage(); const k=Math.min((W-2*M)/pg.w,(H-2*M)/pg.h); const w=pg.w*k,h=pg.h*k; doc.addImage(pg.data,'JPEG',(W-w)/2,(H-h)/2,w,h); });
+        const blob=doc.output('blob'); const name=cat+' – '+fd(today())+'.pdf';
+        await put('files',{id:uid('f'),patientId:p.id,cat,name,type:'application/pdf',size:blob.size,addedAt:Date.now(),data:await blob.arrayBuffer()});
+        m.classList.remove('open'); m.onclick=null; toast('Document ajouté dans « '+cat+' »'); drawDocs(p,filter);
+      }catch(err){ a.disabled=false; a.textContent='Créer le PDF'; toast('Création du PDF impossible (connexion Internet nécessaire la première fois)'); } } };
+  draw(); inp.click();
+}
+
+let viewing=null, vScale=1, vRun=0;
+let pdfjsP=null;
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(!pdfjsP) pdfjsP=new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=PDFJS+'pdf.min.js';
+    sc.onload=async()=>{ for(let i=0;i<60&&!window.pdfjsLib;i++) await new Promise(r=>setTimeout(r,50)); if(!window.pdfjsLib){ pdfjsP=null; return rej(new Error('load')); } try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; }catch(e){} res(window.pdfjsLib); };
+    sc.onerror=()=>{ pdfjsP=null; rej(new Error('load')); }; document.head.appendChild(sc); });
+  return pdfjsP;
+}
+async function drawPdfPages(){
+  const box=$('#vPages'), f=viewing; if(!f) return; const run=++vRun;
+  box.innerHTML='<div class="vmsg">Ouverture du document…</div>';
+  let lib; try{ lib=await loadPdfJs(); }catch(e){ box.innerHTML='<div class="vmsg">Le lecteur de PDF n’a pas pu être chargé (connexion Internet nécessaire la première fois).<br><br><button class="btn primary" id="vAlt">Ouvrir avec une autre application</button></div>'; $('#vAlt').addEventListener('click',()=>$('#vSave').click()); return; }
+  try{
+    const doc=await lib.getDocument({data:new Uint8Array(f.data.slice(0))}).promise; if(run!==vRun) return;
+    box.innerHTML=''; const W=Math.max(200,box.clientWidth-20), dpr=Math.min(window.devicePixelRatio||1,2.5);
+    for(let n=1;n<=doc.numPages;n++){
+      const page=await doc.getPage(n); if(run!==vRun) return;
+      const base=page.getViewport({scale:1}); const css=W*vScale/base.width; const vp=page.getViewport({scale:css*dpr});
+      const c=document.createElement('canvas'); c.width=Math.floor(vp.width); c.height=Math.floor(vp.height); c.style.width=Math.floor(vp.width/dpr)+'px'; c.style.height=Math.floor(vp.height/dpr)+'px';
+      box.appendChild(c); await page.render({canvasContext:c.getContext('2d'),canvas:c,viewport:vp}).promise;
+    }
+  }catch(e){ if(run===vRun) box.innerHTML='<div class="vmsg">Ce document n’a pas pu être affiché.<br><br><button class="btn primary" id="vAlt">Ouvrir avec une autre application</button></div>'; const a=$('#vAlt'); if(a) a.addEventListener('click',()=>$('#vSave').click()); }
+}
 async function viewPdf(fid){
-  const f=await get('files',fid); if(!f) return; viewing=f;
-  const url=URL.createObjectURL(new Blob([f.data],{type:'application/pdf'}));
-  $('#vName').textContent=f.name; $('#vFrame').src=url; $('#viewer').classList.add('open');
+  const f=await get('files',fid); if(!f) return; viewing=f; vScale=1; $('#vZoom').textContent='＋';
+  $('#vName').textContent=f.name; $('#viewer').classList.add('open'); document.body.style.overflow='hidden';
+  drawPdfPages();
 }
-$('#vClose').addEventListener('click',()=>{ const fr=$('#vFrame'); if(fr.src.startsWith('blob:')) URL.revokeObjectURL(fr.src); fr.removeAttribute('src'); $('#viewer').classList.remove('open'); viewing=null; });
-$('#vOpen').addEventListener('click',()=>{ const src=$('#vFrame').src; if(src) window.open(src,'_blank'); });
+$('#vZoom').addEventListener('click',()=>{ vScale=vScale===1?1.8:1; $('#vZoom').textContent=vScale===1?'＋':'－'; drawPdfPages(); });
+$('#vClose').addEventListener('click',()=>{ vRun++; $('#vPages').innerHTML=''; $('#viewer').classList.remove('open'); document.body.style.overflow=''; viewing=null; });
 $('#vSave').addEventListener('click',()=>{ if(viewing) saveFile(viewing.name.match(/\.pdf$/i)?viewing.name:viewing.name+'.pdf', new Blob([viewing.data],{type:'application/pdf'})); });
 
 /* ---------- Dossiers liés et issue ---------- */
@@ -1328,6 +1462,7 @@ function kidRow(e,i){
   <div class="grid3">${t('apg1','Apgar 1 min','numeric')}${t('apg5','Apgar 5 min','numeric')}${t('apg10','Apgar 10 min','numeric')}</div></div>`;
 }
 function openOutcome(p){
+  if(isPatient()) return;
   const wasActive=p.status!=='archived';
   const o=Object.assign({type:'',date:'',hdd:'',hddVol:'',perinee:'',analgesie:'',delivrance:'',lieu:p.lieu||'',lieuPrec:p.lieuPrec||'',enfants:[],alim:'',notes:'',complMat:[],complNeo:[],travail:'',declMotifs:[],declMeth:[],cesMotifs:[],code:'',hDec:'',hNais:'',delai:'',instrument:'',instrMotifs:[],presentation:''},JSON.parse(JSON.stringify(p.issue||{})));
   if(!o.enfants.length){ const sf=sexfArr(p); o.enfants=sf.map(s=>({sexe:s==='F'||s==='M'?s:''})); }
@@ -1429,8 +1564,8 @@ function openOutcome(p){
 }
 
 /* ---------- Impression / PDF ---------- */
-const PRINT_SECTIONS=[['ident','Identité, datation et alertes'],['ant','Antécédents et grossesses antérieures'],['tt','Traitements'],['patho','Pathologies de la grossesse'],['suivi','Suivi clinique et échographique'],['bio','Biologie'],['hosp','Hospitalisations'],['dates','Dates importantes'],['acc','Accouchement prévu et correspondants'],['issue','Issue de la grossesse'],['notes','Notes']];
-function pdfSections(p){
+const PRINT_SECTIONS=[['ident','Identité, datation et alertes'],['ant','Antécédents et grossesses antérieures'],['tt','Traitements'],['patho','Pathologies de la grossesse'],['suivi','Suivi clinique et échographique'],['bio','Biologie'],['hosp','Hospitalisations'],['conseils','Conseils personnalisés'],['dates','Dates importantes'],['acc','Accouchement prévu et correspondants'],['issue','Issue de la grossesse'],['notes','Notes']];
+function pdfSections(p,patient){
   const inf=info(p), a=age(p.naissance), bmi=imc(p), S2=[];
   const sec=(id,title,rows)=>{ rows=rows.filter(r=>r&&r[1]); if(rows.length) S2.push({id,title,rows}); };
   sec('ident','Identité et datation',[
@@ -1449,21 +1584,22 @@ function pdfSections(p){
   if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.rdv!=null&&it.st!=='fait'?' – RDV le '+fd(it.rdv)+(it.time?' à '+it.time:''):'')+(it.st==='fait'?' – fait le '+fd(parseD(it.done)):'')]));
   sec('acc','Accouchement prévu et correspondants',[['Lieu prévu',lieuLabel(p)+(p.niveau?' (type '+p.niveau+')':'')],...list(p.corr).filter(c=>c.nom).map(c=>[c.role,c.nom+(c.contact?' – '+c.contact:'')])]);
   if(p.status==='archived') sec('issue','Issue de la grossesse',issueRows(p,inf));
-  sec('notes','Notes',[['Notes',p.notes]]);
+  if(patient) sec('conseils','Conseils personnalisés',fichesFor(p).filter(f=>!f.off).map(f=>[f.title,f.text]));
+  sec('notes','Notes',[['Notes',p.notes],...(patient?[]:[['Notes privées',p.notesPriv]])]);
   return S2;
 }
 let jsPDFp=null;
 function loadJsPDF(){ if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF); if(!jsPDFp) jsPDFp=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=()=>res(window.jspdf.jsPDF); s.onerror=()=>{ jsPDFp=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsPDFp; }
 function pdfTxt(s){ return String(s==null?'':s).replace(/[\u202F\u00A0]/g,' ').replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/−/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/→/g,'->').replace(/✓/g,'x').replace(/²/g,'2'); }
-async function makePDF(p,ids){
+async function makePDF(p,ids,patient){
   const JsPDF=await loadJsPDF();
   const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210, M=16, KW=58; let y=18;
   const page=()=>{ doc.addPage(); y=18; };
   const need=hh=>{ if(y+hh>282) page(); };
-  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(pdfTxt('Dossier de suivi de grossesse'),M,y); y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(pdfTxt(patient?'Synthèse de suivi de grossesse':'Dossier de suivi de grossesse'),M,y); y+=8;
   doc.setFontSize(12); doc.text(pdfTxt(fullName(p)),M,y); y+=6;
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90); doc.text(pdfTxt('Document édité le '+fd(today())+' – informations confidentielles'),M,y); doc.setTextColor(0); y+=8;
-  for(const s of pdfSections(p).filter(s=>ids.includes(s.id))){
+  for(const s of pdfSections(p,patient).filter(s=>ids.includes(s.id))){
     need(14); doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(122,46,99); doc.text(pdfTxt(s.title),M,y); doc.setTextColor(0); y+=2; doc.setDrawColor(200); doc.line(M,y,W-M,y); y+=5;
     doc.setFontSize(9.5);
     for(const [k,v] of s.rows){
@@ -1477,29 +1613,29 @@ async function makePDF(p,ids){
   const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text(pdfTxt(fullName(p)+' – page '+i+'/'+n),W-M,291,{align:'right'}); }
   return doc.output('blob');
 }
-function printFallback(p,ids){
+function printFallback(p,ids,patient){
   let el=document.getElementById('printArea'); if(!el){ el=document.createElement('div'); el.id='printArea'; document.body.appendChild(el); }
-  el.innerHTML=`<h1>Dossier de suivi de grossesse</h1><h2>${esc(fullName(p))}</h2><p class="pmeta">Document édité le ${fd(today())} – informations confidentielles</p>`+
-    pdfSections(p).filter(s=>ids.includes(s.id)).map(s=>`<h3>${esc(s.title)}</h3><table>${s.rows.map(([k,v])=>`<tr><th${k==='ALLERGIES'?' class="pal"':''}>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('');
+  el.innerHTML=`<h1>${patient?'Synthèse':'Dossier'} de suivi de grossesse</h1><h2>${esc(fullName(p))}</h2><p class="pmeta">Document édité le ${fd(today())} – informations confidentielles</p>`+
+    pdfSections(p,patient).filter(s=>ids.includes(s.id)).map(s=>`<h3>${esc(s.title)}</h3><table>${s.rows.map(([k,v])=>`<tr><th${k==='ALLERGIES'?' class="pal"':''}>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('');
   document.body.classList.add('printing');
   const done=()=>{ document.body.classList.remove('printing'); window.removeEventListener('afterprint',done); };
   window.addEventListener('afterprint',done);
   setTimeout(()=>{ window.print(); setTimeout(done,1500); },100);
   toast('Dans la fenêtre d’impression, choisissez « Enregistrer en PDF » ou partagez');
 }
-function openPrint(p){
-  const m=$('#modal'), b=$('#modalBox'); const avail=new Set(pdfSections(p).map(s=>s.id));
-  b.innerHTML=`<h3>Imprimer / exporter en PDF</h3><p>Choisissez les parties du dossier à inclure.</p><div class="seg" style="flex-direction:column;align-items:stretch">${PRINT_SECTIONS.filter(([k])=>avail.has(k)).map(([k,l])=>`<label><input type="checkbox" data-ps value="${k}" checked><span style="display:block">${esc(l)}</span></label>`).join('')}</div>
+function openPrint(p,patient){
+  const m=$('#modal'), b=$('#modalBox'); const avail=new Set(pdfSections(p,patient).map(s=>s.id));
+  b.innerHTML=`<h3>${patient?'Synthèse pour la patiente':'Imprimer / exporter en PDF'}</h3>${patient?'<p>Les notes privées ne sont pas incluses.</p>':''}<p>Choisissez les parties du dossier à inclure.</p><div class="seg" style="flex-direction:column;align-items:stretch">${PRINT_SECTIONS.filter(([k])=>avail.has(k)).map(([k,l])=>`<label><input type="checkbox" data-ps value="${k}" checked><span style="display:block">${esc(l)}</span></label>`).join('')}</div>
   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Créer le PDF</button></div>`;
   m.classList.add('open');
   m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a){ if(e.target===m){ m.classList.remove('open'); m.onclick=null; } return; }
     if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
     const ids=$$('[data-ps]:checked',b).map(c=>c.value); if(!ids.length){ toast('Cochez au moins une partie'); return; }
     a.disabled=true; a.textContent='Création…';
-    try{ const blob=await makePDF(p,ids); m.classList.remove('open'); m.onclick=null;
-      const name='dossier-'+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.pdf';
+    try{ const blob=await makePDF(p,ids,patient); m.classList.remove('open'); m.onclick=null;
+      const name=(patient?'synthese-':'dossier-')+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.pdf';
       if(await saveFile(name,blob)) toast('PDF créé');
-    }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids); }
+    }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids,patient); }
   };
 }
 /* ---------- Analyse : recherche et statistiques ---------- */
@@ -1742,6 +1878,301 @@ function statsHTML(F){
   h+=`<p class="note">Les pourcentages sont calculés sur les dossiers (ou les enfants) où l’information est renseignée ; les données manquantes ne sont pas comptées.</p>`;
   return h;
 }
+/* ---------- Générateur de QR code (mode octets, d’après l’algorithme de référence ISO 18004) ---------- */
+const QR=(()=>{
+  const ECC_CW=[[-1,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],[-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28]];
+  const NBLK=[[-1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],[-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49]];
+  const FMT=[1,0]; // L, M
+  const rawMods=v=>{ let r=(16*v+128)*v+64; if(v>=2){ const n=Math.floor(v/7)+2; r-=(25*n-10)*n-55; if(v>=7) r-=36; } return r; };
+  const dataCW=(v,e)=>Math.floor(rawMods(v)/8)-ECC_CW[e][v]*NBLK[e][v];
+  const mul=(x,y)=>{ let z=0; for(let i=7;i>=0;i--){ z=(z<<1)^((z>>>7)*0x11D); z^=((y>>>i)&1)*x; } return z&255; };
+  const rsDiv=d=>{ const r=new Array(d).fill(0); r[d-1]=1; let root=1; for(let i=0;i<d;i++){ for(let j=0;j<d;j++){ r[j]=mul(r[j],root); if(j+1<d) r[j]^=r[j+1]; } root=mul(root,2); } return r; };
+  const rsRem=(data,div)=>{ const r=new Array(div.length).fill(0); for(const b of data){ const f=b^r.shift(); r.push(0); div.forEach((c,i)=>r[i]^=mul(c,f)); } return r; };
+  function encode(bytes,ecl){
+    const e=ecl==='L'?0:1; let ver=0;
+    for(let v=1;v<=40;v++){ const cc=v<=9?8:16; if(4+cc+bytes.length*8<=dataCW(v,e)*8){ ver=v; break; } }
+    if(!ver) throw new Error('Données trop volumineuses pour un QR code');
+    const bits=[]; const put=(val,n)=>{ for(let i=n-1;i>=0;i--) bits.push((val>>>i)&1); };
+    put(4,4); put(bytes.length,ver<=9?8:16); for(const b of bytes) put(b,8);
+    const cap=dataCW(ver,e)*8; put(0,Math.min(4,cap-bits.length)); put(0,(8-bits.length%8)%8);
+    for(let pad=0xEC;bits.length<cap;pad^=0xEC^0x11) put(pad,8);
+    const data=[]; for(let i=0;i<bits.length;i+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[i+j]; data.push(b); }
+    const nb=NBLK[e][ver], ecLen=ECC_CW[e][ver], raw=Math.floor(rawMods(ver)/8), nShort=nb-raw%nb, shortLen=Math.floor(raw/nb);
+    const blocks=[]; const div=rsDiv(ecLen);
+    for(let i=0,k=0;i<nb;i++){ const dat=data.slice(k,k+shortLen-ecLen+(i<nShort?0:1)); k+=dat.length; const ecc=rsRem(dat,div); if(i<nShort) dat.push(0); blocks.push(dat.concat(ecc)); }
+    const cw=[]; for(let i=0;i<blocks[0].length;i++) blocks.forEach((b,j)=>{ if(i!==shortLen-ecLen||j>=nShort) cw.push(b[i]); });
+    const size=ver*4+17; const M=Array.from({length:size},()=>new Array(size).fill(false)); const F=Array.from({length:size},()=>new Array(size).fill(false));
+    const set=(x,y,d)=>{ M[y][x]=d; F[y][x]=true; };
+    for(let i=0;i<size;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+    for(const [cx,cy] of [[3,3],[size-4,3],[3,size-4]]) for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++){ const d=Math.max(Math.abs(dx),Math.abs(dy)), x=cx+dx, y=cy+dy; if(x>=0&&x<size&&y>=0&&y<size) set(x,y,d!==2&&d!==4); }
+    const al=[]; if(ver>1){ const n=Math.floor(ver/7)+2; const step=ver===32?26:Math.ceil((ver*4+4)/(n*2-2))*2; al.push(6); for(let pos=size-7;al.length<n;pos-=step) al.splice(1,0,pos); }
+    for(let i=0;i<al.length;i++) for(let j=0;j<al.length;j++){ if((i===0&&j===0)||(i===0&&j===al.length-1)||(i===al.length-1&&j===0)) continue; for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) set(al[i]+dx,al[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1); }
+    const fmt=mask=>{ const d=FMT[e]<<3|mask; let r=d; for(let i=0;i<10;i++) r=(r<<1)^((r>>>9)*0x537); const b=((d<<10)|r)^0x5412; const g=i=>((b>>>i)&1)===1;
+      for(let i=0;i<=5;i++) set(8,i,g(i)); set(8,7,g(6)); set(8,8,g(7)); set(7,8,g(8)); for(let i=9;i<15;i++) set(14-i,8,g(i));
+      for(let i=0;i<8;i++) set(size-1-i,8,g(i)); for(let i=8;i<15;i++) set(8,size-15+i,g(i)); set(8,size-8,true); };
+    fmt(0);
+    if(ver>=7){ let r=ver; for(let i=0;i<12;i++) r=(r<<1)^((r>>>11)*0x1F25); const b=ver<<12|r; for(let i=0;i<18;i++){ const bit=((b>>>i)&1)===1, a=size-11+i%3, c=Math.floor(i/3); set(a,c,bit); set(c,a,bit); } }
+    let i=0; for(let right=size-1;right>=1;right-=2){ if(right===6) right=5; for(let vert=0;vert<size;vert++) for(let j=0;j<2;j++){ const x=right-j, up=((right+1)&2)===0, y=up?size-1-vert:vert; if(!F[y][x]&&i<cw.length*8){ M[y][x]=((cw[i>>>3]>>>(7-(i&7)))&1)===1; i++; } } }
+    const maskFn=[(x,y)=>(x+y)%2===0,(x,y)=>y%2===0,(x,y)=>x%3===0,(x,y)=>(x+y)%3===0,(x,y)=>(Math.floor(x/3)+Math.floor(y/2))%2===0,(x,y)=>x*y%2+x*y%3===0,(x,y)=>(x*y%2+x*y%3)%2===0,(x,y)=>((x+y)%2+x*y%3)%2===0];
+    const apply=m=>{ for(let y=0;y<size;y++) for(let x=0;x<size;x++) if(!F[y][x]&&maskFn[m](x,y)) M[y][x]=!M[y][x]; };
+    const penalty=()=>{ let p=0, dark=0;
+      for(let y=0;y<size;y++){ let run=1; for(let x=1;x<size;x++){ if(M[y][x]===M[y][x-1]){ run++; if(run===5) p+=3; else if(run>5) p++; } else run=1; } }
+      for(let x=0;x<size;x++){ let run=1; for(let y=1;y<size;y++){ if(M[y][x]===M[y-1][x]){ run++; if(run===5) p+=3; else if(run>5) p++; } else run=1; } }
+      for(let y=0;y<size-1;y++) for(let x=0;x<size-1;x++){ const c=M[y][x]; if(c===M[y][x+1]&&c===M[y+1][x]&&c===M[y+1][x+1]) p+=3; }
+      for(let y=0;y<size;y++) for(let x=0;x<size;x++) if(M[y][x]) dark++;
+      p+=Math.floor(Math.abs(dark*20-size*size*10)/(size*size))*10; return p; };
+    let best=0, bp=Infinity; for(let m=0;m<8;m++){ apply(m); fmt(m); const pen=penalty(); if(pen<bp){ bp=pen; best=m; } apply(m); }
+    apply(best); fmt(best);
+    return {size,modules:M,version:ver};
+  }
+  function svg(q,px){ const n=q.size+8; let d=''; for(let y=0;y<q.size;y++) for(let x=0;x<q.size;x++) if(q.modules[y][x]) d+=`M${x+4},${y+4}h1v1h-1z`; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" width="${px||n*4}" height="${px||n*4}" shape-rendering="crispEdges" role="img" aria-label="QR code"><rect width="${n}" height="${n}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`; }
+  function png(q,scale){ const n=q.size+8, c=document.createElement('canvas'); c.width=c.height=n*scale; const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.fillStyle='#000'; for(let y=0;y<q.size;y++) for(let x=0;x<q.size;x++) if(q.modules[y][x]) g.fillRect((x+4)*scale,(y+4)*scale,scale,scale); return new Promise(r=>c.toBlob(r,'image/png')); }
+  return {encode,svg,png};
+})();
+
+/* ---------- Transmission à la patiente : PDF, fichier chiffré, QR code ---------- */
+const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newCode(){ const a=new Uint8Array(6); crypto.getRandomValues(a); return [...a].map(x=>CODE_CHARS[x%32]).join(''); }
+const fmtCode=c=>c.slice(0,3)+' '+c.slice(3);
+const normCode=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const u8b64=u=>{ let s=''; for(let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); };
+const b64u8=s=>{ const b=atob(s); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; };
+const toUrl=s=>s.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const fromUrl=s=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return s; };
+async function pipe(u8,stream){ const r=new Response(new Blob([u8]).stream().pipeThrough(stream)); return new Uint8Array(await r.arrayBuffer()); }
+const canZip=()=>typeof CompressionStream==='function';
+const zip=u8=>pipe(u8,new CompressionStream('deflate-raw'));
+const unzip=u8=>{ if(typeof DecompressionStream!=='function') throw new Error('nozip'); return pipe(u8,new DecompressionStream('deflate-raw')); };
+async function keyFrom(code,salt,iter){ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(normCode(code)),'PBKDF2',false,['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']); }
+async function seal(u8,code,iter){ const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)); const k=await keyFrom(code,salt,iter); const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,u8)); return {salt,iv,c}; }
+async function unseal(c,code,salt,iv,iter){ const k=await keyFrom(code,salt,iter); return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},k,c)); }
+function patientAppUrl(){ const base=((S.settings.appUrl||'').trim()||'https://perinat66.github.io/suivi-grossesse/').replace(/#.*$/,'').replace(/(index|patiente)\.html$/,''); return base.replace(/\/?$/,'/')+'patiente.html'; }
+function forPatient(p){ const q=JSON.parse(JSON.stringify(p)); delete q.shareCode; delete q.myCode; q.fichesSnap=fichesFor(p).filter(f=>!f.off).map(f=>({id:f.id,title:f.title,text:f.text})); delete q.fichesOff; delete q.notesPriv; delete q.groupId; q.evals=list(q.evals).map(e=>{ if(e.notesPriv){ e.notes=''; } delete e.notesPriv; return e; }); return q; }
+
+/* Carte d’urgence (QR) : résumé compact */
+function cardData(p){
+  const inf=info(p), lp=lastField(p,'presentation'), lc=lastField(p,'pct'), le=lastField(p,'epf'), li=lastField(p,'placIns'), lt=lastField(p,'pas');
+  const sf=sexfArr(p).map(s=>SEXF[s]||'').filter(Boolean);
+  const o={v:1,d:iso(today()),n:fullName(p),nn:p.naissance||'',gr:(p.groupe||'')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''),al:p.allergies||'',
+    dp:inf.ok?iso(inf.dpa):'',ba:inf.ok?iso(inf.base):'',gp:p.gestite!==''&&p.gestite!=null?'G'+p.gestite+' P'+(p.parite||0):'',ces:+p.cesariennes||0,uc:uterusCic(p)?1:0,mu:+p.multiple||1,
+    pm:list(p.pathoMat),pf:list(p.pathoFoet),tt:[...list(p.ttFond),...list(p.ttGross)].map(t=>t.nom+(t.poso?' '+t.poso:'')),
+    pr:lp?lp.v:'',cr:lc?croisCat(lc.v)||'':'',ef:le?String(le.v):'',pl:li&&li.v!=='Normalement inséré'?li.v:'',ta:lt?lt.v+'/'+(lt.ev.pad||'?'):'',
+    sx:sf.join(' / '),ad:addictTags(p),li:lieuLabel(p)||'',pg:p.planned&&p.planned.type?p.planned.type+(p.planned.date?' le '+fd(parseD(p.planned.date)):''):'',
+    rh:p.rhesus==='-'?(rhdStatus(p)||''):'',
+    co:list(p.corr).filter(c=>c.nom).slice(0,3).map(c=>c.role+' : '+c.nom+(c.contact?' – '+c.contact:''))};
+  for(const k of Object.keys(o)){ const v=o[k]; if(v===''||v===0||(Array.isArray(v)&&!v.length)) delete o[k]; }
+  o.v=1; return o;
+}
+async function cardUrl(p,code){
+  const base=(S.settings.appUrl||'').trim()||'https://perinat66.github.io/suivi-grossesse/';
+  let o=cardData(p); const drop=['co','tt','ad','pg','rh','ef'];
+  for(let attempt=0;;attempt++){
+    let u=new TextEncoder().encode(JSON.stringify(o)); let flags=0;
+    if(canZip()){ u=await zip(u); flags|=1; }
+    let payload;
+    if(code){ const s=await seal(u,code,100000); payload=new Uint8Array(1+16+12+s.c.length); payload[0]=flags|2; payload.set(s.salt,1); payload.set(s.iv,17); payload.set(s.c,29); }
+    else { payload=new Uint8Array(1+u.length); payload[0]=flags; payload.set(u,1); }
+    const url=base.replace(/#.*$/,'')+'#carte.'+toUrl(u8b64(payload));
+    if(url.length<=600||attempt>=drop.length) return url;
+    delete o[drop[attempt]];
+  }
+}
+async function readCard(str,code){
+  const payload=b64u8(fromUrl(str)); const flags=payload[0]; let u;
+  if(flags&2){ if(!code) return {needCode:true}; u=await unseal(payload.slice(29),code,payload.slice(1,17),payload.slice(17,29),100000); }
+  else u=payload.slice(1);
+  if(flags&1) u=await unzip(u);
+  return {data:JSON.parse(new TextDecoder().decode(u))};
+}
+function cardHTML(o){
+  const kv=(k,v)=>v?`<div class="kv"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`:'';
+  const base=parseD(o.ba), t=today(), ga=base!=null?Math.round((t-base)/DAY):null;
+  return `${o.al?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(o.al)}</div></div>`:''}
+  <div class="card num">${kv('Patiente',o.n)}${kv('Née le',o.nn?fd(parseD(o.nn)):'')}${kv('Groupe sanguin',o.gr)}${kv('Âge gestationnel ce jour',ga!=null&&ga>=0&&ga<310?sa(ga):'')}${kv('Terme prévu (41 SA)',o.dp?fd(parseD(o.dp)):'')}
+   ${kv('Gestité / parité',o.gp)}${kv('Utérus cicatriciel',o.uc?('Oui'+(o.ces?' ('+o.ces+' césarienne'+(o.ces>1?'s':'')+')':'')):'')}${kv('Grossesse',o.mu>1?(o.mu===2?'Gémellaire':'Multiple'):'')}${kv('Sexe fœtal',o.sx)}
+   ${kv('Pathologies maternelles',(o.pm||[]).join(', '))}${kv('Pathologies fœtales',(o.pf||[]).join(', '))}${kv('Traitements',(o.tt||[]).join(' ; '))}
+   ${kv('Dernière présentation',o.pr)}${kv('Croissance estimée',o.cr)}${kv('Dernier poids fœtal estimé',o.ef?o.ef+' g':'')}${kv('Placenta',o.pl)}${kv('Dernière TA',o.ta?o.ta+' mmHg':'')}
+   ${kv('Rhésus D',o.rh)}${kv('Consommations',(o.ad||[]).join(', '))}${kv('Lieu d’accouchement prévu',o.li)}${kv('Programmation',o.pg)}${kv('Correspondants',(o.co||[]).join(' ; '))}</div>
+  <p class="note">Carte d’urgence établie le ${o.d?fd(parseD(o.d)):'?'} : résumé à compléter par l’interrogatoire et l’examen. Ces informations ne sont pas enregistrées sur cet appareil.</p>`;
+}
+async function renderCarte(str){
+  const v=$('#view'); v.innerHTML='<div class="card empty" style="margin-top:16px">Lecture de la carte…</div>';
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  const show=o=>{ v.innerHTML=`<div class="summary"><strong>Carte d’urgence – grossesse</strong>Résumé transmis par la patiente</div>${cardHTML(o)}<div class="actions"><button class="btn" id="cBack">Fermer</button></div>`; $('#cBack').addEventListener('click',()=>go('liste')); };
+  try{
+    const r=await readCard(str);
+    if(r.data) return show(r.data);
+    v.innerHTML=`<div class="summary"><strong>Carte d’urgence protégée</strong>Demandez le code à la patiente</div><div class="card"><div class="fpad"><label class="f"><span>Code (6 caractères)</span><input id="cCode" autocomplete="off" autocapitalize="characters" style="font-size:1.4rem;letter-spacing:.2em;text-transform:uppercase"></label><div class="actions"><button class="btn primary" id="cOk">Afficher</button></div></div></div>`;
+    $('#cOk').addEventListener('click',async()=>{ try{ const r2=await readCard(str,$('#cCode').value); show(r2.data); }catch(e){ toast('Code incorrect'); } });
+  }catch(e){ v.innerHTML=`<div class="card empty" style="margin-top:16px">${e&&e.message==='nozip'?'Cet appareil est trop ancien pour lire cette carte (iOS 16.4 ou plus récent requis).':'Carte illisible ou incomplète.'}</div>`; }
+}
+
+/* Fichier dossier chiffré */
+async function makeDossierFile(p,code,withFiles){
+  const q=forPatient(p); let files=[];
+  if(withFiles){ for(const m of await filesFor(p.id)){ const f=await get('files',m.id); if(f&&f.data) files.push({name:f.name,cat:f.cat||'',addedAt:f.addedAt,size:f.size,b64:u8b64(new Uint8Array(f.data))}); } }
+  let u=new TextEncoder().encode(JSON.stringify({app:'suivi-grossesse-dossier',v:1,exportedAt:new Date().toISOString(),patient:q,files}));
+  let z=false; if(canZip()){ u=await zip(u); z=true; }
+  const s=await seal(u,code,310000);
+  return new Blob([JSON.stringify({app:'suivi-grossesse-dossier-chiffre',v:1,iter:310000,z,salt:u8b64(s.salt),iv:u8b64(s.iv),data:u8b64(s.c)})],{type:'application/json'});
+}
+async function importDossierFile(file){
+  let w; try{ w=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible'); return; }
+  if(!w||w.app!=='suivi-grossesse-dossier-chiffre'){ toast('Ce fichier n’est pas un dossier patiente'); return; }
+  const code=await askCode(); if(!code) return;
+  let payload;
+  try{ let u=await unseal(b64u8(w.data),code,b64u8(w.salt),b64u8(w.iv),w.iter||310000); if(w.z) u=await unzip(u); payload=JSON.parse(new TextDecoder().decode(u)); }
+  catch(e){ toast(e&&e.message==='nozip'?'Appareil trop ancien pour lire ce fichier':'Code incorrect'); return; }
+  const q=payload.patient; if(!q){ toast('Dossier vide'); return; }
+  const ex=S.patients.find(x=>(x.status||'active')!=='archived'&&sameIdentity(x,q));
+  let target=null;
+  if(ex&&isPatient()) target=ex;
+  else if(ex){ const c=await choose({title:'Cette patiente a déjà un dossier',body:`Un dossier en cours existe pour ${fullName(ex)}. Voulez-vous le remplacer par le dossier reçu, ou créer un dossier séparé ?`,buttons:[['replace','Remplacer le dossier existant','primary'],['new','Créer un dossier séparé',''],['cancel','Annuler','']]}); if(c==='cancel') return; if(c==='replace') target=ex; }
+  const np=Object.assign({},q,{id:target?target.id:uid('p'),createdAt:target?target.createdAt:Date.now(),importedAt:Date.now(),notesPriv:target?target.notesPriv:''});
+  if(APP_ROLE==='patient') np.myCode=code; else np.shareCode=(target&&target.shareCode)||code;
+  if(target) np.groupId=target.groupId;
+  await savePatient(np);
+  let n=0; for(const f of list(payload.files)){ try{ await put('files',{id:uid('f'),patientId:np.id,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; }catch(e){} }
+  toast('Dossier importé'+(n?' avec '+n+' document'+(n>1?'s':''):'')); go('patient-'+np.id);
+}
+function askCode(){
+  return new Promise(res=>{ const m=$('#modal'), b=$('#modalBox');
+    b.innerHTML=`<h3>Code du dossier</h3><p>Saisissez le code à 6 caractères communiqué avec le fichier.</p><input id="askc" autocomplete="off" autocapitalize="characters" style="width:100%;font-size:1.4rem;letter-spacing:.2em;text-transform:uppercase;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)"><div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Ouvrir</button></div>`;
+    m.classList.add('open'); setTimeout(()=>$('#askc').focus(),50);
+    m.onclick=e=>{ const a=e.target.closest('[data-a]'); if(!a&&e.target!==m) return; const v=a&&a.dataset.a==='1'?normCode($('#askc').value):null; m.classList.remove('open'); m.onclick=null; res(v&&v.length===6?v:(a&&a.dataset.a==='1'?(toast('Le code comporte 6 caractères'),null):null)); }; });
+}
+
+function myCodeOf(p){ return p.myCode||p.shareCode||null; }
+async function openMyCard(p){
+  const code=myCodeOf(p); const sh=$('#sheet');
+  sh.innerHTML=`<div class="sheet-h"><span style="width:70px"></span><h2 id="sheetTitle">Ma carte d’urgence</h2><button class="btn ghost" id="mcClose">Fermer</button></div>
+   <div class="form"><p class="note" style="margin:10px 4px">Présentez ce QR code au soignant : il le scanne avec l’appareil photo de son téléphone${code?', puis vous lui donnez votre code':''}. Rien n’est enregistré sur son appareil.</p>
+   <div class="card"><div id="mcQr" class="qrbox">Création…</div>${code?`<p class="note" style="text-align:center;margin:0 0 12px">Protégée par votre code habituel</p>`:''}</div>
+   <div class="actions"><button class="btn" id="mcShow">Afficher le résumé à l’écran</button><button class="btn" id="mcSave">Enregistrer l’image</button></div><div id="mcSum"></div></div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  $('#mcClose').addEventListener('click',()=>{ sh.classList.remove('open'); sh.innerHTML=''; document.body.style.overflow=''; });
+  let q=null;
+  try{ const url=await cardUrl(p,code); q=QR.encode([...new TextEncoder().encode(url)],'M'); $('#mcQr').innerHTML=QR.svg(q,280); }catch(e){ $('#mcQr').textContent='Création du QR code impossible sur cet appareil.'; }
+  $('#mcShow').addEventListener('click',()=>{ $('#mcSum').innerHTML='<div style="margin-top:12px">'+cardHTML(cardData(p))+'</div>'; $('#mcShow').remove(); });
+  $('#mcSave').addEventListener('click',async()=>{ if(q) saveFile('ma-carte-urgence.png',await QR.png(q,8)); });
+}
+async function shareMyDossier(p){
+  const code=myCodeOf(p); if(!code){ toast('Code introuvable : rouvrez le dossier reçu de votre soignant'); return; }
+  if(!await ask({title:'Partager mon dossier',body:'Un fichier protégé par votre code va être créé. Envoyez-le au soignant (AirDrop, message, e-mail…) et donnez-lui votre code oralement, jamais dans le même message.',ok:'Créer le fichier'})) return;
+  try{ const blob=await makeDossierFile(p,code,true); await saveFile('mon-dossier-grossesse-'+iso(today())+'.json',blob); }catch(e){ toast('Création du fichier impossible sur cet appareil'); }
+}
+function openShare(p){
+  if(isPatient()) return;
+  const sh=$('#sheet');
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="sClose">Fermer</button><h2 id="sheetTitle">Remettre à la patiente</h2><span style="width:70px"></span></div>
+  <div class="form">
+   <div class="banner" style="background:var(--surface);color:var(--ink)">La patiente garde ces documents et les présente au soignant de son choix. Les <b>notes privées</b> ne sont jamais incluses.</div>
+   <fieldset><legend>Installer l’application patiente</legend><div class="fbox"><p class="note" style="margin:8px 0">La patiente scanne ce QR code avec l’appareil photo, puis ajoute « Mon suivi de grossesse » à son écran d’accueil (iPhone : Partager → Sur l’écran d’accueil ; Android : menu ⋮ → Installer l’application). Ce QR code est le même pour toutes les patientes.</p>
+    <div class="actions" style="margin-top:6px"><button class="btn" id="sInst">Afficher le QR code d’installation</button></div><div id="sInstOut"></div></div></fieldset>
+   <fieldset><legend>Code de la patiente</legend><div class="fbox"><div class="codebox"><small>Code habituel (fichier et carte d’urgence)</small><b id="sCode">${fmtCode(p.shareCode||'······')}</b></div>
+    <p class="note" style="margin:6px 0">Le même code est conservé d’une consultation à l’autre : la patiente n’a qu’un code à retenir. Changez-le si elle l’a perdu ou divulgué.</p><button class="btn small" id="sNewCode">${p.shareCode?'Changer le code':'Créer le code'}</button></div></fieldset>
+   <fieldset><legend>1. Synthèse PDF</legend><div class="fbox"><p class="note" style="margin:8px 0">Document lisible par tous, à remettre en main propre ou à imprimer.</p><button class="btn primary" id="sPdf">Créer la synthèse patiente</button></div></fieldset>
+   <fieldset><legend>2. Dossier complet chiffré</legend><div class="fbox"><p class="note" style="margin:8px 0">Fichier protégé par un code, que la patiente transmet à un soignant équipé de cette application : il l’importe et retrouve tout le dossier.</p>
+    <label class="chkline"><input type="checkbox" id="sFiles"> Inclure les documents PDF joints</label>
+    <div class="actions" style="margin-top:10px"><button class="btn primary" id="sFile">Créer le fichier</button></div><div id="sFileOut"></div></div></fieldset>
+   <fieldset><legend>3. QR code « carte d’urgence »</legend><div class="fbox"><p class="note" style="margin:8px 0">Résumé essentiel (allergies, groupe, terme, pathologies, traitements…). Scanné avec l’appareil photo de n’importe quel téléphone, il ouvre la carte dans l’application en ligne ; rien n’est envoyé à un serveur.</p>
+    ${radios('qmode',[['code','Protégé par un code'],['libre','Lisible sans code']],'code')}
+    <div class="actions" style="margin-top:10px"><button class="btn primary" id="sQr">Créer le QR code</button></div><div id="sQrOut"></div></div></fieldset>
+  </div>`;
+  sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
+  const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; document.body.style.overflow=''; };
+  $('#sClose').addEventListener('click',close);
+  $('#sPdf').addEventListener('click',()=>{ close(); openPrint(p,true); });
+  const ensureCode=async(force)=>{ if(!p.shareCode||force){ p.shareCode=newCode(); await savePatient(p); } $('#sCode').textContent=fmtCode(p.shareCode); $('#sNewCode').textContent='Changer le code'; return p.shareCode; };
+  $('#sNewCode').addEventListener('click',async()=>{ if(p.shareCode&&!await ask({title:'Changer le code ?',body:'Les fichiers et QR codes déjà remis à la patiente garderont l’ancien code. Les prochains utiliseront le nouveau.',ok:'Changer'})) return; await ensureCode(true); toast('Nouveau code créé'); });
+  $('#sInst').addEventListener('click',()=>{ const url=patientAppUrl(); const q=QR.encode([...new TextEncoder().encode(url)],'M'); $('#sInstOut').innerHTML=`<div class="qrbox">${QR.svg(q,240)}</div><p class="note" style="text-align:center;margin:0">${esc(url)}</p><div class="actions"><button class="btn" id="sInstSave">Enregistrer l’image (affiche, impression)</button></div>`; $('#sInstSave').addEventListener('click',async()=>saveFile('qr-mon-suivi-de-grossesse.png',await QR.png(q,10))); });
+  $('#sFile').addEventListener('click',async()=>{ const btn=$('#sFile'); btn.disabled=true; btn.textContent='Création…';
+    try{ const code=await ensureCode(false); const blob=await makeDossierFile(p,code,$('#sFiles').checked);
+      $('#sFileOut').innerHTML=`<div class="codebox"><small>Code de la patiente</small><b>${fmtCode(code)}</b></div><div class="actions"><button class="btn primary" id="sFileSave">Envoyer le fichier (AirDrop, message, e-mail…)</button></div><p class="note">iPhone : AirDrop, Messages ou Mail. Android : envoyez-le par message ou e-mail. Ne mettez jamais le code dans le même envoi que le fichier : donnez-le oralement ou sur papier.</p>`;
+      $('#sFileSave').addEventListener('click',()=>saveFile('dossier-'+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.json',blob));
+    }catch(e){ toast('Création impossible sur cet appareil'); } btn.disabled=false; btn.textContent='Recréer le fichier'; });
+  $('#sQr').addEventListener('click',async()=>{ const mode=(sh.querySelector('[name="qmode"]:checked')||{}).value; const code=mode==='code'?await ensureCode(false):null;
+    try{ const url=await cardUrl(p,code); const q=QR.encode([...new TextEncoder().encode(url)],'M');
+      $('#sQrOut').innerHTML=`<div class="qrbox">${QR.svg(q,260)}</div>${code?`<div class="codebox"><small>Code de la patiente</small><b>${fmtCode(code)}</b></div>`:'<p class="note">Attention : toute personne qui scanne ce QR code voit les informations.</p>'}<div class="actions"><button class="btn primary" id="sQrSave">Enregistrer l’image</button></div><p class="note">La patiente garde l’image dans ses photos (ou imprimée). Refaites un QR code après chaque consultation importante.</p>`;
+      $('#sQrSave').addEventListener('click',async()=>{ const blob=await QR.png(q,8); saveFile('carte-urgence-'+norm(p.nom||'patiente').replace(/ /g,'-')+'.png',blob); });
+    }catch(e){ toast('Création du QR code impossible'); } });
+}
+
+/* ---------- Fiches conseils et messages types ---------- */
+const FCOND={
+  all:['Toutes les patientes',()=>true],
+  toxoneg:['Toxoplasmose non immunisée',p=>HC.toxoneg.f(p)],
+  dg:['Diabète gestationnel',p=>list(p.pathoMat).includes('Diabète gestationnel')],
+  rhneg:['RhD négatif',p=>p.rhesus==='-'],
+  tabac:['Tabac',p=>p.tabac==='Actif'||p.tabac==='Arrêté pendant la grossesse'],
+  alcool:['Alcool ou toxiques',p=>['Occasionnel','Régulier','Arrêté pendant la grossesse'].includes(p.alcool)||['Actif','Arrêté pendant la grossesse'].includes(p.toxiques)],
+  hta:['HTA / prééclampsie',p=>list(p.pathoMat).some(x=>/HTA|Prééclampsie/.test(x))],
+  cic:['Utérus cicatriciel',p=>uterusCic(p)],
+  multiple:['Grossesse multiple',p=>+p.multiple>1],
+  siege:['Présentation du siège',p=>HC.siege.f(p)],
+  anemie:['Anémie',p=>list(p.pathoMat).includes('Anémie')]
+};
+const FICHES_DEFAULT=[
+ {id:'f-alim',cond:'all',on:true,title:'Alimentation pendant la grossesse',text:'Mangez varié et équilibré, en trois repas et une ou deux collations.\nÉvitez : les fromages au lait cru (préférez les fromages à pâte cuite, sans la croûte), la charcuterie à la coupe, les viandes, poissons et coquillages crus ou fumés, les œufs crus ou peu cuits.\nLavez soigneusement fruits, légumes et herbes aromatiques. Respectez la chaîne du froid et les dates de consommation.\nLimitez le café et le thé. Aucune boisson alcoolisée pendant toute la grossesse.'},
+ {id:'f-alerte',cond:'all',on:true,title:'Quand consulter sans attendre',text:'Rendez-vous à la maternité ou appelez le 15 en cas de :\n– saignements ;\n– perte de liquide (rupture de la poche des eaux) ;\n– contractions régulières ou douloureuses avant le terme ;\n– fièvre de 38 °C ou plus ;\n– diminution ou absence des mouvements du bébé ;\n– maux de tête intenses, troubles de la vue, douleur en haut du ventre, gonflement brutal du visage ou des mains ;\n– chute ou choc sur le ventre.'},
+ {id:'f-medic',cond:'all',on:true,title:'Médicaments et grossesse',text:'Ne prenez aucun médicament sans avis médical, y compris à base de plantes ou d’huiles essentielles.\nEn cas de douleur ou de fièvre, le paracétamol est possible, à la dose la plus faible et le moins longtemps possible.\nLes anti-inflammatoires (ibuprofène, kétoprofène…) sont contre-indiqués à partir du 6e mois de grossesse et déconseillés avant.\nSignalez votre grossesse à tout professionnel de santé et en pharmacie.'},
+ {id:'f-vacc',cond:'all',on:true,title:'Vaccinations recommandées pendant la grossesse',text:'Coqueluche : à chaque grossesse, à partir de 20 semaines d’aménorrhée, pour protéger votre bébé dès sa naissance.\nGrippe et Covid-19 : pendant la campagne de vaccination, à tout moment de la grossesse.\nVRS (bronchiolite) : entre 32 et 36 semaines d’aménorrhée pendant la campagne ; une alternative est l’injection d’anticorps au bébé après la naissance.\nParlez-en lors de votre prochaine consultation.'},
+ {id:'f-cmv',cond:'all',on:true,title:'Prévention du cytomégalovirus (CMV)',text:'Ce virus fréquent chez les jeunes enfants peut être dangereux pour le bébé pendant la grossesse.\nSi vous êtes en contact avec de jeunes enfants : lavez-vous les mains après le change, le mouchage ou le repas ; ne partagez pas leurs couverts, leur verre ou leur brosse à dents ; ne finissez pas leurs restes ; évitez de les embrasser sur la bouche.'},
+ {id:'f-activite',cond:'all',on:true,title:'Activité physique et repos',text:'Une activité physique modérée est recommandée, sauf avis contraire : marche, natation, gymnastique ou yoga prénatal, environ 30 minutes par jour.\nÉvitez les sports de contact, à risque de chute, et la plongée sous-marine.\nÉcoutez votre corps et reposez-vous dès que vous en ressentez le besoin.'},
+ {id:'f-toxo',cond:'toxoneg',on:true,title:'Toxoplasmose : vous n’êtes pas immunisée',text:'Pour éviter une contamination :\n– mangez la viande bien cuite à cœur ; évitez la viande crue, fumée ou marinée ;\n– lavez soigneusement fruits, légumes et herbes, surtout s’ils sont souillés de terre ;\n– lavez-vous les mains avant de cuisiner, après avoir manipulé de la viande crue ou de la terre ;\n– portez des gants pour jardiner ; faites changer la litière du chat par une autre personne.\nUne prise de sang de contrôle est réalisée chaque mois jusqu’à l’accouchement.'},
+ {id:'f-dg',cond:'dg',on:true,title:'Diabète gestationnel',text:'Répartissez votre alimentation en trois repas et deux à trois collations.\nPrenez des féculents à chaque repas, en quantité modérée, de préférence complets ; légumes à volonté.\nÉvitez les boissons sucrées, jus de fruits, sucreries et pâtisseries.\nMarchez environ 30 minutes par jour, idéalement après les repas.\nRéalisez l’autosurveillance de votre glycémie comme prescrit et apportez votre carnet à chaque consultation.'},
+ {id:'f-rh',cond:'rhneg',on:true,title:'Vous êtes de rhésus D négatif',text:'Une prise de sang permet de connaître le rhésus de votre bébé.\nS’il est rhésus positif ou inconnu, une injection d’immunoglobulines anti-D vous est proposée vers 28 semaines d’aménorrhée, puis après la naissance si votre bébé est rhésus positif.\nConsultez dans les 72 heures en cas de saignement, de chute ou de choc sur le ventre : une injection peut être nécessaire.'},
+ {id:'f-tabac',cond:'tabac',on:true,title:'Tabac et grossesse',text:'Arrêter de fumer est bénéfique à tout moment de la grossesse, pour vous et votre bébé.\nLes substituts nicotiniques sont possibles pendant la grossesse et peuvent vous être prescrits par votre sage-femme ou votre médecin.\nTabac Info Service : 39 89, ou l’application Tabac Info Service.\nÉvitez aussi le tabagisme passif : votre entourage peut être accompagné.'},
+ {id:'f-alcool',cond:'alcool',on:true,title:'Alcool, cannabis et autres produits',text:'Pendant la grossesse, il n’existe pas de consommation d’alcool sans risque pour le bébé : zéro alcool.\nLe cannabis et les autres drogues sont également déconseillés.\nVous pouvez en parler librement avec votre sage-femme ou votre médecin, sans jugement.\nAlcool Info Service : 0 980 980 930 – Drogues Info Service : 0 800 23 13 13.'},
+ {id:'f-hta',cond:'hta',on:true,title:'Tension artérielle : signes d’alerte',text:'Consultez en urgence en cas de : maux de tête persistants, troubles de la vue (mouches, éclairs), bourdonnements d’oreilles, douleur en haut du ventre ou en barre, gonflement brutal du visage ou des mains, prise de poids rapide, diminution des mouvements du bébé.\nSi une automesure de la tension vous a été prescrite, notez les valeurs et apportez-les à chaque consultation.'},
+ {id:'f-cic',cond:'cic',on:true,title:'Utérus cicatriciel',text:'Le mode d’accouchement (tentative de voie basse ou césarienne) sera discuté avec vous au cours du 8e mois.\nRendez-vous à la maternité dès l’apparition de contractions régulières, d’un saignement, d’une perte de liquide, ou d’une douleur persistante au niveau de la cicatrice.'},
+ {id:'f-jum',cond:'multiple',on:true,title:'Grossesse gémellaire',text:'Votre suivi est plus rapproché, avec des échographies régulières.\nReposez-vous davantage et adaptez votre activité professionnelle si besoin.\nConsultez rapidement en cas de contractions, de pertes de liquide ou de saignement.'},
+ {id:'f-siege',cond:'siege',on:true,title:'Bébé en présentation du siège',text:'Le bébé peut encore se retourner. Vers 36-37 semaines d’aménorrhée, une version par manœuvre externe peut vous être proposée pour tenter de le faire tourner.\nLe mode d’accouchement sera discuté avec vous.\nEn cas de perte de liquide, rendez-vous rapidement à la maternité.'},
+ {id:'f-fer',cond:'anemie',on:true,title:'Anémie : une alimentation riche en fer',text:'Privilégiez les aliments riches en fer : viande, poisson, lentilles et légumes secs, légumes verts.\nSi un traitement par fer vous est prescrit, prenez-le à distance du thé et du café, de préférence avec un fruit ou un jus riche en vitamine C.\nDes selles foncées sont normales sous traitement.'}
+];
+const MSG_DEFAULT=[
+ {id:'m-rdv',title:'Rappel de rendez-vous',text:'Bonjour {prenom},\nJe vous rappelle votre rendez-vous ({examen}) le {date_rdv}.\nMerci de me prévenir en cas d’empêchement.\n{signature}'},
+ {id:'m-res',title:'Résultats disponibles',text:'Bonjour {prenom},\nVos derniers résultats sont disponibles. Nous les reverrons ensemble lors de votre prochaine consultation ; n’hésitez pas à me contacter si besoin.\n{signature}'},
+ {id:'m-vacc',title:'Vaccination',text:'Bonjour {prenom},\nVous êtes actuellement à {terme_sa}. Les vaccinations recommandées pendant la grossesse (coqueluche, grippe, Covid-19, VRS selon la période) peuvent être réalisées : parlons-en lors de votre prochain rendez-vous.\n{signature}'},
+ {id:'m-conseils',title:'Conseils personnalisés',text:'Bonjour {prenom},\nVoici quelques conseils pour la suite de votre grossesse :\n\n{conseils}\n\n{signature}'},
+ {id:'m-confrere',title:'Courrier à un confrère (MSSanté)',text:'Chère consœur, cher confrère,\nJe vous adresse Mme {prenom} {nom}, née le {naissance}, actuellement à {terme_sa} (terme prévu le {dpa}).\n{resume}\nMotif : \nBien confraternellement,\n{signature}'}
+];
+function fichesFor(p){
+  if(isPatient()&&Array.isArray(p.fichesSnap)) return p.fichesSnap;
+  const off=list(p.fichesOff);
+  return list(S.settings.fiches).filter(f=>f.on!==false&&FCOND[f.cond]&&FCOND[f.cond][1](p)).map(f=>Object.assign({},f,{off:off.includes(f.id)}));
+}
+function msgVars(p){
+  const inf=info(p); const t=today();
+  const nx=inf.ok?milestonesFor(p,inf).filter(it=>it.st!=='fait'&&((it.rdv!=null&&it.rdv>=t)||(it.kind==='ev'&&it.s>=t))).sort((a,b)=>(a.rdv??a.s)-(b.rdv??b.s))[0]:null;
+  const resume=[p.gestite!==''&&p.gestite!=null?'G'+p.gestite+'P'+(p.parite||0):'',p.groupe||p.rhesus?'Groupe '+(p.groupe||'?')+(p.rhesus==='-'?' Rh−':p.rhesus==='+'?' Rh+':''):'',p.allergies?'Allergie : '+p.allergies:'',uterusCic(p)?'Utérus cicatriciel':'',[...list(p.pathoMat),...list(p.pathoFoet)].length?'Pathologies : '+[...list(p.pathoMat),...list(p.pathoFoet)].join(', '):'',[...list(p.ttFond),...list(p.ttGross)].length?'Traitements : '+[...list(p.ttFond),...list(p.ttGross)].map(x=>x.nom+(x.poso?' '+x.poso:'')).join(', '):''].filter(Boolean).join('\n');
+  return {prenom:p.prenom||'',nom:(p.nom||'').toUpperCase(),naissance:p.naissance?fd(parseD(p.naissance)):'',terme_sa:inf.ok?sa(inf.ga):'',dpa:inf.ok?fd(inf.dpa):'',
+    date_rdv:nx?(nx.rdv!=null?rdvLabel(nx.rv||{date:iso(nx.rdv),time:nx.time}):rdvLabel({date:iso(nx.s),time:nx.time})):'…',examen:nx?nx.name:'…',resume,
+    conseils:fichesFor(p).filter(f=>!f.off).map(f=>'• '+f.title).join('\n'),signature:S.settings.signature||'',date_jour:fd(today())};
+}
+const fillMsg=(txt,v)=>txt.replace(/\{(\w+)\}/g,(m,k)=>v[k]!=null?v[k]:m);
+function openMessage(p){
+  if(isPatient()) return;
+  const T=list(S.settings.msgs); const v=msgVars(p);
+  const dests=[['pat','La patiente',p.telephone,p.email],...list(p.corr).filter(c=>c.nom).map((c,i)=>['c'+i,c.role+' – '+c.nom,'',(c.contact||'').includes('@')?c.contact:''])];
+  const {sh,val}=miniSheet('Message',`<fieldset><legend>Message type</legend><div class="fbox">
+    <label class="f"><span>Modèle</span><select name="mtpl">${T.map(t=>`<option value="${esc(t.id)}">${esc(t.title)}</option>`).join('')}</select></label>
+    <label class="f"><span>Destinataire</span><select name="mdest">${dests.map(d=>`<option value="${d[0]}">${esc(d[1])}</option>`).join('')}</select></label>
+    ${F('Objet (e-mail)','<input name="msubj" value="">')}
+    <label class="f"><span>Texte (modifiable)</span><textarea name="mtxt" style="min-height:220px"></textarea></label>
+    <div class="newev" style="margin-top:12px"><button type="button" class="btn primary" id="mCopy">📋 Copier (pour MSSanté)</button><button type="button" class="btn" id="mSms">💬 SMS</button><button type="button" class="btn" id="mMail">✉ E-mail</button></div>
+    <p class="note" style="margin:10px 0 0">Pour MSSanté : copiez le texte puis collez-le dans votre messagerie sécurisée. SMS et e-mail classique ne sont pas sécurisés : réservez-les aux rappels, sans information médicale.</p></div></fieldset>`,
+    async()=>true,null);
+  $('#mSave').textContent='Fermer';
+  const tSel=sh.querySelector('[name="mtpl"]'), txt=sh.querySelector('[name="mtxt"]'), subj=sh.querySelector('[name="msubj"]');
+  const load=()=>{ const t=T.find(x=>x.id===tSel.value); if(t){ txt.value=fillMsg(t.text,v); subj.value=t.title; } };
+  tSel.addEventListener('change',load); load();
+  const dest=()=>dests.find(d=>d[0]===val('mdest'));
+  $('#mCopy').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(txt.value); toast('Texte copié : collez-le dans MSSanté'); }catch(e){ txt.focus(); txt.select(); try{ document.execCommand('copy'); toast('Texte copié'); }catch(e2){ toast('Sélectionnez le texte puis copiez-le'); } } });
+  $('#mSms').addEventListener('click',()=>{ const d=dest(); const tel=(d&&d[2]||'').replace(/[^\d+]/g,''); window.location.href='sms:'+tel+'&body='+encodeURIComponent(txt.value); });
+  $('#mMail').addEventListener('click',()=>{ const d=dest(); window.location.href='mailto:'+encodeURIComponent(d&&d[3]||'')+'?subject='+encodeURIComponent(subj.value)+'&body='+encodeURIComponent(txt.value); });
+}
+
 /* ---------- Agenda ---------- */
 function renderAgenda(){
   const v=$('#view'); const t=today(), N=S.agendaDays;
@@ -1801,6 +2232,7 @@ function ppCard(o){
 }
 function sexfHTML(n,arr){ return Array.from({length:n},(_,i)=>`<label class="f"><span>${n>1?'Sexe du fœtus '+(i+1):'Sexe fœtal'}</span><select data-sf><option value="">Non connu</option>${Object.entries(SEXF).map(([k,l])=>`<option value="${k}" ${arr[i]===k?'selected':''}>${l}</option>`).join('')}</select></label>`).join(''); }
 function openEditor(src,prefill){
+  if(isPatient()) return;
   const isNew=!src;
   const p=src?JSON.parse(JSON.stringify(src)):Object.assign({id:uid('p'),createdAt:Date.now(),status:'active',datingMethod:'ddr',cycle:S.settings.cycle,gestite:'',parite:'',cesariennes:0,multiple:1,rhesus:'',groupe:'',pathoMat:[],pathoFoet:[],ttFond:[],ttGross:[],events:[],done:{}},prefill||{});
   const sh=$('#sheet');
@@ -1880,7 +2312,7 @@ function openEditor(src,prefill){
     <button type="button" class="btn small" id="addCorr" style="margin-top:8px">＋ Ajouter un correspondant</button>
    </div></fieldset>
 
-   <fieldset><legend>Notes</legend><div class="fbox">${F('Notes libres','<textarea name="notes">'+esc(p.notes||'')+'</textarea>')}</div></fieldset>
+   <fieldset><legend>Notes</legend><div class="fbox">${F('Notes (transmissibles à la patiente)','<textarea name="notes">'+esc(p.notes||'')+'</textarea>')}${F('🔒 Notes privées (jamais transmises à la patiente)','<textarea name="notesPriv">'+esc(p.notesPriv||'')+'</textarea>')}</div></fieldset>
   </div>`;
   sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
   const val=n=>{ const el=sh.querySelector(`[name="${n}"]`); if(!el) return ''; if(el.type==='checkbox') return el.checked; if(el.type==='radio'){ const c=sh.querySelector(`[name="${n}"]:checked`); return c?c.value:''; } return el.value.trim(); };
@@ -1918,7 +2350,7 @@ function openEditor(src,prefill){
         if(c==='open'){ close(); go('patient-'+x.id); return; }
         if(c!=='save') return; } }
     saving=true; $('#save').disabled=true;
-    ['nom','prenom','naissance','telephone','email','rhesusConj','ddr','cycle','dg','echoDate','echoSA','echoJ','dpaManual','gestite','parite','cesariennes','groupe','rhesus','atcdMed','atcdChir','atcdObst','allergies','tabac','tabacN','alcool','toxiques','toxPrec','pathoNotes','lieu','lieuPrec','niveau','notes','avisRefMotif'].forEach(k=>p[k]=val(k));
+    ['nom','prenom','naissance','telephone','email','rhesusConj','ddr','cycle','dg','echoDate','echoSA','echoJ','dpaManual','gestite','parite','cesariennes','groupe','rhesus','atcdMed','atcdChir','atcdObst','allergies','tabac','tabacN','alcool','toxiques','toxPrec','pathoNotes','lieu','lieuPrec','niveau','notes','notesPriv','avisRefMotif'].forEach(k=>p[k]=val(k));
     p.taille=nstr(val('taille')); p.poidsAvant=nstr(val('poidsAvant'));
     p.datingMethod=val('datingMethod')||'ddr'; p.multiple=+val('multiple')||1; p.status=p.status||'active';
     p.uterusCicatriciel=val('uterusCicatriciel'); p.dgRisk=val('dgRisk'); p.avisRef=val('avisRef'); if(!p.avisRef) p.avisRefMotif='';
@@ -1937,7 +2369,17 @@ function openEditor(src,prefill){
 
 /* ---------- Réglages ---------- */
 function wd(d){ return d==null?['','']:[Math.floor(d/7), d%7]; }
+function renderSettingsPatient(){
+  const v=$('#view');
+  v.innerHTML=`<div class="summary"><strong>Réglages</strong>Mon suivi de grossesse</div>
+  <section class="sec"><h2>Mon dossier</h2><div class="card"><div class="txt">Vos données sont enregistrées uniquement sur ce téléphone. Pour mettre à jour votre dossier, ouvrez le nouveau fichier remis par votre soignant.</div></div>
+  <div class="actions"><button class="btn primary" id="psImp">📥 Ouvrir un dossier reçu</button><button class="btn" id="psExp">Sauvegarder mes données</button><button class="btn" id="psRest">Restaurer une sauvegarde</button><button class="btn danger" id="psWipe">Tout effacer</button></div></section>`;
+  $('#psImp').addEventListener('click',pickDossier); $('#psExp').addEventListener('click',exportBackup);
+  $('#psRest').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importBackup(i.files[0]); i.click(); });
+  $('#psWipe').addEventListener('click',async()=>{ if(!await ask({title:'Tout effacer ?',body:'Votre dossier sera supprimé de ce téléphone.',ok:'Tout effacer',danger:true})) return; await clearAll(); S.patients=[]; toast('Données effacées'); go('liste'); });
+}
 function renderSettings(){
+  if(APP_ROLE==='patient') return renderSettingsPatient();
   const v=$('#view'); const st=S.settings;
   let h=`<div class="summary"><strong>Réglages</strong>Calendrier de suivi appliqué à toutes les patientes</div>`;
   h+=`<section class="sec"><h2>Calcul du terme</h2><div class="card"><div class="msedit"><div>Terme prévu fixé à <b>41 SA</b> (usage français).</div><div class="nums" style="margin-top:12px">Cycle par défaut <input type="number" id="defCycle" min="20" max="45" value="${st.cycle}" aria-label="Cycle par défaut"> jours</div><label class="chkline"><input type="checkbox" id="congeChk" ${st.conge?'checked':''}> Afficher l’estimation du congé maternité</label></div></div></section>`;
@@ -1952,8 +2394,17 @@ function renderSettings(){
   const VC=st.vacc||{}; const dm=x=>x?x.split('-').reverse().join('/'):'';
   h+=`<section class="sec"><h2>Vaccins saisonniers</h2><div class="card" id="vaccEd">${[['grippe','Grippe','pendant toute la grossesse'],['covid','Covid-19','pendant toute la grossesse'],['vrs','VRS','entre 32 et 36 SA + 6 j']].map(([k,l,w])=>`<div class="msedit" data-v="${k}"><label class="chkline" style="margin-top:0"><input type="checkbox" data-vk="on" ${VC[k]&&VC[k].on?'checked':''}> <b>${l}</b> <span style="color:var(--muted);font-size:.85rem">– ${w}</span></label><div class="nums">Campagne du <input data-vk="from" value="${dm(VC[k]&&VC[k].from)}" placeholder="JJ/MM" style="width:72px" aria-label="Début de campagne"> au <input data-vk="to" value="${dm(VC[k]&&VC[k].to)}" placeholder="JJ/MM" style="width:72px" aria-label="Fin de campagne"></div></div>`).join('')}</div>
   <p class="note">Le vaccin n’apparaît dans les dates importantes que si la grossesse (ou la fenêtre 32–36 SA pour le VRS) croise la période de campagne. Dates par défaut : campagnes 2026-2027 en France hexagonale ; à mettre à jour chaque saison.</p></section>`;
+  h+=`<section class="sec"><h2>Messages</h2><div class="card"><div class="fpad"><label class="f"><span>Signature (ajoutée par {signature})</span><textarea id="sig" style="width:100%;min-height:60px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)" placeholder="Dr Dupont – Sage-femme&#10;06 …">${esc(st.signature||'')}</textarea></label></div>
+   ${st.msgs.map((m,i)=>`<div class="msedit" data-mi="${i}"><div style="display:flex;gap:8px"><input class="nmin" data-mk="title" value="${esc(m.title)}" aria-label="Titre du modèle"><button class="x" data-rmmsg="${i}" aria-label="Supprimer">×</button></div><textarea data-mk="text" style="width:100%;min-height:110px;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)">${esc(m.text)}</textarea></div>`).join('')}
+   <div class="fpad"><p class="note" style="margin:6px 0">Variables : {prenom} {nom} {naissance} {terme_sa} {dpa} {date_rdv} {examen} {resume} {conseils} {signature} {date_jour}</p><button class="btn small" id="addMsg">＋ Ajouter un modèle</button> <button class="btn small" id="rstMsg">Modèles par défaut</button></div></div></section>`;
+  h+=`<section class="sec"><h2>Fiches conseils</h2><div class="card">${st.fiches.map((fc,i)=>`<details class="msedit fiche-ed" data-fi="${i}"><summary><input type="checkbox" data-fk="on" ${fc.on!==false?'checked':''} aria-label="Fiche active"> <b>${esc(fc.title)}</b> <small style="color:var(--muted)">${esc(FCOND[fc.cond]?FCOND[fc.cond][0]:'')}</small></summary>
+     <input class="nmin" data-fk="title" value="${esc(fc.title)}" style="margin-top:8px" aria-label="Titre"><div class="nums">Pour <select data-fk="cond">${Object.entries(FCOND).map(([k,[l]])=>`<option value="${k}" ${fc.cond===k?'selected':''}>${esc(l)}</option>`).join('')}</select></div>
+     <textarea data-fk="text" style="width:100%;min-height:150px;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)">${esc(fc.text)}</textarea><button class="link" data-rmfiche="${i}" style="color:var(--bad)">Supprimer cette fiche</button></details>`).join('')}
+   <div class="fpad"><p class="note" style="margin:6px 0">Textes proposés à partir des recommandations usuelles : relisez-les et adaptez-les avant de les transmettre ; ils engagent votre responsabilité.</p><button class="btn small" id="addFiche">＋ Ajouter une fiche</button> <button class="btn small" id="rstFiche">Fiches par défaut</button></div></div></section>`;
+  h+=`<section class="sec"><h2>Version patiente</h2><div class="card"><div class="txt">Les patientes ouvrent le dossier chiffré que vous leur remettez dans l’application « Mon suivi de grossesse » (adresse : …/patiente.html). Elles y retrouvent leur suivi, leurs rendez-vous, leurs conseils, leurs résultats et leurs documents, en lecture seule.</div></div><div class="actions"><button class="btn" id="prevPat">👁 Aperçu de la version patiente</button><button class="btn" id="instQr">QR code d’installation</button></div><div id="instOut"></div></section>`;
+  h+=`<section class="sec"><h2>QR codes « carte d’urgence »</h2><div class="card"><div class="fpad"><label class="f"><span>Adresse de l’application en ligne (ouverte au scan du QR code)</span><input id="appUrl" value="${esc(st.appUrl||'https://perinat66.github.io/suivi-grossesse/')}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)"></label></div></div></section>`;
   h+=`<section class="sec"><h2>Données</h2><div class="card"><div class="txt">${MODE==='cloud'?'Les dossiers et les PDF sont enregistrés dans votre compte Claude, dans un espace privé de cette application : ils sont conservés d’une ouverture à l’autre et retrouvés sur vos autres appareils. Cet espace n’est pas un hébergement certifié HDS.':MODE==='local'?'Version autonome : les dossiers et les PDF sont enregistrés uniquement sur cet appareil, dans l’application. Rien n’est envoyé sur Internet. Ils ne sont ni synchronisés ni sauvegardés ailleurs : exportez une sauvegarde chaque semaine (Fichiers, iCloud Drive ou clé USB) et gardez-la en lieu sûr.':'Aucun stockage durable n’est disponible : les données seront perdues à la fermeture. Exportez une sauvegarde avant de quitter.'}<span class="k" id="quota" style="margin-top:6px"></span></div></div>
-  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
   v.innerHTML=h;
   $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
   $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
@@ -1968,6 +2419,21 @@ function renderSettings(){
   $('#addMs').addEventListener('click',async()=>{ st.milestones.push({id:uid('ms'),name:'Nouvel examen',s:140,e:154,cond:'all'}); await saveSettings(); renderSettings(); const l=$$('.msedit [data-k="name"]'); const last=l[l.length-1]; last.focus(); last.select(); });
   $('#resetMs').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir le calendrier par défaut ?',body:'Vos échéances personnalisées seront remplacées. Les validations déjà cochées sur les échéances par défaut sont conservées.',ok:'Rétablir'})) return; st.milestones=JSON.parse(JSON.stringify(DEFAULT_MS)); await saveSettings(); renderSettings(); });
   $('#exp').addEventListener('click',exportBackup);
+  $('#impDos').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importDossierFile(i.files[0]); i.click(); });
+  $('#prevPat').addEventListener('click',()=>{ S.preview=true; go('liste'); });
+  $('#instQr').addEventListener('click',()=>{ const url=patientAppUrl(); const q=QR.encode([...new TextEncoder().encode(url)],'M'); $('#instOut').innerHTML=`<div class="card" style="margin-top:10px"><div class="qrbox">${QR.svg(q,240)}</div><p class="note" style="text-align:center">${esc(url)}</p><div class="actions" style="justify-content:center;margin:0 0 12px"><button class="btn" id="instSave">Enregistrer l’image</button></div></div>`; $('#instSave').addEventListener('click',async()=>saveFile('qr-mon-suivi-de-grossesse.png',await QR.png(q,10))); });
+  $('#sig').addEventListener('change',async e=>{ st.signature=e.target.value; await saveSettings(); toast('Signature enregistrée'); });
+  v.onchange=async e=>{ const mi=e.target.closest('[data-mi]'), fi=e.target.closest('[data-fi]');
+    if(mi&&e.target.dataset.mk){ st.msgs[+mi.dataset.mi][e.target.dataset.mk]=e.target.value; await saveSettings(); }
+    if(fi&&e.target.dataset.fk){ const fc=st.fiches[+fi.dataset.fi]; const k=e.target.dataset.fk; fc[k]=k==='on'?e.target.checked:e.target.value; await saveSettings(); } };
+  $$('[data-fk="on"]').forEach(c=>c.addEventListener('click',e=>e.stopPropagation()));
+  $$('[data-rmmsg]').forEach(b=>b.addEventListener('click',async()=>{ st.msgs.splice(+b.dataset.rmmsg,1); await saveSettings(); renderSettings(); }));
+  $$('[data-rmfiche]').forEach(b=>b.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette fiche ?',body:st.fiches[+b.dataset.rmfiche].title,ok:'Supprimer',danger:true})) return; st.fiches.splice(+b.dataset.rmfiche,1); await saveSettings(); renderSettings(); }));
+  $('#addMsg').addEventListener('click',async()=>{ st.msgs.push({id:uid('m'),title:'Nouveau modèle',text:'Bonjour {prenom},\n\n{signature}'}); await saveSettings(); renderSettings(); });
+  $('#addFiche').addEventListener('click',async()=>{ st.fiches.push({id:uid('f'),cond:'all',on:true,title:'Nouvelle fiche',text:''}); await saveSettings(); renderSettings(); });
+  $('#rstMsg').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir les modèles par défaut ?',body:'Vos modèles personnalisés seront remplacés.',ok:'Rétablir'})) return; st.msgs=JSON.parse(JSON.stringify(MSG_DEFAULT)); await saveSettings(); renderSettings(); });
+  $('#rstFiche').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir les fiches par défaut ?',body:'Vos fiches personnalisées seront remplacées.',ok:'Rétablir'})) return; st.fiches=JSON.parse(JSON.stringify(FICHES_DEFAULT)); await saveSettings(); renderSettings(); });
+  $('#appUrl').addEventListener('change',async e=>{ st.appUrl=e.target.value.trim(); await saveSettings(); toast('Adresse enregistrée'); });
   $('#imp').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importBackup(i.files[0]); i.click(); });
   $('#csv').addEventListener('click',()=>exportCSV(S.patients));
   $('#wipe').addEventListener('click',async()=>{ if(!await ask({title:'Effacer toutes les données ?',body:'Tous les dossiers, documents PDF et réglages seront supprimés de cet appareil. Exportez une sauvegarde avant si besoin.',ok:'Tout effacer',danger:true})) return; await clearAll(); S.patients=[]; S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); await saveSettings(); toast('Données effacées'); go('liste'); });
@@ -1976,7 +2442,7 @@ function renderSettings(){
 
 /* ---------- Fichiers : export / import ---------- */
 async function saveFile(name,data){
-  const type=name.endsWith('.json')?'application/json':name.endsWith('.csv')?'text/csv':name.endsWith('.pdf')?'application/pdf':'application/octet-stream';
+  const type=name.endsWith('.json')?'application/json':name.endsWith('.csv')?'text/csv':name.endsWith('.pdf')?'application/pdf':name.endsWith('.png')?'image/png':'application/octet-stream';
   const blob=data instanceof Blob?data:new Blob([data],{type});
   try{
     const file=new File([blob],name,{type});
@@ -2051,6 +2517,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#viewer').cla
   try{ S.lastBackup=(idb && await rq(store('kv').get('lastBackup')))||null; }catch(e){}
   if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
   try{ const s=await get('kv','settings'); S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),s||{}); }catch(e){ S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
+  if(!Array.isArray(S.settings.fiches)){ S.settings.fiches=JSON.parse(JSON.stringify(FICHES_DEFAULT)); await saveSettings(); }
+  if(!Array.isArray(S.settings.msgs)){ S.settings.msgs=JSON.parse(JSON.stringify(MSG_DEFAULT)); await saveSettings(); }
   if(S.settings.termDays!==287){ S.settings.termDays=287; await saveSettings(); }
   if((S.settings.msVersion||1)<MS_VERSION){
     const have=new Set(S.settings.milestones.map(m=>m.id));
