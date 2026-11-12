@@ -18,7 +18,7 @@
 :root{
   --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E8ECF0; --ink:#17212B; --muted:#5B6876; --line:#D8DEE4;
   --accent:#7A2E63; --accent-ink:#FFFFFF; --accent-soft:#F4E7F0;
-  --ok:#2E7656; --ok-soft:#E2F1E9; --warn:#935600; --warn-soft:#FBEFD8; --bad:#B42318; --bad-soft:#FBE6E3;
+  --ok:#2E7656; --ok-soft:#E2F1E9; --term:#1E6A96; --warn:#935600; --warn-soft:#FBEFD8; --bad:#B42318; --bad-soft:#FBE6E3;
   --radius:14px;
   color-scheme: light;
   box-sizing:border-box;
@@ -28,14 +28,14 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0F1419; --surface:#18202A; --surface-2:#232D38; --ink:#E7ECF1; --muted:#9BA8B5; --line:#2D3844;
-    --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335;
+    --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335; --term:#7CC4EA;
     --ok:#6CC59A; --ok-soft:#163528; --warn:#E9B24E; --warn-soft:#3A2B12; --bad:#F28B82; --bad-soft:#3C1C1A;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0F1419; --surface:#18202A; --surface-2:#232D38; --ink:#E7ECF1; --muted:#9BA8B5; --line:#2D3844;
-  --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335;
+  --accent:#DA8EC4; --accent-ink:#2A0F22; --accent-soft:#3A2335; --term:#7CC4EA;
   --ok:#6CC59A; --ok-soft:#163528; --warn:#E9B24E; --warn-soft:#3A2B12; --bad:#F28B82; --bad-soft:#3C1C1A;
   color-scheme: dark;
 }
@@ -303,6 +303,18 @@ details.fiche-ed summary{cursor:pointer}
 #prevBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:16;background:var(--ink);color:var(--bg);border-radius:999px;padding:6px 6px 6px 16px;display:flex;gap:10px;align-items:center;font-weight:700;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .ptools{display:flex;flex-wrap:wrap;gap:8px}
 .ptools .btn{flex:1;justify-content:center;min-width:150px}
+.rdvd{color:var(--accent);font-weight:700;display:block}
+.rdvt{color:var(--term);font-weight:700;display:block}
+.tofix{color:var(--muted);font-size:.85rem;display:block}
+.scanbox{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:3/4;max-height:60vh;margin:0 auto}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanframe{position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.25)}
+.scprog{text-align:center;margin:12px 0;font-size:1rem}
+.scchips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.scchips span{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-weight:700}
+.scchips span.ok{background:var(--ok);color:#fff}
+.trqr{display:flex;justify-content:center;background:#fff;border-radius:16px;padding:10px;margin:0 auto;max-width:min(92vw,62vh)}
+.trqr svg{width:100%;height:auto}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.92rem}
 @media (max-width:420px){
   .trio{grid-template-columns:auto auto auto;gap:2px 10px}
@@ -323,6 +335,7 @@ details.fiche-ed summary{cursor:pointer}
   #printArea h3{color:#7A2E63;font-size:11.5pt;border-bottom:1px solid #ccc;margin:14px 0 4px;padding-bottom:2px;break-after:avoid}
   #printArea table{width:100%;border-collapse:collapse} #printArea th{text-align:left;width:34%;vertical-align:top;padding:2px 8px 2px 0;font-weight:700} #printArea td{padding:2px 0;vertical-align:top}
   #printArea tr{break-inside:avoid} #printArea .pal{color:#B42318}
+  #printArea .pbreak{break-before:page} .pqgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px} .pq{text-align:center;break-inside:avoid;font-size:9pt} .pq svg{width:75mm;height:75mm}
 }
 </style>
 </head>
@@ -351,6 +364,7 @@ details.fiche-ed summary{cursor:pointer}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden>
 <input type="file" id="importInput" accept="application/json,.json" hidden>
+<input type="file" id="imgInput" accept="image/*" multiple hidden>
 
 <script>window.APP_ROLE='patient';</script>
 <script>
@@ -931,16 +945,20 @@ function lastDataHTML(p){
   if(lcol){ const e=lcol.ev; h+=kv('Col',frn(numv(e.colLong),0)+' mm'+(e.oi?' – OI '+esc(e.oi.toLowerCase())+(e.oi==='Ouvert'&&numv(e.oiMm)!=null?' de '+frn(numv(e.oiMm),0)+' mm':''):'')+ag(e)); }
   return h||'<div class="txt" style="color:var(--muted)">Aucune donnée clinique ou échographique.</div>';
 }
+function rdvHTML(d,time,p){ const i=info(p); return `<span class="rdvd">${esc(fDl.format(d))}${time?' à '+esc(time):''}</span>${i.ok?`<span class="rdvt">${esc(sa(Math.round((d-i.base)/DAY)))}</span>`:''}`; }
 function rdvLabel(rv){ const d=parseD(rv&&rv.date); if(d==null) return ''; return fDl.format(d)+(rv.time?' à '+rv.time:''); }
 function msRow(p,it,full){
-  const sub = it.kind==='plan' ? '38 SA – 39 SA' : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous')+' – '+sa(it.ga) : sa(it.sDays);
+  const hasR = it.kind==='ms' && it.rdv!=null && it.st!=='fait';
+  const dd=it.kind==='ms'&&it.st==='fait'&&it.done?parseD(it.done):null;
+  const fixedD = hasR ? it.rdv : (it.kind==='ev'&&it.st!=='fait') ? it.s : (it.kind==='plan'&&it.exact!=null&&it.st!=='fait') ? it.exact : null;
+  const sub = dd!=null ? 'Réalisé à '+sa(Math.round((dd-info(p).base)/DAY)) : hasR ? 'Rendez-vous fixé' : it.kind==='plan' ? (it.exact!=null?'Date fixée':'38 SA – 39 SA') : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous') : sa(it.sDays);
   const chk = it.kind==='dpa' ? `<span class="chk" aria-hidden="true" style="border-style:dashed"></span>` : `<button class="chk" data-done="${esc(it.id)}" aria-pressed="${it.st==='fait'}" aria-label="${it.st==='fait'?'Annuler la validation':'Marquer comme fait'} : ${esc(it.name)}">${it.st==='fait'?'✓':''}</button>`;
   let extra='';
-  if(it.ideal!=null) extra+=`<small class="ideal num">(${sa(it.idealDays)} : ${fd(it.ideal)})</small>`;
-  if(it.kind==='plan') extra+=`<small class="ideal num">${it.exact!=null?'(prévu le '+fd(it.exact)+' – '+sa(Math.round((it.exact-info(p).base)/DAY))+')':'(date exacte à fixer)'}</small> <button class="link" data-plan style="padding:0;font-size:.85rem">Modifier</button>`;
-  if(full && it.kind==='ms' && it.st!=='fait' && (it.auto||/^rhd/.test(it.id))) extra+= it.rdv!=null ? `<span class="rdv num">📅 RDV ${esc(rdvLabel(it.rv))} <button class="link" data-rdv="${esc(it.id)}" style="padding:0 0 0 4px;font-size:.85rem">Modifier</button></span>` : `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Fixer la date du RDV</button>`;
-  if(it.kind==='ev') extra+=`<span class="rdv num">📅 ${esc(rdvLabel({date:iso(it.s),time:it.time}))}${it.note?' – '+esc(it.note):''} <button class="link" data-evedit="${esc(it.id)}" style="padding:0 0 0 4px;font-size:.85rem">Modifier</button></span>`;
-  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}</div><div class="md num">${it.kind==='ev'?'':range(it.s,it.e===it.s?null:it.e)}${stLabel(it)}</div></div>`;
+  if(it.ideal!=null && !hasR && dd==null) extra+=`<small class="ideal num">(${sa(it.idealDays)} : ${fd(it.ideal)})</small>`;
+  if(it.kind==='plan') extra+=`${it.exact!=null?'':'<small class="ideal num">(date exacte à fixer)</small>'} <button class="link" data-plan style="padding:0;font-size:.85rem">Modifier</button>`;
+  if(full && it.kind==='ms' && it.st!=='fait' && (it.auto||/^rhd/.test(it.id))) extra+= it.rdv!=null ? `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Modifier la date du RDV</button>` : `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Fixer la date du RDV</button>`;
+  if(it.kind==='ev') extra+=`${it.note?`<small>${esc(it.note)}</small>`:''}<button class="link" data-evedit="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem;display:block">📅 Modifier le RDV</button>`;
+  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}</div><div class="md num">${dd!=null?'':fixedD!=null?rdvHTML(fixedD,it.time,p):range(it.s,it.e===it.s?null:it.e)+(it.kind==='ms'&&(it.auto||/^rhd/.test(it.id))?'<span class="tofix">date à fixer</span>':'')}${stLabel(it)}</div></div>`;
 }
 async function renderPatient(id){
   const p=S.patients.find(x=>x.id===id); const v=$('#view');
@@ -988,7 +1006,7 @@ async function renderPatient(id){
   const tx=(k,val)=> val ? `<div class="txt"><span class="k">${k}</span>${esc(val)}</div>` : '';
   const items=inf.ok?milestonesFor(p,inf):[];
 
-  if(T==='synth'&&isPatient()) h+=`<section class="sec"><div class="ptools"><button class="btn primary" id="pCard">🚨 Ma carte d’urgence</button><button class="btn" id="pShare">📤 Partager mon dossier</button></div></section>`;
+  if(T==='synth'&&isPatient()) h+=`<section class="sec"><div class="ptools"><button class="btn primary" id="pCard">🚨 Ma carte d’urgence</button><button class="btn" id="pShare">📤 Partager mon dossier</button><button class="btn" id="pTrans">📲 Transférer par QR codes</button></div></section>`;
   if(T==='synth'){
     if(inf.ok){
       const meth={ddr:'DDR'+(p.cycle && +p.cycle!==28?' (cycle '+esc(p.cycle)+' j)':''),dg:'Début de grossesse',echo:'Échographie de datation',dpa:'Terme prévu saisi'}[p.datingMethod||'ddr'];
@@ -998,7 +1016,7 @@ async function renderPatient(id){
       h+=`<div class="kv"><span class="k">Début de grossesse</span><span class="v">${fd(inf.base+14*DAY)}</span></div><div class="kv"><span class="k">Terme prévu d’accouchement (41 SA)</span><span class="v">${fd(inf.dpa)}</span></div></div></section>`;
       if(p.status!=='archived'){
         const t=today(); const nx=items.filter(it=>it.st!=='fait'&&it.kind!=='dpa'&&(it.rdv!=null?it.rdv>=t:it.e>=t)).sort((x,y)=>(x.rdv??x.s)-(y.rdv??y.s)).slice(0,4);
-        h+=`<section class="sec"><h2>Prochaines échéances <button class="link" data-goto="agenda">Agenda complet ›</button></h2><div class="card">${nx.length?nx.map(it=>`<div class="kv"><span>${esc(it.name)}</span><span class="v num" style="font-weight:400">${it.rdv!=null?'<b>RDV '+esc(rdvLabel(it.rv||{date:iso(it.rdv),time:it.time}))+'</b>':range(it.s,it.e===it.s?null:it.e)}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucune échéance à venir.</div>'}</div></section>`;
+        h+=`<section class="sec"><h2>Prochaines échéances <button class="link" data-goto="agenda">Agenda complet ›</button></h2><div class="card">${nx.length?nx.map(it=>`<div class="kv"><span>${esc(it.name)}</span><span class="v num" style="font-weight:400">${(()=>{ const fx=it.rdv!=null?it.rdv:it.kind==='ev'?it.s:(it.kind==='plan'&&it.exact!=null)?it.exact:null; return fx!=null?rdvHTML(fx,it.time,p):range(it.s,it.e===it.s?null:it.e)+'<span class="tofix">date à fixer</span>'; })()}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucune échéance à venir.</div>'}</div></section>`;
       }
     }
     h+=`<section class="sec"><h2>Dernières données cliniques et échographiques <button class="link" data-goto="consult">Détail ›</button></h2><div class="card">${lastDataHTML(p)}</div></section>`;
@@ -1037,7 +1055,7 @@ async function renderPatient(id){
       h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addEv">＋ Rendez-vous</button>${p.planned&&p.planned.type?'':'<button class="btn" data-plan>＋ Déclenchement / césarienne programmé(e)</button>'}</div></section>`;
       const t=today();
       const fixed=items.filter(it=>it.st!=='fait'&&((it.kind==='ms'&&it.rdv!=null)||it.kind==='ev'||(it.kind==='plan'&&it.exact!=null))).map(it=>({it,d:it.rdv??it.exact??it.s})).sort((x,y)=>x.d-y.d);
-      h+=`<section class="sec"><h2>Rendez-vous fixés</h2><div class="card">${fixed.length?fixed.map(({it,d})=>`<div class="kv ${d<t?'late':''}"><span><b>${esc(it.name)}</b>${d<t?'<br><small style="color:var(--bad)">Date passée – à valider ou à reporter</small>':''}</span><span class="v num" style="font-weight:400">${esc(fDl.format(d))}${it.time||it.rv&&it.rv.time?' à '+esc(it.time||it.rv.time):''}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun rendez-vous fixé. Utilisez « Fixer la date du RDV » dans le calendrier ci-dessous.</div>'}</div></section>`;
+      h+=`<section class="sec"><h2>Rendez-vous fixés</h2><div class="card">${fixed.length?fixed.map(({it,d})=>`<div class="kv ${d<t?'late':''}"><span><b>${esc(it.name)}</b>${d<t?'<br><small style="color:var(--bad)">Date passée – à valider ou à reporter</small>':''}</span><span class="v num" style="font-weight:400">${rdvHTML(d,it.time||(it.rv&&it.rv.time),p)}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun rendez-vous fixé. Utilisez « Fixer la date du RDV » dans le calendrier ci-dessous.</div>'}</div></section>`;
       h+=`<section class="sec"><h2>Calendrier de suivi</h2><div class="card" id="msList">${items.map(it=>msRow(p,it,true)).join('')}</div></section>`;
     }
   }
@@ -1071,7 +1089,7 @@ async function renderPatient(id){
   const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click',fn); };
   on('#bk',()=>go('liste'));
   on('#edit',()=>openEditor(p));
-  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#pCard',()=>openMyCard(p)); on('#pShare',()=>shareMyDossier(p)); on('#msgBtn',()=>openMessage(p));
+  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#pCard',()=>openMyCard(p)); on('#pShare',()=>shareMyDossier(p)); on('#pTrans',()=>showTransferScreen(p,myCodeOf(p))); on('#msgBtn',()=>openMessage(p));
   $$('[data-fiche]').forEach(c=>{ c.addEventListener('click',e=>e.stopPropagation()); c.addEventListener('change',async()=>{ const id=c.dataset.fiche; p.fichesOff=list(p.fichesOff).filter(x=>x!==id); if(!c.checked) p.fichesOff.push(id); await savePatient(p); }); });
   $$('[data-ptab]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.ptab; renderPatient(id); const nav=$('.ptabs'); if(nav) nav.scrollIntoView({block:'start',behavior:'auto'}); }));
   $$('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.goto; renderPatient(id); }));
@@ -1582,7 +1600,7 @@ function pdfSections(p,patient){
   sec('suivi','Suivi clinique et échographique',evalsOf(p).map(e=>{ const l=evalLine(e,p); return [l.when,l.txt]; }));
   sec('bio','Biologie',list(p.bio).slice().sort((x,y)=>(x.date||'').localeCompare(y.date||'')).map(b=>[(b.date?fd(parseD(b.date)):'?')+' – '+(b.exam==='Autre'?b.examAutre||'Autre':b.exam),[b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – ')+(b.interp?' ('+b.interp.toLowerCase()+')':'')+(b.notes?' – '+b.notes:'')]));
   sec('hosp','Hospitalisations',list(p.hospits).map(x=>[(x.debut?fd(parseD(x.debut)):'?')+(x.fin?' au '+fd(parseD(x.fin)):''),(x.motif||'Motif non précisé')+(x.lieu?' – '+x.lieu:'')]));
-  if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.rdv!=null&&it.st!=='fait'?' – RDV le '+fd(it.rdv)+(it.time?' à '+it.time:''):'')+(it.st==='fait'?' – fait le '+fd(parseD(it.done)):'')]));
+  if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,it.rdv!=null&&it.st!=='fait'?'RDV le '+fDl.format(it.rdv)+(it.time?' à '+it.time:'')+' ('+sa(Math.round((it.rdv-inf.base)/DAY))+')':range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.st==='fait'?' – fait le '+fd(parseD(it.done)):'')]));
   sec('acc','Accouchement prévu et correspondants',[['Lieu prévu',lieuLabel(p)+(p.niveau?' (type '+p.niveau+')':'')],...list(p.corr).filter(c=>c.nom).map(c=>[c.role,c.nom+(c.contact?' – '+c.contact:'')])]);
   if(p.status==='archived') sec('issue','Issue de la grossesse',issueRows(p,inf));
   if(patient) sec('conseils','Conseils personnalisés',fichesFor(p).filter(f=>!f.off).map(f=>[f.title,f.text]));
@@ -1592,7 +1610,7 @@ function pdfSections(p,patient){
 let jsPDFp=null;
 function loadJsPDF(){ if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF); if(!jsPDFp) jsPDFp=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=()=>res(window.jspdf.jsPDF); s.onerror=()=>{ jsPDFp=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsPDFp; }
 function pdfTxt(s){ return String(s==null?'':s).replace(/[\u202F\u00A0]/g,' ').replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/−/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/→/g,'->').replace(/✓/g,'x').replace(/²/g,'2'); }
-async function makePDF(p,ids,patient){
+async function makePDF(p,ids,patient,qrs){
   const JsPDF=await loadJsPDF();
   const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210, M=16, KW=58; let y=18;
   const page=()=>{ doc.addPage(); y=18; };
@@ -1611,13 +1629,19 @@ async function makePDF(p,ids,patient){
     }
     y+=4;
   }
+  if(qrs&&qrs.length){ const per=6, size=80;
+    for(let k=0;k<qrs.length;k++){ if(k%per===0){ doc.addPage(); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(122,46,99); doc.text(pdfTxt('Transfert du dossier complet'),M,16); doc.setTextColor(0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+        doc.text(doc.splitTextToSize(pdfTxt('Pour le soignant équipé de l’application Suivi de grossesse : Réglages → Données → « Importer un dossier imprimé », puis scannez ces QR codes dans n’importe quel ordre. Le code de la patiente est demandé à la fin. Ne pas plier ni froisser cette page.'),W-2*M),M,22); }
+      const pos=k%per, col=pos%2, row=Math.floor(pos/2); const x=M+col*(size+(W-2*M-2*size)), yy=34+row*(size+10);
+      doc.addImage(QR.dataUrl(qrs[k].q,4),'PNG',x,yy,size,size); doc.setFontSize(9); doc.text(pdfTxt(qrs[k].label),x+size/2,yy+size+4,{align:'center'}); }
+  }
   const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text(pdfTxt(fullName(p)+' – page '+i+'/'+n),W-M,291,{align:'right'}); }
   return doc.output('blob');
 }
-function printFallback(p,ids,patient){
+function printFallback(p,ids,patient,qrs){
   let el=document.getElementById('printArea'); if(!el){ el=document.createElement('div'); el.id='printArea'; document.body.appendChild(el); }
   el.innerHTML=`<h1>${patient?'Synthèse':'Dossier'} de suivi de grossesse</h1><h2>${esc(fullName(p))}</h2><p class="pmeta">Document édité le ${fd(today())} – informations confidentielles</p>`+
-    pdfSections(p,patient).filter(s=>ids.includes(s.id)).map(s=>`<h3>${esc(s.title)}</h3><table>${s.rows.map(([k,v])=>`<tr><th${k==='ALLERGIES'?' class="pal"':''}>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('');
+    pdfSections(p,patient).filter(s=>ids.includes(s.id)).map(s=>`<h3>${esc(s.title)}</h3><table>${s.rows.map(([k,v])=>`<tr><th${k==='ALLERGIES'?' class="pal"':''}>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>`).join('')+(qrs&&qrs.length?`<h3 class="pbreak">Transfert du dossier complet</h3><p class="pmeta">Soignant équipé de l’application : Réglages → Données → « Importer un dossier imprimé », puis scannez ces QR codes. Le code de la patiente est demandé à la fin.</p><div class="pqgrid">${qrs.map(x=>`<div class="pq">${QR.svg(x.q,260)}<div>${esc(x.label)}</div></div>`).join('')}</div>`:'');
   document.body.classList.add('printing');
   const done=()=>{ document.body.classList.remove('printing'); window.removeEventListener('afterprint',done); };
   window.addEventListener('afterprint',done);
@@ -1627,16 +1651,19 @@ function printFallback(p,ids,patient){
 function openPrint(p,patient){
   const m=$('#modal'), b=$('#modalBox'); const avail=new Set(pdfSections(p,patient).map(s=>s.id));
   b.innerHTML=`<h3>${patient?'Synthèse pour la patiente':'Imprimer / exporter en PDF'}</h3>${patient?'<p>Les notes privées ne sont pas incluses.</p>':''}<p>Choisissez les parties du dossier à inclure.</p><div class="seg" style="flex-direction:column;align-items:stretch">${PRINT_SECTIONS.filter(([k])=>avail.has(k)).map(([k,l])=>`<label><input type="checkbox" data-ps value="${k}" checked><span style="display:block">${esc(l)}</span></label>`).join('')}</div>
+  <label class="chkline"><input type="checkbox" id="pqr" ${patient?'checked':''}> Ajouter les QR codes de transfert du dossier complet (protégés par le code de la patiente)</label>
   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Créer le PDF</button></div>`;
   m.classList.add('open');
   m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a){ if(e.target===m){ m.classList.remove('open'); m.onclick=null; } return; }
     if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
     const ids=$$('[data-ps]:checked',b).map(c=>c.value); if(!ids.length){ toast('Cochez au moins une partie'); return; }
     a.disabled=true; a.textContent='Création…';
-    try{ const blob=await makePDF(p,ids,patient); m.classList.remove('open'); m.onclick=null;
+    let qrs=[];
+    if($('#pqr')&&$('#pqr').checked){ let code=isPatient()?p.myCode:p.shareCode; if(!code&&!isPatient()){ p.shareCode=newCode(); await savePatient(p); code=p.shareCode; } if(code){ try{ qrs=await transferQRs(p,code); }catch(e){ toast('QR codes de transfert impossibles sur cet appareil'); } } }
+    try{ const blob=await makePDF(p,ids,patient,qrs); m.classList.remove('open'); m.onclick=null;
       const name=(patient?'synthese-':'dossier-')+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.pdf';
       if(await saveFile(name,blob)) toast('PDF créé');
-    }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids,patient); }
+    }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids,patient,qrs); }
   };
 }
 /* ---------- Analyse : recherche et statistiques ---------- */
@@ -2024,17 +2051,7 @@ async function importDossierFile(file){
   let payload;
   try{ let u=await unseal(b64u8(w.data),code,b64u8(w.salt),b64u8(w.iv),w.iter||310000); if(w.z) u=await unzip(u); payload=JSON.parse(new TextDecoder().decode(u)); }
   catch(e){ toast(e&&e.message==='nozip'?'Appareil trop ancien pour lire ce fichier':'Code incorrect'); return; }
-  const q=payload.patient; if(!q){ toast('Dossier vide'); return; }
-  const ex=S.patients.find(x=>(x.status||'active')!=='archived'&&sameIdentity(x,q));
-  let target=null;
-  if(ex&&isPatient()) target=ex;
-  else if(ex){ const c=await choose({title:'Cette patiente a déjà un dossier',body:`Un dossier en cours existe pour ${fullName(ex)}. Voulez-vous le remplacer par le dossier reçu, ou créer un dossier séparé ?`,buttons:[['replace','Remplacer le dossier existant','primary'],['new','Créer un dossier séparé',''],['cancel','Annuler','']]}); if(c==='cancel') return; if(c==='replace') target=ex; }
-  const np=Object.assign({},q,{id:target?target.id:uid('p'),createdAt:target?target.createdAt:Date.now(),importedAt:Date.now(),notesPriv:target?target.notesPriv:''});
-  if(APP_ROLE==='patient') np.myCode=code; else np.shareCode=(target&&target.shareCode)||code;
-  if(target) np.groupId=target.groupId;
-  await savePatient(np);
-  let n=0; for(const f of list(payload.files)){ try{ await put('files',{id:uid('f'),patientId:np.id,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; }catch(e){} }
-  toast('Dossier importé'+(n?' avec '+n+' document'+(n>1?'s':''):'')); go('patient-'+np.id);
+  await importPayload(payload,code);
 }
 function askCode(){
   return new Promise(res=>{ const m=$('#modal'), b=$('#modalBox');
@@ -2057,6 +2074,25 @@ async function openMyCard(p){
   $('#mcShow').addEventListener('click',()=>{ $('#mcSum').innerHTML='<div style="margin-top:12px">'+cardHTML(cardData(p))+'</div>'; $('#mcShow').remove(); });
   $('#mcSave').addEventListener('click',async()=>{ if(q) saveFile('ma-carte-urgence.png',await QR.png(q,8)); });
 }
+async function showTransferScreen(p,code){
+  if(!code){ toast('Code introuvable'); return; }
+  let qs; try{ qs=await transferQRs(p,code); }catch(e){ toast('Création impossible sur cet appareil'); return; }
+  let k=0, play=true, timer=null; const z=$('#zoom');
+  z.innerHTML=`<header><b>Transfert à un soignant</b><button class="btn small" id="trClose">Fermer</button></header><div class="zbody" style="text-align:center">
+   <p class="note" style="margin:4px 0 10px">Le soignant ouvre son application : Réglages → Données → « Importer un dossier imprimé », puis vise cet écran. Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
+   <div id="trQr" class="trqr"></div><div id="trLbl" class="scprog"></div>
+   <div class="actions" style="justify-content:center"><button class="btn" id="trPrev">‹</button><button class="btn primary" id="trPlay">⏸ Pause</button><button class="btn" id="trNext">›</button></div>
+   <p class="note">Aucune connexion Internet n’est nécessaire : les données passent directement de l’écran à la caméra. Donnez ensuite votre code oralement.</p></div>`;
+  z.classList.add('open'); document.body.style.overflow='hidden';
+  const show=()=>{ $('#trQr').innerHTML=QR.svg(qs[k].q,320); $('#trLbl').innerHTML=`<b>${k+1} / ${qs.length}</b>`; };
+  const tick=()=>{ k=(k+1)%qs.length; show(); };
+  const start=()=>{ clearInterval(timer); timer=setInterval(tick,1600); };
+  show(); start();
+  $('#trPlay').addEventListener('click',()=>{ play=!play; $('#trPlay').textContent=play?'⏸ Pause':'▶ Lecture'; if(play) start(); else clearInterval(timer); });
+  $('#trPrev').addEventListener('click',()=>{ k=(k-1+qs.length)%qs.length; show(); if(play) start(); });
+  $('#trNext').addEventListener('click',()=>{ tick(); if(play) start(); });
+  $('#trClose').addEventListener('click',()=>{ clearInterval(timer); z.classList.remove('open'); z.innerHTML=''; document.body.style.overflow=''; });
+}
 async function shareMyDossier(p){
   const code=myCodeOf(p); if(!code){ toast('Code introuvable : rouvrez le dossier reçu de votre soignant'); return; }
   if(!await ask({title:'Partager mon dossier',body:'Un fichier protégé par votre code va être créé. Envoyez-le au soignant (AirDrop, message, e-mail…) et donnez-lui votre code oralement, jamais dans le même message.',ok:'Créer le fichier'})) return;
@@ -2075,7 +2111,7 @@ function openShare(p){
    <fieldset><legend>1. Synthèse PDF</legend><div class="fbox"><p class="note" style="margin:8px 0">Document lisible par tous, à remettre en main propre ou à imprimer.</p><button class="btn primary" id="sPdf">Créer la synthèse patiente</button></div></fieldset>
    <fieldset><legend>2. Dossier complet chiffré</legend><div class="fbox"><p class="note" style="margin:8px 0">Fichier protégé par un code, que la patiente transmet à un soignant équipé de cette application : il l’importe et retrouve tout le dossier.</p>
     <label class="chkline"><input type="checkbox" id="sFiles"> Inclure les documents PDF joints</label>
-    <div class="actions" style="margin-top:10px"><button class="btn primary" id="sFile">Créer le fichier</button></div><div id="sFileOut"></div></div></fieldset>
+    <div class="actions" style="margin-top:10px"><button class="btn primary" id="sFile">Créer le fichier</button><button class="btn" id="sTrans">📲 Afficher les QR codes de transfert</button></div><div id="sFileOut"></div></div></fieldset>
    <fieldset><legend>3. QR code « carte d’urgence »</legend><div class="fbox"><p class="note" style="margin:8px 0">Résumé essentiel (allergies, groupe, terme, pathologies, traitements…). Scanné avec l’appareil photo de n’importe quel téléphone, il ouvre la carte dans l’application en ligne ; rien n’est envoyé à un serveur.</p>
     ${radios('qmode',[['code','Protégé par un code'],['libre','Lisible sans code']],'code')}
     <div class="actions" style="margin-top:10px"><button class="btn primary" id="sQr">Créer le QR code</button></div><div id="sQrOut"></div></div></fieldset>
@@ -2084,6 +2120,7 @@ function openShare(p){
   const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; document.body.style.overflow=''; };
   $('#sClose').addEventListener('click',close);
   $('#sPdf').addEventListener('click',()=>{ close(); openPrint(p,true); });
+  $('#sTrans').addEventListener('click',async()=>{ const c=await ensureCode(false); showTransferScreen(p,c); });
   const ensureCode=async(force)=>{ if(!p.shareCode||force){ p.shareCode=newCode(); await savePatient(p); } $('#sCode').textContent=fmtCode(p.shareCode); $('#sNewCode').textContent='Changer le code'; return p.shareCode; };
   $('#sNewCode').addEventListener('click',async()=>{ if(p.shareCode&&!await ask({title:'Changer le code ?',body:'Les fichiers et QR codes déjà remis à la patiente garderont l’ancien code. Les prochains utiliseront le nouveau.',ok:'Changer'})) return; await ensureCode(true); toast('Nouveau code créé'); });
   $('#sInst').addEventListener('click',()=>{ const url=patientAppUrl(); const q=QR.encode([...new TextEncoder().encode(url)],'M'); $('#sInstOut').innerHTML=`<div class="qrbox">${QR.svg(q,240)}</div><p class="note" style="text-align:center;margin:0">${esc(url)}</p><div class="actions"><button class="btn" id="sInstSave">Enregistrer l’image (affiche, impression)</button></div>`; $('#sInstSave').addEventListener('click',async()=>saveFile('qr-mon-suivi-de-grossesse.png',await QR.png(q,10))); });
@@ -2174,6 +2211,70 @@ function openMessage(p){
   $('#mMail').addEventListener('click',()=>{ const d=dest(); window.location.href='mailto:'+encodeURIComponent(d&&d[3]||'')+'?subject='+encodeURIComponent(subj.value)+'&body='+encodeURIComponent(txt.value); });
 }
 
+/* ---------- QR codes de transfert (dossier complet imprimé) ---------- */
+const TQ_CHUNK=600;
+QR.dataUrl=(q,scale)=>{ const n=q.size+8, c=document.createElement('canvas'); c.width=c.height=n*scale; const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.fillStyle='#000'; for(let y=0;y<q.size;y++) for(let x=0;x<q.size;x++) if(q.modules[y][x]) g.fillRect((x+4)*scale,(y+4)*scale,scale,scale); return c.toDataURL('image/png'); };
+async function transferQRs(p,code){
+  let u=new TextEncoder().encode(JSON.stringify({app:'suivi-grossesse-dossier',v:1,exportedAt:new Date().toISOString(),patient:forPatient(p),files:[]}));
+  let flags=0; if(canZip()){ u=await zip(u); flags|=1; }
+  const sl=await seal(u,code,310000); const blob=new Uint8Array(1+16+12+sl.c.length); blob[0]=flags; blob.set(sl.salt,1); blob.set(sl.iv,17); blob.set(sl.c,29);
+  const str=toUrl(u8b64(blob)); const n=Math.ceil(str.length/TQ_CHUNK); const tid=newCode();
+  return Array.from({length:n},(_,i)=>{ const txt='SGT1|'+tid+'|'+(i+1)+'|'+n+'|'+str.slice(i*TQ_CHUNK,(i+1)*TQ_CHUNK); return {q:QR.encode([...new TextEncoder().encode(txt)],'M'),label:'Transfert '+(i+1)+' / '+n}; });
+}
+async function importPayload(payload,code){
+  const q=payload.patient; if(!q){ toast('Dossier vide'); return; }
+  const ex=S.patients.find(x=>(x.status||'active')!=='archived'&&sameIdentity(x,q));
+  let target=null;
+  if(ex&&isPatient()) target=ex;
+  else if(ex){ const c=await choose({title:'Cette patiente a déjà un dossier',body:`Un dossier en cours existe pour ${fullName(ex)}. Voulez-vous le remplacer par le dossier reçu, ou créer un dossier séparé ?`,buttons:[['replace','Remplacer le dossier existant','primary'],['new','Créer un dossier séparé',''],['cancel','Annuler','']]}); if(c==='cancel') return; if(c==='replace') target=ex; }
+  const np=Object.assign({},q,{id:target?target.id:uid('p'),createdAt:target?target.createdAt:Date.now(),importedAt:Date.now(),notesPriv:target?target.notesPriv:''});
+  if(APP_ROLE==='patient') np.myCode=code; else np.shareCode=(target&&target.shareCode)||code;
+  if(target) np.groupId=target.groupId;
+  await savePatient(np);
+  let n=0; for(const f of list(payload.files)){ try{ await put('files',{id:uid('f'),patientId:np.id,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; }catch(e){} }
+  toast('Dossier importé'+(n?' avec '+n+' document'+(n>1?'s':''):'')); go('patient-'+np.id);
+}
+let jsqrP=null;
+function loadJsQR(){ if(window.jsQR) return Promise.resolve(window.jsQR); if(!jsqrP) jsqrP=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=()=>window.jsQR?res(window.jsQR):rej(new Error('load')); s.onerror=()=>{ jsqrP=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsqrP; }
+function openScanImport(){
+  const parts=new Map(); let tid=null, total=0, stream=null, timer=null, busy=false, done=false;
+  const z=$('#zoom');
+  z.innerHTML=`<header><b>Importer un dossier imprimé</b><button class="btn small" id="scClose">Fermer</button></header>
+   <div class="zbody"><p class="note" style="margin:4px 4px 10px">Visez les QR codes « Transfert » de la dernière page, un par un, dans n’importe quel ordre.</p>
+   <div class="scanbox"><video id="scVid" playsinline muted></video><div class="scanframe"></div></div>
+   <div id="scProg" class="scprog">En attente du premier QR code…</div>
+   <div class="actions"><button class="btn" id="scPhoto">📷 Lire depuis une photo</button></div>
+   <p class="note">Si la caméra ne s’ouvre pas, prenez chaque QR code en photo (bien cadré, un par photo).</p></div>`;
+  z.classList.add('open'); document.body.style.overflow='hidden';
+  const stop=()=>{ if(timer) clearInterval(timer); timer=null; if(stream) stream.getTracks().forEach(t=>t.stop()); stream=null; };
+  const close=()=>{ stop(); z.classList.remove('open'); z.innerHTML=''; document.body.style.overflow=''; };
+  $('#scClose').addEventListener('click',close);
+  const prog=()=>{ $('#scProg').innerHTML=total?`<b>${parts.size} / ${total}</b> QR code${total>1?'s':''} lu${parts.size>1?'s':''}<div class="scchips">${Array.from({length:total},(_,i)=>`<span class="${parts.has(i+1)?'ok':''}">${i+1}</span>`).join('')}</div>`:'En attente du premier QR code…'; };
+  const accept=async txt=>{
+    if(done||!txt) return; const m=/^SGT1\|([A-Z0-9]{6})\|(\d+)\|(\d+)\|(.+)$/.exec(txt.trim());
+    if(!m){ if(/#carte\./.test(txt)) toast('C’est une carte d’urgence : utilisez les QR codes « Transfert »'); return; }
+    const [,id,i,n,data]=m; if(tid&&id!==tid){ toast('Ce QR code appartient à un autre document'); return; }
+    if(!tid){ tid=id; total=+n; } if(parts.has(+i)) return;
+    parts.set(+i,data); if(navigator.vibrate) navigator.vibrate(40); prog();
+    if(parts.size===total){ done=true; stop();
+      const str=Array.from({length:total},(_,k)=>parts.get(k+1)).join('');
+      const code=await askCode(); if(!code){ close(); return; }
+      try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),code,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u);
+        const payload=JSON.parse(new TextDecoder().decode(u)); close(); await importPayload(payload,code); }
+      catch(e){ done=false; toast(e&&e.message==='nozip'?'Appareil trop ancien pour lire ce dossier':'Code incorrect, réessayez'); const c2=await askCode(); if(c2){ try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),c2,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u); close(); await importPayload(JSON.parse(new TextDecoder().decode(u)),c2); }catch(e2){ toast('Code incorrect'); close(); } } else close(); }
+    }
+  };
+  const decodeCanvas=async(cv)=>{ const g=cv.getContext('2d'); const d=g.getImageData(0,0,cv.width,cv.height);
+    if('BarcodeDetector' in window){ try{ const bd=new BarcodeDetector({formats:['qr_code']}); const r=await bd.detect(cv); for(const x of r) await accept(x.rawValue); if(r.length) return; }catch(e){} }
+    const jq=await loadJsQR(); const r=jq(d.data,cv.width,cv.height,{inversionAttempts:'dontInvert'}); if(r&&r.data) await accept(r.data); };
+  $('#scPhoto').addEventListener('click',()=>{ const i=$('#imgInput'); i.value=''; i.onchange=async()=>{ for(const f of i.files){ try{ const img=await readImage(f); const im=new Image(); im.src=img.data; await im.decode(); const cv=document.createElement('canvas'); cv.width=img.w; cv.height=img.h; cv.getContext('2d').drawImage(im,0,0); await decodeCanvas(cv); }catch(e){ toast('Lecture impossible (connexion Internet nécessaire la première fois)'); } } if(!done&&total&&parts.size<total) toast('Encore '+(total-parts.size)+' QR code(s) à lire'); }; i.click(); });
+  (async()=>{ try{ await loadJsQR(); }catch(e){}
+    try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false}); const v=$('#scVid'); if(!v){ stop(); return; } v.srcObject=stream; await v.play();
+      const cv=document.createElement('canvas');
+      timer=setInterval(async()=>{ if(busy||done||!v.videoWidth) return; busy=true; try{ cv.width=v.videoWidth; cv.height=v.videoHeight; cv.getContext('2d').drawImage(v,0,0); await decodeCanvas(cv); }catch(e){} busy=false; },300);
+    }catch(e){ const sb=$('.scanbox'); if(sb) sb.innerHTML='<div class="vmsg" style="padding:30px 10px">Caméra indisponible ici : utilisez « Lire depuis une photo ».</div>'; } })();
+}
+
 /* ---------- Agenda ---------- */
 function renderAgenda(){
   const v=$('#view'); const t=today(), N=S.agendaDays;
@@ -2183,7 +2284,7 @@ function renderAgenda(){
     const inf=info(p); if(!inf.ok) continue;
     for(const it0 of milestonesFor(p,inf)){
       if(it0.st==='fait') continue;
-      const it=it0.rdv!=null?Object.assign({},it0,{s:it0.rdv,e:it0.rdv,name:it0.name+' – RDV'+(it0.time?' à '+it0.time:'')}):it0;
+      const it=it0.rdv!=null?Object.assign({},it0,{s:it0.rdv,e:it0.rdv}):it0;
       const row={p,it};
       if(it.kind==='dpa'){ if(it.s>=t && it.s<=t+N*DAY) soon.push(row); continue; }
       if(it.e<t){ if(it.e>=t-30*DAY) late.push(row); }
@@ -2195,7 +2296,8 @@ function renderAgenda(){
   const item=(r,mode)=>{ const it=r.it; let when;
     if(mode==='late') when=`<small style="color:var(--bad)">fenêtre close le ${fds(it.e)}</small>`;
     else if(mode==='open'){ const d=Math.round((it.e-t)/DAY); when=`<small style="color:${d<=7?'var(--warn)':'var(--accent)'}">${it.e===it.s?'aujourd’hui':d===0?'dernier jour':'jusqu’au '+fds(it.e)+' ('+d+' j)'}</small>`; }
-    else when=`<small style="color:var(--muted)">${fDl.format(it.s)}</small>`;
+    else when=(it.rdv!=null||it.kind==='ev'||(it.kind==='plan'&&it.exact!=null))?rdvHTML(it.rdv??it.exact??it.s,it.time,r.p):`<small style="color:var(--muted)">${fDl.format(it.s)}</small><span class="tofix">date à fixer</span>`;
+    if(mode==='open'&&(it.rdv!=null||it.kind==='ev')) when=rdvHTML(it.rdv??it.s,it.time,r.p);
     const can=it.kind!=='dpa';
     return `<div class="ms">${can?`<button class="chk" data-ag="${esc(r.p.id)}|${esc(it.id)}" aria-pressed="false" aria-label="Marquer comme fait : ${esc(it.name)}"></button>`:'<span class="chk" aria-hidden="true" style="border-style:dashed"></span>'}<div class="mn"><b>${esc(it.name)}</b><button class="link" style="padding:0" data-open="${esc(r.p.id)}">${esc(fullName(r.p))}</button></div><div class="md num">${when}</div></div>`; };
   const sec=(title,arr,mode,emptyMsg)=>`<section class="sec"><h2>${title} <span class="num" style="color:var(--muted);font-weight:400">${arr.length}</span></h2><div class="card">${arr.length?arr.map(r=>item(r,mode)).join(''):`<div class="txt" style="color:var(--muted)">${emptyMsg}</div>`}</div></section>`;
@@ -2405,7 +2507,7 @@ function renderSettings(){
   h+=`<section class="sec"><h2>Version patiente</h2><div class="card"><div class="txt">Les patientes ouvrent le dossier chiffré que vous leur remettez dans l’application « Mon suivi de grossesse » (adresse : …/patiente.html). Elles y retrouvent leur suivi, leurs rendez-vous, leurs conseils, leurs résultats et leurs documents, en lecture seule.</div></div><div class="actions"><button class="btn" id="prevPat">👁 Aperçu de la version patiente</button><button class="btn" id="instQr">QR code d’installation</button></div><div id="instOut"></div></section>`;
   h+=`<section class="sec"><h2>QR codes « carte d’urgence »</h2><div class="card"><div class="fpad"><label class="f"><span>Adresse de l’application en ligne (ouverte au scan du QR code)</span><input id="appUrl" value="${esc(st.appUrl||'https://perinat66.github.io/suivi-grossesse/')}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)"></label></div></div></section>`;
   h+=`<section class="sec"><h2>Données</h2><div class="card"><div class="txt">${MODE==='cloud'?'Les dossiers et les PDF sont enregistrés dans votre compte Claude, dans un espace privé de cette application : ils sont conservés d’une ouverture à l’autre et retrouvés sur vos autres appareils. Cet espace n’est pas un hébergement certifié HDS.':MODE==='local'?'Version autonome : les dossiers et les PDF sont enregistrés uniquement sur cet appareil, dans l’application. Rien n’est envoyé sur Internet. Ils ne sont ni synchronisés ni sauvegardés ailleurs : exportez une sauvegarde chaque semaine (Fichiers, iCloud Drive ou clé USB) et gardez-la en lieu sûr.':'Aucun stockage durable n’est disponible : les données seront perdues à la fermeture. Exportez une sauvegarde avant de quitter.'}<span class="k" id="quota" style="margin-top:6px"></span></div></div>
-  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="impScan">Importer un dossier imprimé (QR codes)</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
   v.innerHTML=h;
   $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
   $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
@@ -2420,6 +2522,7 @@ function renderSettings(){
   $('#addMs').addEventListener('click',async()=>{ st.milestones.push({id:uid('ms'),name:'Nouvel examen',s:140,e:154,cond:'all'}); await saveSettings(); renderSettings(); const l=$$('.msedit [data-k="name"]'); const last=l[l.length-1]; last.focus(); last.select(); });
   $('#resetMs').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir le calendrier par défaut ?',body:'Vos échéances personnalisées seront remplacées. Les validations déjà cochées sur les échéances par défaut sont conservées.',ok:'Rétablir'})) return; st.milestones=JSON.parse(JSON.stringify(DEFAULT_MS)); await saveSettings(); renderSettings(); });
   $('#exp').addEventListener('click',exportBackup);
+  $('#impScan').addEventListener('click',openScanImport);
   $('#impDos').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importDossierFile(i.files[0]); i.click(); });
   $('#prevPat').addEventListener('click',()=>{ S.preview=true; go('liste'); });
   $('#instQr').addEventListener('click',()=>{ const url=patientAppUrl(); const q=QR.encode([...new TextEncoder().encode(url)],'M'); $('#instOut').innerHTML=`<div class="card" style="margin-top:10px"><div class="qrbox">${QR.svg(q,240)}</div><p class="note" style="text-align:center">${esc(url)}</p><div class="actions" style="justify-content:center;margin:0 0 12px"><button class="btn" id="instSave">Enregistrer l’image</button></div></div>`; $('#instSave').addEventListener('click',async()=>saveFile('qr-mon-suivi-de-grossesse.png',await QR.png(q,10))); });
