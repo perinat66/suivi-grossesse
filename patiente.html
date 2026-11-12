@@ -291,7 +291,7 @@ details.sgrp > summary::after{content:"＋";color:var(--muted)} details.sgrp[ope
 .catlist label{display:flex;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}
 .catlist input{width:20px;height:20px;accent-color:var(--accent)}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap} .thumbs img{width:64px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
-.role-patient [data-nav="agenda"],.role-patient [data-nav="analyse"],.role-patient #edit,.role-patient #arch,.role-patient #unarch,.role-patient #newPreg,.role-patient #shareBtn,.role-patient #msgBtn,.role-patient #delP,.role-patient .newev,.role-patient [data-rdv],.role-patient [data-evedit],.role-patient [data-plan],.role-patient [data-recat],.role-patient [data-delf],.role-patient #addPdf,.role-patient #selMode,.role-patient .sortrow,.role-patient #critBox,.role-patient #cpj,.role-patient #addEv,.role-patient #editIssue,.role-patient .search select{display:none!important}
+.role-patient #toPat,.role-patient [data-nav="agenda"],.role-patient [data-nav="analyse"],.role-patient #edit,.role-patient #arch,.role-patient #unarch,.role-patient #newPreg,.role-patient #shareBtn,.role-patient #msgBtn,.role-patient #delP,.role-patient .newev,.role-patient [data-rdv],.role-patient [data-evedit],.role-patient [data-plan],.role-patient [data-recat],.role-patient [data-delf],.role-patient #addPdf,.role-patient #selMode,.role-patient .sortrow,.role-patient #critBox,.role-patient #cpj,.role-patient #addEv,.role-patient #editIssue,.role-patient .search select{display:none!important}
 .role-patient .chk{pointer-events:none}
 details.fiche{background:var(--surface);border-radius:var(--radius);padding:4px 14px 12px}
 details.fiche summary,details.fiche-pro summary{font-weight:700;padding:10px 0;cursor:pointer}
@@ -922,9 +922,9 @@ function renderPatientHome(){
   const v=$('#view'); const ps=S.patients.slice().sort((a,b)=>pDate(b)-pDate(a));
   v.innerHTML=`<div class="summary"><strong>Mon suivi de grossesse</strong>${ps.length?'Touchez votre dossier pour l’ouvrir':'Ouvrez le dossier remis par votre sage-femme ou votre médecin'}</div>
    ${ps.length?`<section class="group"><div class="card">${ps.map(rowHTML).join('')}</div></section>`:''}
-   <section class="sec"><div class="card"><div class="txt">Votre soignant vous remet un fichier « dossier » et un code à 6 caractères. Touchez le bouton ci-dessous, choisissez le fichier, puis saisissez le code. Pour mettre à jour votre dossier, faites de même avec le nouveau fichier.</div></div>
-   <div class="actions"><button class="btn primary" id="phImp">📥 Ouvrir un dossier reçu</button></div></section>`;
-  $('#phImp').addEventListener('click',pickDossier); bindRows(v);
+   <section class="sec"><div class="ptools"><button class="btn primary" id="phScan">📷 ${ps.length?'Mettre à jour':'Recevoir'} mon dossier (QR code)</button><button class="btn" id="phImp">📥 Ouvrir un fichier reçu</button></div>
+   <div class="card" style="margin-top:12px"><div class="txt">À chaque consultation, votre soignant affiche des QR codes sur son écran : touchez « ${ps.length?'Mettre à jour':'Recevoir'} mon dossier » et visez-les. Votre dossier est alors complété avec tout ce qui est nouveau (consultations, échographies, résultats, rendez-vous). La première fois, saisissez le code à 6 caractères qu’il vous donne.</div></div></section>`;
+  $('#phImp').addEventListener('click',pickDossier); $('#phScan').addEventListener('click',openScanImport); bindRows(v);
 }
 const PTABS=[['synth','Synthèse'],['consult','Consultations & échos'],['agenda','Agenda'],['bio','Biologie'],['hosp','Hospitalisations'],['suites','Accouchement & suites'],['docs','Documents']];
 function rhdResults(p){ return list(p.bio).filter(b=>b.exam==='Génotypage RhD fœtal'&&b.res).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')); }
@@ -1006,7 +1006,7 @@ async function renderPatient(id){
   const tx=(k,val)=> val ? `<div class="txt"><span class="k">${k}</span>${esc(val)}</div>` : '';
   const items=inf.ok?milestonesFor(p,inf):[];
 
-  if(T==='synth'&&isPatient()) h+=`<section class="sec"><div class="ptools"><button class="btn primary" id="pCard">🚨 Ma carte d’urgence</button><button class="btn" id="pShare">📤 Partager mon dossier</button><button class="btn" id="pTrans">📲 Transférer par QR codes</button></div></section>`;
+  if(T==='synth'&&isPatient()) h+=`<section class="sec"><div class="ptools"><button class="btn primary" id="pUpd">📷 Mettre à jour (QR code)</button><button class="btn" id="pCard">🚨 Ma carte d’urgence</button><button class="btn" id="pShare">📤 Partager mon dossier</button><button class="btn" id="pTrans">📲 Transférer par QR codes</button></div></section>`;
   if(T==='synth'){
     if(inf.ok){
       const meth={ddr:'DDR'+(p.cycle && +p.cycle!==28?' (cycle '+esc(p.cycle)+' j)':''),dg:'Début de grossesse',echo:'Échographie de datation',dpa:'Terme prévu saisi'}[p.datingMethod||'ddr'];
@@ -1038,11 +1038,11 @@ async function renderPatient(id){
     const rel=related(p);
     h+=`<section class="sec"><h2>Autres dossiers de la patiente</h2><div class="card">${rel.length?rel.map(x=>`<button class="row" data-open="${esc(x.id)}"><span class="rmain"><span class="nm">${esc(pregLabel(x))}</span><span style="color:var(--muted);font-size:.92rem">${esc(issueSummary(x)||(x.status==='archived'?'Archivée sans issue renseignée':'Grossesse en cours'))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun autre dossier pour cette patiente.</div>'}</div></section>`;
     if(p.notes||p.notesPriv) h+=`<section class="sec"><h2>Notes</h2><div class="card">${p.notes?`<div class="txt">${esc(p.notes)}</div>`:''}${p.notesPriv?`<div class="txt"><span class="k">🔒 Notes privées</span>${esc(p.notesPriv)}</div>`:''}</div></section>`;
-    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn" id="shareBtn">Remettre à la patiente</button><button class="btn" id="msgBtn">✉ Message</button><button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
+    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn primary" id="toPat">📲 Transmettre à la patiente</button><button class="btn" id="shareBtn">Remettre à la patiente</button><button class="btn" id="msgBtn">✉ Message</button><button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
   }
   else if(T==='consult'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" data-newev="c|prog">＋ Consultation programmée</button><button class="btn" data-newev="c|urg">＋ Consultation d’urgence</button><button class="btn primary" data-newev="e|prog">＋ Échographie programmée</button><button class="btn" data-newev="e|urg">＋ Échographie d’urgence</button><button class="btn" id="addEchoPdf">＋ Compte rendu d’échographie (PDF ou photo)</button></div>
-      <p class="note">Une consultation ou une échographie programmée valide automatiquement le rendez-vous prévu correspondant. Les venues en urgence ne valident aucun rendez-vous.</p></section>`;
+      <p class="note">Une consultation ou une échographie programmée valide automatiquement le rendez-vous prévu correspondant. Les venues en urgence ne valident aucun rendez-vous.</p><div class="actions" style="margin-top:6px"><button class="btn" id="toPat">📲 Transmettre la mise à jour à la patiente</button></div></section>`;
     h+=`<section class="sec"><h2>Dernières données connues</h2><div class="card">${lastDataHTML(p)}</div></section>`;
     const evs=evalsOf(p);
     h+=`<section class="sec"><h2>Comptes rendus d’échographie</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
@@ -1089,7 +1089,7 @@ async function renderPatient(id){
   const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click',fn); };
   on('#bk',()=>go('liste'));
   on('#edit',()=>openEditor(p));
-  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#pCard',()=>openMyCard(p)); on('#pShare',()=>shareMyDossier(p)); on('#pTrans',()=>showTransferScreen(p,myCodeOf(p))); on('#msgBtn',()=>openMessage(p));
+  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#toPat',async()=>{ if(!p.shareCode){ p.shareCode=newCode(); await savePatient(p); toast('Code créé pour cette patiente : '+fmtCode(p.shareCode)); } showTransferScreen(p,p.shareCode); }); on('#pCard',()=>openMyCard(p)); on('#pUpd',openScanImport); on('#pShare',()=>shareMyDossier(p)); on('#pTrans',()=>showTransferScreen(p,myCodeOf(p))); on('#msgBtn',()=>openMessage(p));
   $$('[data-fiche]').forEach(c=>{ c.addEventListener('click',e=>e.stopPropagation()); c.addEventListener('change',async()=>{ const id=c.dataset.fiche; p.fichesOff=list(p.fichesOff).filter(x=>x!==id); if(!c.checked) p.fichesOff.push(id); await savePatient(p); }); });
   $$('[data-ptab]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.ptab; renderPatient(id); const nav=$('.ptabs'); if(nav) nav.scrollIntoView({block:'start',behavior:'auto'}); }));
   $$('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.goto; renderPatient(id); }));
@@ -2079,10 +2079,10 @@ async function showTransferScreen(p,code){
   let qs; try{ qs=await transferQRs(p,code); }catch(e){ toast('Création impossible sur cet appareil'); return; }
   let k=0, play=true, timer=null; const z=$('#zoom');
   z.innerHTML=`<header><b>Transfert à un soignant</b><button class="btn small" id="trClose">Fermer</button></header><div class="zbody" style="text-align:center">
-   <p class="note" style="margin:4px 0 10px">Le soignant ouvre son application : Réglages → Données → « Importer un dossier imprimé », puis vise cet écran. Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
+   <p class="note" style="margin:4px 0 10px">${isPatient()?'Le soignant ouvre son application : Réglages → Données → « Importer un dossier (QR codes) », puis vise cet écran.':'La patiente ouvre « Mon suivi de grossesse » → « Mettre à jour mon dossier (QR code) », puis vise cet écran.'} Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
    <div id="trQr" class="trqr"></div><div id="trLbl" class="scprog"></div>
    <div class="actions" style="justify-content:center"><button class="btn" id="trPrev">‹</button><button class="btn primary" id="trPlay">⏸ Pause</button><button class="btn" id="trNext">›</button></div>
-   <p class="note">Aucune connexion Internet n’est nécessaire : les données passent directement de l’écran à la caméra. Donnez ensuite votre code oralement.</p></div>`;
+   <p class="note">Aucune connexion Internet n’est nécessaire : les données passent directement de l’écran à la caméra.${isPatient()?' Donnez ensuite votre code oralement.':` Si c’est la première fois, donnez à la patiente son code : <b>${fmtCode(code)}</b>`}</p></div>`;
   z.classList.add('open'); document.body.style.overflow='hidden';
   const show=()=>{ $('#trQr').innerHTML=QR.svg(qs[k].q,320); $('#trLbl').innerHTML=`<b>${k+1} / ${qs.length}</b>`; };
   const tick=()=>{ k=(k+1)%qs.length; show(); };
@@ -2239,8 +2239,8 @@ function loadJsQR(){ if(window.jsQR) return Promise.resolve(window.jsQR); if(!js
 function openScanImport(){
   const parts=new Map(); let tid=null, total=0, stream=null, timer=null, busy=false, done=false;
   const z=$('#zoom');
-  z.innerHTML=`<header><b>Importer un dossier imprimé</b><button class="btn small" id="scClose">Fermer</button></header>
-   <div class="zbody"><p class="note" style="margin:4px 4px 10px">Visez les QR codes « Transfert » de la dernière page, un par un, dans n’importe quel ordre.</p>
+  z.innerHTML=`<header><b>${isPatient()?'Recevoir mon dossier':'Importer un dossier (QR codes)'}</b><button class="btn small" id="scClose">Fermer</button></header>
+   <div class="zbody"><p class="note" style="margin:4px 4px 10px">${isPatient()?'Visez les QR codes affichés par votre soignant : ils défilent, gardez simplement le téléphone pointé vers l’écran.':'Visez les QR codes « Transfert » (page imprimée ou écran de la patiente), dans n’importe quel ordre.'}</p>
    <div class="scanbox"><video id="scVid" playsinline muted></video><div class="scanframe"></div></div>
    <div id="scProg" class="scprog">En attente du premier QR code…</div>
    <div class="actions"><button class="btn" id="scPhoto">📷 Lire depuis une photo</button></div>
@@ -2258,6 +2258,7 @@ function openScanImport(){
     parts.set(+i,data); if(navigator.vibrate) navigator.vibrate(40); prog();
     if(parts.size===total){ done=true; stop();
       const str=Array.from({length:total},(_,k)=>parts.get(k+1)).join('');
+      for(const c0 of [...new Set(S.patients.map(x=>x.myCode||x.shareCode).filter(Boolean))]){ try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),c0,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u); close(); await importPayload(JSON.parse(new TextDecoder().decode(u)),c0); return; }catch(e){} }
       const code=await askCode(); if(!code){ close(); return; }
       try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),code,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u);
         const payload=JSON.parse(new TextDecoder().decode(u)); close(); await importPayload(payload,code); }
@@ -2507,7 +2508,7 @@ function renderSettings(){
   h+=`<section class="sec"><h2>Version patiente</h2><div class="card"><div class="txt">Les patientes ouvrent le dossier chiffré que vous leur remettez dans l’application « Mon suivi de grossesse » (adresse : …/patiente.html). Elles y retrouvent leur suivi, leurs rendez-vous, leurs conseils, leurs résultats et leurs documents, en lecture seule.</div></div><div class="actions"><button class="btn" id="prevPat">👁 Aperçu de la version patiente</button><button class="btn" id="instQr">QR code d’installation</button></div><div id="instOut"></div></section>`;
   h+=`<section class="sec"><h2>QR codes « carte d’urgence »</h2><div class="card"><div class="fpad"><label class="f"><span>Adresse de l’application en ligne (ouverte au scan du QR code)</span><input id="appUrl" value="${esc(st.appUrl||'https://perinat66.github.io/suivi-grossesse/')}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)"></label></div></div></section>`;
   h+=`<section class="sec"><h2>Données</h2><div class="card"><div class="txt">${MODE==='cloud'?'Les dossiers et les PDF sont enregistrés dans votre compte Claude, dans un espace privé de cette application : ils sont conservés d’une ouverture à l’autre et retrouvés sur vos autres appareils. Cet espace n’est pas un hébergement certifié HDS.':MODE==='local'?'Version autonome : les dossiers et les PDF sont enregistrés uniquement sur cet appareil, dans l’application. Rien n’est envoyé sur Internet. Ils ne sont ni synchronisés ni sauvegardés ailleurs : exportez une sauvegarde chaque semaine (Fichiers, iCloud Drive ou clé USB) et gardez-la en lieu sûr.':'Aucun stockage durable n’est disponible : les données seront perdues à la fermeture. Exportez une sauvegarde avant de quitter.'}<span class="k" id="quota" style="margin-top:6px"></span></div></div>
-  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="impScan">Importer un dossier imprimé (QR codes)</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="impScan">Importer un dossier (QR codes)</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
   v.innerHTML=h;
   $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
   $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
