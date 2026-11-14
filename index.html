@@ -315,6 +315,21 @@ details.fiche-ed summary{cursor:pointer}
 .scchips span.ok{background:var(--ok);color:#fff}
 .trqr{display:flex;justify-content:center;background:#fff;border-radius:16px;padding:10px;margin:0 auto;max-width:min(92vw,62vh)}
 .trqr svg{width:100%;height:auto}
+.calhead{display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px}
+.calhead b{text-transform:capitalize}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calwd{text-align:center;font-size:.75rem;color:var(--muted);font-weight:700}
+.calday{border:1px solid var(--line);border-radius:10px;min-height:64px;padding:4px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:color-mix(in srgb,var(--accent) calc(var(--load)*35%),var(--surface));text-align:left;font-size:.7rem;line-height:1.2}
+.calday.closed{background:repeating-linear-gradient(45deg,var(--surface-2),var(--surface-2) 4px,var(--bg) 4px,var(--bg) 8px);color:var(--muted)}
+.calday.today{outline:2px solid var(--term)}
+.calday.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.cdn{font-weight:700;font-size:.85rem}
+.cdr{color:var(--accent);font-weight:700}
+.cdf{color:var(--ok)}
+.cdx{color:var(--muted);font-size:.65rem}
+.slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.slots span,.slots button{border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-variant-numeric:tabular-nums;background:var(--bg);font-size:.88rem}
+.slots button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.92rem}
 @media (max-width:420px){
   .trio{grid-template-columns:auto auto auto;gap:2px 10px}
@@ -662,6 +677,7 @@ function milestonesFor(p,inf){
     const done=(p.done||{})[ev.id];
     out.push({kind:'ev', id:ev.id, name:ev.name, evKind:ev.kind, time:ev.time, note:ev.note, s:d, e:d, st: done?'fait': d<t?'depasse': d===t?'encours':'avenir', done, ga:Math.round((d-inf.base)/DAY)});
   }
+  for(const it of out){ if(it.st==='depasse'){ it.st='fait'; it.byDefault=true; it.done=iso(it.rdv??it.exact??it.e); } }
   out.push({kind:'dpa', id:'dpa', name:'Jour du terme prévu', s:inf.dpa, e:inf.dpa, sDays:S.settings.termDays, st: t>inf.dpa?'depasse':t===inf.dpa?'encours':'avenir'});
   out.sort((a,b)=>a.s-b.s || a.e-b.e);
   return out;
@@ -889,6 +905,7 @@ function rulerSVG(items,inf){
   return s+'</svg>';
 }
 function stLabel(it){
+  if(it.st==='fait'&&it.byDefault) return `<small style="color:var(--muted);font-weight:700">✓ Validé par défaut</small>`;
   if(it.st==='fait') return `<small style="color:var(--ok);font-weight:700">✓ Fait le ${fd(parseD(it.done))}${it.byEval?' (évaluation)':''}</small>`;
   if(S.closed) return '';
   const t=today();
@@ -916,7 +933,52 @@ function prevLine(o){
 }
 const ECHO_TYPES=['Datation','T1','T2 (morphologique)','T3','Contrôle de croissance','Doppler / bien-être fœtal','Autre'];
 const RDV_KINDS=[['consult','Consultation'],['echo','Échographie'],['autre','Autre (bilan, avis spécialisé…)']];
-const BIO_LIST=['Groupe sanguin ABO-RhD','RAI (agglutinines irrégulières)','Génotypage RhD fœtal','Toxoplasmose','Rubéole','Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C','CMV','NFS – plaquettes','Ferritine','Glycémie à jeun','HGPO 75 g','Dépistage combiné / marqueurs sériques','DPNI','ECBU','Protéinurie','TSH','Bilan de prééclampsie','Prélèvement vaginal strepto B'];
+const BIO_LIST=['Groupe sanguin ABO-RhD','RAI (agglutinines irrégulières)','Génotypage RhD fœtal','Toxoplasmose','Rubéole','Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C','CMV','NFS – plaquettes','Ferritine','Glycémie à jeun','HGPO 75 g','Dépistage combiné / marqueurs sériques','DPNI','ECBU','Bandelette urinaire','TSH','Bilan de prééclampsie','Prélèvement vaginal strepto B'];
+/* Détail des éléments à saisir par examen, avec valeurs de référence (grossesse).
+   n = numérique ; c = choix ; t = texte. lo/hi : seuils (nombre ou fonction du terme en SA) ; ge : anormal si ≥ hi. */
+const BU_LVL=['Négatif','Traces','+','++','+++'];
+const _pos=v=>/^Positi/.test(v||'');
+const _hb={k:'hb',l:'Hémoglobine',s:'Hb',u:'g/dL',lo:sa=>sa!=null&&sa>=14&&sa<28?10.5:11,ref:'anémie si < 11 g/dL (T1, T3) ou < 10,5 g/dL (T2)'};
+const _plq={k:'plq',l:'Plaquettes',s:'Plq',u:'G/L',lo:150,ref:'≥ 150 G/L ; thrombopénie sévère < 100 G/L'};
+const _rpc={k:'rpc',l:'RPC – rapport protéinurie / créatininurie',s:'RPC',u:'mg/mmol',hi:30,ge:1,ref:'< 30 mg/mmol'};
+const _sero=(avid)=>[{k:'igg',l:'IgG',s:'IgG',u:'UI/mL'},{k:'igm',l:'IgM',s:'IgM',c:['Négatives','Positives','Douteuses'],bad:v=>v&&v!=='Négatives'}].concat(avid?[{k:'avid',l:'Avidité des IgG',s:'avidité',u:'%',ref:'à interpréter selon le seuil du kit (forte avidité : infection ancienne)'}]:[]);
+const BIO_FIELDS={
+  'Groupe sanguin ABO-RhD':[{k:'abo',l:'Groupe ABO',s:'',c:['A','B','AB','O']},{k:'rh',l:'RhD',s:'RhD',c:['Positif','Négatif']},{k:'kell',l:'Kell (K)',s:'Kell',c:['Négatif','Positif']},{k:'pheno',l:'Phénotype RH (C, c, E, e)',s:'',t:1,ph:'ex. C+ c+ E− e+'},{k:'det',l:'Détermination',s:'',c:['1re','2e']}],
+  'RAI (agglutinines irrégulières)':[{k:'rai',l:'RAI',s:'RAI',c:['Négatives','Positives'],bad:_pos},{k:'spec',l:'Identification',s:'',t:1,ph:'anti-D, anti-Kell, anti-c…'},{k:'titre',l:'Titre / dosage pondéral',s:'titre',t:1,ph:'1/16 ; 0,5 µg/mL'}],
+  'Toxoplasmose':_sero(1),
+  'Rubéole':[{k:'igg',l:'IgG',s:'IgG',u:'UI/mL',lo:10,ref:'≥ 10 UI/mL : immunisée'}],
+  'Syphilis':[{k:'tt',l:'Test tréponémique (EIA / CLIA)',s:'TT',c:['Négatif','Positif'],bad:_pos},{k:'vdrl',l:'Test non tréponémique (VDRL / RPR)',s:'VDRL',t:1,ph:'si TT positif : titre'}],
+  'VIH':[{k:'r',l:'Dépistage combiné Ag p24 / Ac',s:'',c:['Négatif','Positif'],bad:_pos}],
+  'Hépatite B (Ag HBs)':[{k:'ag',l:'Ag HBs',s:'Ag HBs',c:['Négatif','Positif'],bad:_pos}],
+  'Hépatite C':[{k:'ac',l:'Ac anti-VHC',s:'Ac VHC',c:['Négatifs','Positifs'],bad:_pos}],
+  'CMV':_sero(1),
+  'NFS – plaquettes':[_hb,{k:'vgm',l:'VGM',s:'VGM',u:'fL',lo:80,hi:100,ref:'80–100 fL'},_plq,{k:'gb',l:'Leucocytes',s:'GB',u:'G/L',hi:15,ref:'jusqu’à 15 G/L pendant la grossesse'}],
+  'Ferritine':[{k:'fer',l:'Ferritine',s:'',u:'µg/L',lo:30,ref:'carence martiale si < 30 µg/L'}],
+  'Glycémie à jeun':[{k:'gaj',l:'Glycémie à jeun',s:'',u:'g/L',hi:0.92,ge:1,ref:'< 0,92 g/L (5,1 mmol/L) ; ≥ 0,92 : DG ; ≥ 1,26 : diabète avéré'}],
+  'HGPO 75 g':[{k:'g0',l:'Glycémie à jeun (T0)',s:'T0',u:'g/L',hi:0.92,ge:1,ref:'< 0,92 g/L (5,1 mmol/L)'},{k:'g1',l:'Glycémie 1 h après 75 g de glucose',s:'1 h',u:'g/L',hi:1.80,ge:1,ref:'< 1,80 g/L (10,0 mmol/L)'},{k:'g2',l:'Glycémie 2 h après 75 g de glucose',s:'2 h',u:'g/L',hi:1.53,ge:1,ref:'< 1,53 g/L (8,5 mmol/L)'}],
+  'Dépistage combiné / marqueurs sériques':[{k:'cn',l:'Clarté nucale',s:'CN',u:'mm',hi:3.5,ge:1,ref:'< 3,5 mm'},{k:'lcc',l:'LCC',s:'LCC',u:'mm',ref:'45–84 mm pour le dépistage combiné'},{k:'papp',l:'PAPP-A',s:'PAPP-A',u:'MoM'},{k:'hcg',l:'β-hCG libre',s:'βhCG',u:'MoM'},{k:'t21',l:'Risque T21 : 1 /',s:'T21 1/',bad:v=>v!=null&&v<=1000,ref:'risque accru si ≥ 1/1000 (DPNI proposé) ; ≥ 1/50 : caryotype possible d’emblée'},{k:'t1318',l:'Risque T13/T18 : 1 /',s:'T13/18 1/',bad:v=>v!=null&&v<=1000}],
+  'DPNI':[{k:'t21',l:'Trisomie 21',s:'T21',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t18',l:'Trisomie 18',s:'T18',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t13',l:'Trisomie 13',s:'T13',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'ff',l:'Fraction fœtale',s:'FF',u:'%',lo:4,ref:'≥ 4 % habituellement requise'}],
+  'ECBU':[{k:'leu',l:'Leucocyturie',s:'leuco',u:'/mL',hi:1e4,ge:1,ref:'< 10⁴/mL (saisie possible : 10^4)'},{k:'bact',l:'Bactériurie',s:'bact',u:'UFC/mL',hi:1e5,ge:1,ref:'bactériurie asymptomatique si ≥ 10⁵ UFC/mL (1 espèce)'},{k:'germe',l:'Germe',s:'',t:1,ph:'E. coli, SGB…'},{k:'atb',l:'Antibiogramme / traitement',s:'',t:1}],
+  'Bandelette urinaire':[{k:'prot',l:'Protéinurie (bandelette)',s:'prot',c:BU_LVL,bad:v=>v&&!['Négatif','Traces'].includes(v),ref:'significatif à partir de + (≈ 0,3 g/L)'},{k:'protq',l:'Protéinurie (échantillon)',s:'prot',u:'g/L',hi:0.3,ge:1,ref:'< 0,3 g/L'},_rpc,{k:'albq',l:'Albuminurie (échantillon)',s:'alb',u:'mg/L',hi:30,ge:1,ref:'< 30 mg/L'},{k:'rac',l:'RAC – rapport albuminurie / créatininurie',s:'RAC',u:'mg/mmol',hi:3,ge:1,ref:'< 3 mg/mmol (≈ 30 mg/g)'},{k:'glu',l:'Glycosurie',s:'gluc',c:BU_LVL,bad:v=>v&&v!=='Négatif'},{k:'leu',l:'Leucocytes',s:'leuco',c:['Négatif','Traces','+','++','+++'],bad:v=>v&&!['Négatif','Traces'].includes(v)},{k:'nit',l:'Nitrites',s:'nitrites',c:['Négatif','Positif'],bad:_pos}],
+  'TSH':[{k:'tsh',l:'TSH',s:'TSH',u:'mUI/L',hi:sa=>sa!=null&&sa>=14?3:2.5,ref:'< 2,5 mUI/L au T1, < 3 aux T2–T3 (ou normes trimestrielles du laboratoire)'},{k:'t4',l:'T4 libre',s:'T4L',u:'pmol/L'},{k:'tpo',l:'Ac anti-TPO',s:'anti-TPO',c:['Négatifs','Positifs'],bad:_pos}],
+  'Bilan de prééclampsie':[_hb,_plq,{k:'asat',l:'ASAT',s:'ASAT',u:'UI/L',hi:35,ref:'N < 35 UI/L ; critère de sévérité si > 2N (≈ 70)'},{k:'alat',l:'ALAT',s:'ALAT',u:'UI/L',hi:35,ref:'N < 35 UI/L ; critère de sévérité si > 2N (≈ 70)'},{k:'ldh',l:'LDH',s:'LDH',u:'UI/L',hi:600,ref:'hémolyse si > 600 UI/L'},{k:'hapto',l:'Haptoglobine',s:'hapto',c:['Normale','Effondrée'],bad:v=>v==='Effondrée'},{k:'creat',l:'Créatininémie',s:'créat',u:'µmol/L',hi:90,ref:'< 90 µmol/L (souvent 35–70 en grossesse)'},{k:'urate',l:'Uricémie',s:'ac. urique',u:'µmol/L',hi:350,ref:'< 350 µmol/L'},{k:'p24',l:'Protéinurie des 24 h',s:'prot 24 h',u:'g/24 h',hi:0.3,ge:1,ref:'< 0,3 g/24 h'},_rpc,{k:'ratio',l:'Rapport sFlt-1 / PlGF',s:'sFlt-1/PlGF',hi:sa=>sa!=null&&sa>=34?110:85,ref:'≤ 38 : prééclampsie peu probable à 1 semaine ; > 85 (< 34 SA) ou > 110 (≥ 34 SA) : très évocateur'}],
+  'Prélèvement vaginal strepto B':[{k:'sgb',l:'Streptocoque B',s:'SGB',c:['Négatif','Positif'],bad:_pos}]
+};
+const BIO_NOTE={'HGPO 75 g':'Diabète gestationnel si au moins une des 3 valeurs est atteinte ou dépassée (seuils IADPSG / CNGOF).','Glycémie à jeun':'Au 1er trimestre : 0,92–1,25 g/L = diabète gestationnel précoce ; ≥ 1,26 g/L = diabète de type 2 probable.','Bandelette urinaire':'Saisissez la bandelette et, si fait, la protéinurie et le RPC, ou l’albuminurie et le RAC.','Dépistage combiné / marqueurs sériques':'Saisissez le dénominateur du risque (ex. 2500 pour 1/2500).'};
+function numx(s){ if(s==null) return null; s=String(s).trim().replace(/\s/g,'').replace(',','.').replace(/[×x]/gi,'*'); if(s==='') return null; const m=/^(\d+(?:\.\d+)?)?\*?10\^(-?\d+)$/.exec(s); if(m) return (m[1]?+m[1]:1)*Math.pow(10,+m[2]); const n=Number(s); return isFinite(n)?n:null; }
+function bioFlag(f,raw,sa){
+  if(raw==null||raw==='') return '';
+  if(f.c||f.t) return f.bad&&f.bad(raw)?'⚠':'';
+  const v=numx(raw); if(v==null) return '';
+  if(f.bad) return f.bad(v)?'⚠':'';
+  const lo=typeof f.lo==='function'?f.lo(sa):f.lo, hi=typeof f.hi==='function'?f.hi(sa):f.hi;
+  if(lo!=null&&v<lo) return '↓'; if(hi!=null&&(f.ge?v>=hi:v>hi)) return '↑'; return '';
+}
+function bioRef(f,sa){ if(!f.ref) return ''; const lo=typeof f.lo==='function'?f.lo(sa):null, hi=typeof f.hi==='function'?f.hi(sa):null; return f.ref+(sa!=null&&(lo!=null||hi!=null)?` — seuil retenu à ce terme : ${lo!=null?'< '+frn(lo,1):(f.ge?'≥ ':'> ')+frn(hi,1)}${f.u?' '+f.u:''}`:''); }
+function bioSummary(exam,vals,sa){
+  const fs=BIO_FIELDS[exam]; if(!fs||!vals) return '';
+  return fs.filter(f=>vals[f.k]!=null&&vals[f.k]!=='').map(f=>{ const fl=bioFlag(f,vals[f.k],sa); return [f.s,vals[f.k]+(f.u&&!f.c&&!f.t?' '+f.u:'')].filter(Boolean).join(' ')+(fl?' '+fl:''); }).join(' · ');
+}
 function renderPatientHome(){
   const v=$('#view'); const ps=S.patients.slice().sort((a,b)=>pDate(b)-pDate(a));
   v.innerHTML=`<div class="summary"><strong>Mon suivi de grossesse</strong>${ps.length?'Touchez votre dossier pour l’ouvrir':'Ouvrez le dossier remis par votre sage-femme ou votre médecin'}</div>
@@ -948,9 +1010,9 @@ function rdvHTML(d,time,p){ const i=info(p); return `<span class="rdvd">${esc(fD
 function rdvLabel(rv){ const d=parseD(rv&&rv.date); if(d==null) return ''; return fDl.format(d)+(rv.time?' à '+rv.time:''); }
 function msRow(p,it,full){
   const hasR = it.kind==='ms' && it.rdv!=null && it.st!=='fait';
-  const dd=it.kind==='ms'&&it.st==='fait'&&it.done?parseD(it.done):null;
+  const dd=it.kind==='ms'&&it.st==='fait'&&it.done&&!it.byDefault?parseD(it.done):null;
   const fixedD = hasR ? it.rdv : (it.kind==='ev'&&it.st!=='fait') ? it.s : (it.kind==='plan'&&it.exact!=null&&it.st!=='fait') ? it.exact : null;
-  const sub = dd!=null ? 'Réalisé à '+sa(Math.round((dd-info(p).base)/DAY)) : hasR ? 'Rendez-vous fixé' : it.kind==='plan' ? (it.exact!=null?'Date fixée':'38 SA – 39 SA') : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous') : sa(it.sDays);
+  const sub = it.byDefault ? 'Période dépassée' : dd!=null ? 'Réalisé à '+sa(Math.round((dd-info(p).base)/DAY)) : hasR ? 'Rendez-vous fixé' : it.kind==='plan' ? (it.exact!=null?'Date fixée':'38 SA – 39 SA') : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous') : sa(it.sDays);
   const chk = it.kind==='dpa' ? `<span class="chk" aria-hidden="true" style="border-style:dashed"></span>` : `<button class="chk" data-done="${esc(it.id)}" aria-pressed="${it.st==='fait'}" aria-label="${it.st==='fait'?'Annuler la validation':'Marquer comme fait'} : ${esc(it.name)}">${it.st==='fait'?'✓':''}</button>`;
   let extra='';
   if(it.ideal!=null && !hasR && dd==null) extra+=`<small class="ideal num">(${sa(it.idealDays)} : ${fd(it.ideal)})</small>`;
@@ -1052,10 +1114,13 @@ async function renderPatient(id){
     if(!inf.ok) h+='<div class="banner">Complétez la datation pour calculer le calendrier.</div>';
     else {
       h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addEv">＋ Rendez-vous</button>${p.planned&&p.planned.type?'':'<button class="btn" data-plan>＋ Déclenchement / césarienne programmé(e)</button>'}</div></section>`;
-      const t=today();
-      const fixed=items.filter(it=>it.st!=='fait'&&((it.kind==='ms'&&it.rdv!=null)||it.kind==='ev'||(it.kind==='plan'&&it.exact!=null))).map(it=>({it,d:it.rdv??it.exact??it.s})).sort((x,y)=>x.d-y.d);
-      h+=`<section class="sec"><h2>Rendez-vous fixés</h2><div class="card">${fixed.length?fixed.map(({it,d})=>`<div class="kv ${d<t?'late':''}"><span><b>${esc(it.name)}</b>${d<t?'<br><small style="color:var(--bad)">Date passée – à valider ou à reporter</small>':''}</span><span class="v num" style="font-weight:400">${rdvHTML(d,it.time||(it.rv&&it.rv.time),p)}</span></div>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun rendez-vous fixé. Utilisez « Fixer la date du RDV » dans le calendrier ci-dessous.</div>'}</div></section>`;
-      h+=`<section class="sec"><h2>Calendrier de suivi</h2><div class="card" id="msList">${items.map(it=>msRow(p,it,true)).join('')}</div></section>`;
+      const isFixed=it=>(it.kind==='ms'&&it.rdv!=null)||it.kind==='ev'||(it.kind==='plan'&&it.exact!=null)||it.kind==='dpa';
+      const prev=items.filter(it=>it.st!=='fait'&&isFixed(it)).sort((a,b)=>(a.rdv??a.exact??a.s)-(b.rdv??b.exact??b.s));
+      const wait=items.filter(it=>it.st!=='fait'&&!isFixed(it));
+      const done=items.filter(it=>it.st==='fait');
+      h+=`<section class="sec"><h2>Rendez-vous prévus <span class="num" style="color:var(--muted);font-weight:400">${prev.length}</span></h2><div class="card" id="msList">${prev.length?prev.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Aucun rendez-vous fixé.</div>'}</div></section>`;
+      h+=`<section class="sec"><h2>En attente de date <span class="num" style="color:var(--muted);font-weight:400">${wait.length}</span></h2><div class="card">${wait.length?wait.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Tout est programmé.</div>'}</div></section>`;
+      h+=`<section class="sec"><details class="sgrp"><summary>Réalisés et validés <span class="num" style="color:var(--muted);font-weight:400">${done.length}</span></summary><div class="card">${done.length?done.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Rien pour l’instant.</div>'}</div></details></section>`;
     }
   }
   else if(T==='bio'){
@@ -1134,11 +1199,16 @@ function openRdv(p,msId){
     <div class="note" style="margin:4px 0 0">Fenêtre recommandée : ${esc(range(it.s,it.e===it.s?null:it.e))}${it.ideal!=null?' – cible '+esc(sa(it.idealDays))+' : '+esc(fd(it.ideal)):''}</div>
     <div class="grid2">${F('Date','<input type="date" name="rdate" value="'+esc(rv.date||(it.ideal!=null?iso(Math.max(it.ideal,today())):''))+'">')}${F('Heure','<input type="time" name="rtime" value="'+esc(rv.time||'')+'">')}</div>
     <div class="preview num" id="rAg" style="display:none"></div>
+    <div id="rFree"></div>
     ${F('Lieu / praticien / remarque','<input name="rnote" value="'+esc(rv.note||'')+'">')}
     <div class="note" style="margin:8px 0 0">Le rendez-vous reste « prévu » jusqu’à la consultation ou l’échographie du jour, qui le valide. Vous pouvez changer la date à tout moment.</div></div></fieldset>`,
     async v=>{ const d=v('rdate'); if(!d){ toast('Choisissez une date'); return false; } p.rdv=p.rdv||{}; p.rdv[msId]={date:d,time:v('rtime'),note:v('rnote')}; await savePatient(p); toast('Rendez-vous fixé'); renderPatient(p.id); },
     rv.date?async()=>{ delete p.rdv[msId]; await savePatient(p); renderPatient(p.id); }:null);
-  const sync=()=>{ const d=parseD(val('rdate')), el=$('#rAg'); if(d!=null&&inf.ok){ el.style.display=''; const g=Math.round((d-inf.base)/DAY); el.textContent='Soit '+sa(g)+(d<it.s||d>it.e?' – en dehors de la fenêtre recommandée':''); } else el.style.display='none'; };
+  const dur=rdvDur(p,it); let lastD=null;
+  const sync=()=>{ const d=parseD(val('rdate')), el=$('#rAg'); if(d!=null&&inf.ok){ el.style.display=''; const g=Math.round((d-inf.base)/DAY); el.textContent='Soit '+sa(g)+(d<it.s||d>it.e?' – en dehors de la fenêtre recommandée':''); } else el.style.display='none';
+    if(d!==lastD){ lastD=d; const fb=$('#rFree'); if(d==null){ fb.innerHTML=''; return; } const stt=dayStatus(d); const fr=freeStarts(d,dur,{p:p.id,id:msId});
+      fb.innerHTML=!stt.open?`<p class="note" style="color:var(--bad)">${stt.label?esc(stt.label)+' : ':''}pas de consultation ce jour.</p>`:`<div class="f"><span>Créneaux libres pour ${dur} min (selon l’application)</span>${fr.length?`<div class="slots">${fr.map(m=>`<button type="button" data-slot="${fmtHM(m)}">${fmtHM(m)}</button>`).join('')}</div>`:'<p class="note">Aucun créneau libre.</p>'}</div>`;
+      $$('[data-slot]',fb).forEach(b=>b.addEventListener('click',()=>{ sh.querySelector('[name="rtime"]').value=b.dataset.slot; $$('[data-slot]',fb).forEach(x=>x.classList.toggle('on',x===b)); })); } };
   sh.oninput=sync; sh.onchange=sync; sync();
 }
 function openEvent(p,evId){
@@ -1158,24 +1228,57 @@ function openEvent(p,evId){
 }
 function openBio(p,bid){
   if(isPatient()) return;
-  const ex=bid?list(p.bio).find(b=>b.id===bid):null; const b=Object.assign({date:iso(today()),exam:'',examAutre:'',res:'',unit:'',interp:'',notes:''},ex||{});
-  const inf=info(p);
+  const ex=bid?list(p.bio).find(b=>b.id===bid):null; const b=Object.assign({date:iso(today()),exam:'',examAutre:'',res:'',unit:'',interp:'',notes:'',vals:null},ex||{});
+  const inf=info(p); let vals=Object.assign({},b.vals||{}), curExam=b.exam, interpTouched=!!(ex&&ex.interp);
+  const saAt=()=>{ const d=parseD(val('bdate')); return d!=null&&inf.ok?Math.floor((d-inf.base)/DAY/7):null; };
+  const legacy=()=>!!(ex&&ex.res&&!ex.vals&&ex.exam===curExam);
+  const examOpts=[...BIO_LIST,...(b.exam&&b.exam!=='Autre'&&!BIO_LIST.includes(b.exam)?[b.exam]:[]),'Autre'];
   const {sh,val}=miniSheet(ex?'Résultat biologique':'Nouveau résultat',`<fieldset><legend>Examen</legend><div class="fbox">
     ${F('Date du prélèvement','<input type="date" name="bdate" value="'+esc(b.date)+'">')}<div class="preview num" id="bAg" style="display:none"></div>
-    <label class="f"><span>Examen</span><select name="bexam"><option value="">—</option>${[...BIO_LIST,'Autre'].map(x=>`<option ${b.exam===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
+    <label class="f"><span>Examen</span><select name="bexam"><option value="">—</option>${examOpts.map(x=>`<option ${b.exam===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
     <div id="bAutre">${F('Nom de l’examen','<input name="bautre" value="'+esc(b.examAutre||'')+'">')}</div>
     <div id="bRh">${radios('brh',[['Positif','Fœtus RhD positif'],['Négatif','Fœtus RhD négatif'],['Indéterminé','Indéterminé']],b.exam==='Génotypage RhD fœtal'?b.res:'')}</div>
     <div id="bSero">${radios('bsero',SERO.map(x=>[x,x]),b.sero||'')}</div>
-    <div id="bGen" class="grid2">${F('Résultat','<input name="bres" value="'+esc(b.exam==='Génotypage RhD fœtal'?'':b.res)+'" placeholder="ex. 11,2 ou immunisée">')}${F('Unité','<input name="bunit" value="'+esc(b.unit)+'" placeholder="g/dL, UI/mL…">')}</div>
-    <div class="f"><span>Interprétation</span>${radios('binterp',[['Normal','Normal'],['Anormal','Anormal'],['À contrôler','À contrôler']],b.interp)}</div>
+    <div id="bFields"></div>
+    <div id="bGen" class="grid2">${F('Résultat','<input name="bres" value="'+esc(b.exam==='Génotypage RhD fœtal'||b.vals?'':b.res)+'" placeholder="ex. 11,2 ou immunisée">')}${F('Unité','<input name="bunit" value="'+esc(b.vals?'':b.unit)+'" placeholder="g/dL, UI/mL…">')}</div>
+    <div class="preview" id="bAna" style="display:none"></div>
+    <div class="f" id="bInterp"><span>Interprétation</span>${radios('binterp',[['Normal','Normal'],['Anormal','Anormal'],['À contrôler','À contrôler']],b.interp)}</div>
     ${F('Commentaire','<input name="bnotes" value="'+esc(b.notes||'')+'">')}</div></fieldset>`,
-    async v=>{ const exam=v('bexam'); if(!exam){ toast('Choisissez un examen'); return false; } const rh=exam==='Génotypage RhD fœtal';
-      const o={id:b.id||uid('b'),date:v('bdate'),exam,examAutre:exam==='Autre'?v('bautre'):'',res:rh?v('brh'):v('bres'),sero:SERO_EXAMS.includes(exam)?v('bsero'):'',unit:rh?'':v('bunit'),interp:v('binterp'),notes:v('bnotes')};
+    async v=>{ const exam=v('bexam'); if(!exam){ toast('Choisissez un examen'); return false; } const rh=exam==='Génotypage RhD fœtal'; readVals();
+      const fs=BIO_FIELDS[exam]; const vv=fs?Object.fromEntries(fs.map(f=>[f.k,vals[f.k]]).filter(([k,x])=>x!=null&&x!=='')):null;
+      const has=vv&&Object.keys(vv).length;
+      const o={id:b.id||uid('b'),date:v('bdate'),exam,examAutre:exam==='Autre'?v('bautre'):'',res:rh?v('brh'):(has?bioSummary(exam,vv,saAt()):v('bres')),sero:SERO_EXAMS.includes(exam)?v('bsero'):'',unit:rh||has?'':v('bunit'),interp:v('binterp'),notes:v('bnotes')};
+      if(has) o.vals=vv;
+      if(exam==='Groupe sanguin ABO-RhD'&&has){ if(vv.abo&&!p.groupe) p.groupe=vv.abo; if(vv.rh&&!p.rhesus) p.rhesus=vv.rh==='Négatif'?'-':'+'; }
       p.bio=list(p.bio).filter(x=>x.id!==o.id); p.bio.push(o); await savePatient(p); toast('Résultat enregistré'); renderPatient(p.id); },
     ex?async()=>{ p.bio=list(p.bio).filter(x=>x.id!==ex.id); await savePatient(p); renderPatient(p.id); }:null);
-  const sync=()=>{ const ex2=val('bexam'); $('#bAutre').style.display=ex2==='Autre'?'':'none'; $('#bRh').style.display=ex2==='Génotypage RhD fœtal'?'':'none'; $('#bGen').style.display=ex2==='Génotypage RhD fœtal'?'none':''; $('#bSero').style.display=SERO_EXAMS.includes(ex2)?'':'none';
-    const d=parseD(val('bdate')), el=$('#bAg'); if(d!=null&&inf.ok){ el.style.display=''; el.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else el.style.display='none'; };
-  sh.oninput=sync; sh.onchange=sync; sync();
+  function readVals(){ const fs=BIO_FIELDS[curExam]; if(!fs) return; fs.forEach(f=>{ const x=val('bf_'+f.k); vals[f.k]=x; }); }
+  function drawFields(){
+    const fs=BIO_FIELDS[curExam], box=$('#bFields'); if(!fs){ box.innerHTML=''; return; } const sa=saAt();
+    box.innerHTML=(BIO_NOTE[curExam]?`<div class="txt" style="font-size:.85rem;color:var(--muted);margin:4px 0 8px">${esc(BIO_NOTE[curExam])}</div>`:'')+fs.map(f=>{
+      const r=bioRef(f,sa), cur=vals[f.k]??'';
+      const inp=f.c?radios('bf_'+f.k,f.c.map(x=>[x,x]),cur):`<input name="bf_${f.k}" value="${esc(cur)}" ${f.t?'':'inputmode="decimal"'} placeholder="${esc(f.ph||'')}">`;
+      return `<div class="f" data-bf="${f.k}"><span>${esc(f.l)}${f.u?' <small>('+esc(f.u)+')</small>':''} <b class="bfl" style="color:var(--danger,#c0392b)"></b></span>${inp}${r?`<small style="display:block;color:var(--muted);margin-top:2px">Réf. : ${esc(r)}</small>`:''}</div>`; }).join('');
+  }
+  function analyse(){
+    const fs=BIO_FIELDS[curExam], el=$('#bAna'); if(!fs){ el.style.display='none'; return; } const sa=saAt(); const bad=[]; let n=0;
+    fs.forEach(f=>{ const x=vals[f.k]; const fl=bioFlag(f,x,sa); if(x!=null&&x!=='') n++; const b2=sh.querySelector(`[data-bf="${f.k}"] .bfl`); if(b2) b2.textContent=fl?fl+' hors norme':''; if(fl) bad.push(f.l+' '+x+(f.u&&!f.c&&!f.t?' '+f.u:'')); });
+    let msg=bad.length?'⚠ '+bad.join(' ; '):(n?'Valeurs dans les normes':'');
+    if(curExam==='HGPO 75 g'&&bad.length) msg+=' → critère de diabète gestationnel';
+    if(curExam==='Glycémie à jeun'&&numx(vals.gaj)!=null&&numx(vals.gaj)>=1.26) msg+=' → diabète avéré probable';
+    el.style.display=msg?'':'none'; el.textContent=msg;
+    if(!interpTouched&&n){ const r=sh.querySelector(`[name="binterp"][value="${bad.length?'Anormal':'Normal'}"]`); if(r) r.checked=true; }
+  }
+  sh.addEventListener('click',e=>{ if(e.target&&e.target.name==='binterp') interpTouched=true; });
+  let lastSa=saAt();
+  const sync=e=>{ const ex2=val('bexam');
+    if(ex2!==curExam){ readVals(); curExam=ex2; if(!(ex&&ex.exam===ex2)) vals={}; else vals=Object.assign({},ex.vals||{}); drawFields(); }
+    else { readVals(); const s2=saAt(); if(s2!==lastSa){ lastSa=s2; drawFields(); } }
+    const sch=!!BIO_FIELDS[ex2];
+    $('#bAutre').style.display=ex2==='Autre'?'':'none'; $('#bRh').style.display=ex2==='Génotypage RhD fœtal'?'':'none'; $('#bGen').style.display=ex2==='Génotypage RhD fœtal'||(sch&&!legacy())?'none':''; $('#bSero').style.display=SERO_EXAMS.includes(ex2)?'':'none';
+    const d=parseD(val('bdate')), el=$('#bAg'); if(d!=null&&inf.ok){ el.style.display=''; el.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else el.style.display='none';
+    analyse(); };
+  drawFields(); sh.oninput=sync; sh.onchange=sync; sync();
 }
 function openHosp(p,hid){
   if(isPatient()) return;
@@ -1315,7 +1418,7 @@ function openEval(p,evId,preset){
   });
   const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
 }
-const DOC_CATS=['Déclaration de grossesse','Bilan du 1er trimestre','Bilan du 6e mois','Échographie T1','Échographie T2','Échographie T3','Échographie de croissance / autre','Biologie','Courrier','Compte rendu d’hospitalisation','Accouchement / suites','Autre'];
+const DOC_CATS=['Déclaration de grossesse','Bilan du 1er trimestre','Bilan du 6e mois','Échographie T1','Échographie T2','Échographie T3','Échographie de croissance / autre','Échographie de référence','Pelviscanner','Biologie','Courrier','Compte rendu d’hospitalisation','Accouchement / suites','Autre'];
 const catOf=f=>f.cat==='bio'?'Biologie':(DOC_CATS.includes(f.cat)?f.cat:(f.cat||'Autre'));
 const DOC_FILTERS={bio:c=>c==='Biologie'||/^Bilan/.test(c)||c==='Déclaration de grossesse',echo:c=>/^Échographie/.test(c)};
 async function drawDocs(p,filter){
@@ -1599,7 +1702,7 @@ function pdfSections(p,patient){
   sec('suivi','Suivi clinique et échographique',evalsOf(p).map(e=>{ const l=evalLine(e,p); return [l.when,l.txt]; }));
   sec('bio','Biologie',list(p.bio).slice().sort((x,y)=>(x.date||'').localeCompare(y.date||'')).map(b=>[(b.date?fd(parseD(b.date)):'?')+' – '+(b.exam==='Autre'?b.examAutre||'Autre':b.exam),[b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – ')+(b.interp?' ('+b.interp.toLowerCase()+')':'')+(b.notes?' – '+b.notes:'')]));
   sec('hosp','Hospitalisations',list(p.hospits).map(x=>[(x.debut?fd(parseD(x.debut)):'?')+(x.fin?' au '+fd(parseD(x.fin)):''),(x.motif||'Motif non précisé')+(x.lieu?' – '+x.lieu:'')]));
-  if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,it.rdv!=null&&it.st!=='fait'?'RDV le '+fDl.format(it.rdv)+(it.time?' à '+it.time:'')+' ('+sa(Math.round((it.rdv-inf.base)/DAY))+')':range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.st==='fait'?' – fait le '+fd(parseD(it.done)):'')]));
+  if(inf.ok) sec('dates','Dates importantes',milestonesFor(p,inf).map(it=>[it.name,it.rdv!=null&&it.st!=='fait'?'RDV le '+fDl.format(it.rdv)+(it.time?' à '+it.time:'')+' ('+sa(Math.round((it.rdv-inf.base)/DAY))+')':range(it.s,it.e===it.s?null:it.e)+(it.ideal!=null?' ('+sa(it.idealDays)+' : '+fd(it.ideal)+')':'')+(it.kind==='plan'&&it.exact!=null?' (prévu le '+fd(it.exact)+')':'')+(it.st==='fait'?(it.byDefault?' – validé par défaut':' – fait le '+fd(parseD(it.done))):'')]));
   sec('acc','Accouchement prévu et correspondants',[['Lieu prévu',lieuLabel(p)+(p.niveau?' (type '+p.niveau+')':'')],...list(p.corr).filter(c=>c.nom).map(c=>[c.role,c.nom+(c.contact?' – '+c.contact:'')])]);
   if(p.status==='archived') sec('issue','Issue de la grossesse',issueRows(p,inf));
   if(patient) sec('conseils','Conseils personnalisés',fichesFor(p).filter(f=>!f.off).map(f=>[f.title,f.text]));
@@ -2275,6 +2378,64 @@ function openScanImport(){
     }catch(e){ const sb=$('.scanbox'); if(sb) sb.innerHTML='<div class="vmsg" style="padding:30px 10px">Caméra indisponible ici : utilisez « Lire depuis une photo ».</div>'; } })();
 }
 
+/* ---------- Agenda du cabinet : plages, gardes, calendrier ---------- */
+const CAB_DEFAULT={days:[1,2,4,5],am:['08:00','12:00'],pm:['14:00','18:00'],slot:20,dur:{consult:20,echo:20,echoT2:30,twinT1T3:30,twinT2:40},gardes:[],offAfter:true,closed:[]};
+function cab(){ const c=S.settings.cab||(S.settings.cab=JSON.parse(JSON.stringify(CAB_DEFAULT))); c.dur=Object.assign({},CAB_DEFAULT.dur,c.dur||{}); return c; }
+const hm=s=>{ const m=/^(\d{1,2}):(\d{2})$/.exec(s||''); return m?(+m[1])*60+(+m[2]):null; };
+const fmtHM=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function dayStatus(d){
+  const c=cab(), k=iso(d), wd=new Date(d).getUTCDay();
+  if(c.gardes.includes(k)) return {open:false,label:'Garde'};
+  if(c.offAfter&&c.gardes.includes(iso(d-DAY))) return {open:false,label:'Lendemain de garde'};
+  if(list(c.closed).some(r=>r.from&&k>=r.from&&k<=(r.to||r.from))) return {open:false,label:'Fermé'};
+  if(!c.days.includes(wd)) return {open:false,label:''};
+  return {open:true,label:''};
+}
+function rdvDur(p,it){
+  const c=cab().dur, twin=+p.multiple>1;
+  if(it.id==='echo2') return twin?c.twinT2:c.echoT2;
+  if(it.id==='echo1'||it.id==='echo3') return twin?c.twinT1T3:c.echo;
+  if(it.kind==='ev'&&it.evKind==='echo') return twin?c.twinT1T3:c.echo;
+  return c.consult;
+}
+function allRdvs(exclude){
+  const out=[];
+  for(const p of S.patients){ if(p.status==='archived') continue; const inf=info(p); if(!inf.ok) continue;
+    for(const it of milestonesFor(p,inf)){ let d=null;
+      if(it.kind==='ms'&&it.rdv!=null) d=it.rdv; else if(it.kind==='ev') d=it.s; else continue;
+      if(exclude&&exclude.p===p.id&&exclude.id===it.id) continue;
+      out.push({d,time:it.time||'',dur:rdvDur(p,it),p,it}); } }
+  return out;
+}
+function freeStarts(d,dur,exclude){
+  const st=dayStatus(d); if(!st.open) return [];
+  const c=cab(), busy=allRdvs(exclude).filter(r=>r.d===d&&hm(r.time)!=null).map(r=>[hm(r.time),hm(r.time)+r.dur]);
+  const out=[];
+  for(const [a,b] of [c.am,c.pm]){ const A=hm(a), B=hm(b); if(A==null||B==null) continue;
+    for(let m=A;m+dur<=B;m+=c.slot){ if(!busy.some(([x,y])=>m<y&&m+dur>x)) out.push(m); } }
+  if(d===today()){ const n=new Date(); const now=n.getHours()*60+n.getMinutes(); return out.filter(m=>m>now); }
+  return out;
+}
+function renderCalendar(box){
+  const t=today(); if(!S.calMonth){ const x=new Date(t); S.calMonth=Date.UTC(x.getUTCFullYear(),x.getUTCMonth(),1); }
+  const m0=new Date(S.calMonth), Y=m0.getUTCFullYear(), M=m0.getUTCMonth(), first=Date.UTC(Y,M,1), nDays=new Date(Date.UTC(Y,M+1,0)).getUTCDate();
+  const lead=(new Date(first).getUTCDay()+6)%7; const R=allRdvs(); const slot=cab().slot;
+  const mf=new Intl.DateTimeFormat('fr-FR',{month:'long',year:'numeric',timeZone:'UTC'});
+  let h=`<div class="calhead"><button class="btn small" data-cm="-1" aria-label="Mois précédent">‹</button><b>${esc(mf.format(first))}</b><button class="btn small" data-cm="1" aria-label="Mois suivant">›</button></div><div class="calgrid">${['L','M','M','J','V','S','D'].map(x=>`<div class="calwd">${x}</div>`).join('')}`;
+  for(let i=0;i<lead;i++) h+='<div></div>';
+  for(let dn=1;dn<=nDays;dn++){ const d=Date.UTC(Y,M,dn), st=dayStatus(d), n=R.filter(r=>r.d===d).length; const free=st.open&&d>=t?freeStarts(d,slot).length:0;
+    const load=st.open?Math.min(1,n/Math.max(1,n+free)):0;
+    h+=`<button class="calday ${st.open?'':'closed'} ${d===t?'today':''} ${S.calDay===d?'sel':''}" data-cd="${d}" style="--load:${load.toFixed(2)}"><span class="cdn">${dn}</span>${n?`<span class="cdr">${n} RDV</span>`:''}${st.open&&d>=t?`<span class="cdf">${free} libre${free>1?'s':''}</span>`:st.label?`<span class="cdx">${esc(st.label)}</span>`:''}</button>`; }
+  h+='</div><p class="note">Créneaux de '+slot+' min libres selon vos plages de consultation et les RDV fixés dans l’application uniquement.</p><div id="calDetail"></div>';
+  box.innerHTML=h;
+  $$('[data-cm]',box).forEach(b=>b.addEventListener('click',()=>{ const x=new Date(S.calMonth); S.calMonth=Date.UTC(x.getUTCFullYear(),x.getUTCMonth()+(+b.dataset.cm),1); S.calDay=null; renderCalendar(box); }));
+  $$('[data-cd]',box).forEach(b=>b.addEventListener('click',()=>{ S.calDay=+b.dataset.cd; renderCalendar(box); }));
+  if(S.calDay){ const d=S.calDay, st=dayStatus(d); const rs=R.filter(r=>r.d===d).sort((a,b)=>(hm(a.time)??9999)-(hm(b.time)??9999)); const fr=freeStarts(d,slot);
+    $('#calDetail',box).innerHTML=`<section class="sec"><h2>${esc(fDl.format(d))}${st.label?` <span class="tag">${esc(st.label)}</span>`:''}</h2><div class="card">${rs.length?rs.map(r=>`<button class="row" data-open="${esc(r.p.id)}"><span class="rmain"><span class="nm num">${r.time?esc(r.time)+' – '+fmtHM(hm(r.time)+r.dur):'Sans horaire'} <small class="agec">${r.dur} min</small></span><span>${esc(r.it.name)}</span><span style="color:var(--muted);font-size:.9rem">${esc(fullName(r.p))}</span></span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun RDV de suivi de grossesse ce jour.</div>'}</div>
+      ${st.open&&d>=today()?`<div class="card" style="margin-top:10px"><div class="txt"><span class="k">Créneaux libres (${slot} min)</span>${fr.length?`<div class="slots">${fr.map(m=>`<span>${fmtHM(m)}</span>`).join('')}</div>`:'Aucun'}</div></div>`:''}</section>`;
+    bindRows($('#calDetail',box)); }
+}
+
 /* ---------- Agenda ---------- */
 function renderAgenda(){
   const v=$('#view'); const t=today(), N=S.agendaDays;
@@ -2283,6 +2444,7 @@ function renderAgenda(){
     if(p.status && p.status!=='active') continue;
     const inf=info(p); if(!inf.ok) continue;
     for(const it0 of milestonesFor(p,inf)){
+      if(it0.byDefault){ const e0=it0.rdv??it0.exact??it0.e; if(e0>=t-30*DAY) late.push({p,it:Object.assign({},it0,{e:e0})}); continue; }
       if(it0.st==='fait') continue;
       const it=it0.rdv!=null?Object.assign({},it0,{s:it0.rdv,e:it0.rdv}):it0;
       const row={p,it};
@@ -2294,7 +2456,7 @@ function renderAgenda(){
   }
   late.sort((a,b)=>b.it.e-a.it.e); open.sort((a,b)=>a.it.e-b.it.e); soon.sort((a,b)=>a.it.s-b.it.s);
   const item=(r,mode)=>{ const it=r.it; let when;
-    if(mode==='late') when=`<small style="color:var(--bad)">fenêtre close le ${fds(it.e)}</small>`;
+    if(mode==='late') when=`<small style="color:var(--muted)">validé par défaut<br>période close le ${fds(it.e)}</small>`;
     else if(mode==='open'){ const d=Math.round((it.e-t)/DAY); when=`<small style="color:${d<=7?'var(--warn)':'var(--accent)'}">${it.e===it.s?'aujourd’hui':d===0?'dernier jour':'jusqu’au '+fds(it.e)+' ('+d+' j)'}</small>`; }
     else when=(it.rdv!=null||it.kind==='ev'||(it.kind==='plan'&&it.exact!=null))?rdvHTML(it.rdv??it.exact??it.s,it.time,r.p):`<small style="color:var(--muted)">${fDl.format(it.s)}</small><span class="tofix">date à fixer</span>`;
     if(mode==='open'&&(it.rdv!=null||it.kind==='ev')) when=rdvHTML(it.rdv??it.s,it.time,r.p);
@@ -2305,8 +2467,13 @@ function renderAgenda(){
   h+=`<div class="seg" role="radiogroup" aria-label="Horizon">${[7,14,30,60].map(n=>`<label><input type="radio" name="hz" value="${n}" ${n===N?'checked':''}><span>${n} jours</span></label>`).join('')}</div>`;
   h+=sec('Fenêtre en cours',open,'open','Aucun examen dont la fenêtre est ouverte.');
   h+=sec(`À venir dans les ${N} jours`,soon,'soon','Rien de prévu sur cette période.');
-  h+=sec('Fenêtre dépassée, non validée (30 derniers jours)',late,'late','Aucun oubli récent.');
+  h+=sec('Validés par défaut – période dépassée (30 derniers jours), à vérifier',late,'late','Aucun examen validé par défaut récemment.');
+  if(S.agView==='cal') h=`<div class="summary"><strong>Agenda</strong>Calendrier des rendez-vous de suivi</div>`;
+  h=h.replace('<div class="summary">',`<div class="seg" style="margin-top:12px" role="radiogroup" aria-label="Vue">${[['list','Liste'],['cal','Calendrier']].map(([k,l])=>`<label><input type="radio" name="agv" value="${k}" ${(S.agView||'list')===k?'checked':''}><span>${l}</span></label>`).join('')}</div><div class="summary">`);
+  if(S.agView==='cal') h+='<div id="calBox"></div>';
   v.innerHTML=h;
+  $$('input[name="agv"]').forEach(r=>r.addEventListener('change',e=>{ S.agView=e.target.value; renderAgenda(); }));
+  if(S.agView==='cal'){ renderCalendar($('#calBox')); return; }
   $$('input[name="hz"]').forEach(r=>r.addEventListener('change',e=>{ S.agendaDays=+e.target.value; renderAgenda(); }));
   bindRows(v);
   $$('[data-ag]').forEach(b=>b.addEventListener('click',async()=>{ const [pid,mid]=b.dataset.ag.split('|'); const p=S.patients.find(x=>x.id===pid); p.done=p.done||{}; p.done[mid]=iso(today()); await savePatient(p); toast('Marqué comme fait'); renderAgenda(); }));
@@ -2495,6 +2662,20 @@ function renderSettings(){
     <div class="nums">Validé par <select data-k="auto" aria-label="Validation automatique"><option value="">— (manuellement)</option><option value="consult" ${m.auto==='consult'?'selected':''}>une consultation</option><option value="echo" ${m.auto==='echo'?'selected':''}>une échographie</option></select></div></div>`; });
   h+=`</div><p class="note">Laissez la fin vide pour une date unique. Les fenêtres proposées par défaut reprennent les repères usuels du suivi en France : vérifiez-les et adaptez-les à vos protocoles.</p><div class="actions" style="margin-top:10px"><button class="btn" id="resetMs">Rétablir le calendrier par défaut</button></div></section>`;
   const VC=st.vacc||{}; const dm=x=>x?x.split('-').reverse().join('/'):'';
+  const cb=cab(); const WD=[[1,'Lun'],[2,'Mar'],[3,'Mer'],[4,'Jeu'],[5,'Ven'],[6,'Sam'],[0,'Dim']];
+  h+=`<section class="sec"><h2>Agenda du cabinet</h2><div class="card" id="cabEd"><div class="fpad">
+    <div class="f"><span>Jours de consultation</span><div class="seg">${WD.map(([k,l])=>`<label><input type="checkbox" data-cday="${k}" ${cb.days.includes(k)?'checked':''}><span>${l}</span></label>`).join('')}</div></div>
+    <div class="nums" style="margin-top:10px">Matin <input type="time" data-cab="am0" value="${cb.am[0]}" style="width:auto"> – <input type="time" data-cab="am1" value="${cb.am[1]}" style="width:auto"></div>
+    <div class="nums">Après-midi <input type="time" data-cab="pm0" value="${cb.pm[0]}" style="width:auto"> – <input type="time" data-cab="pm1" value="${cb.pm[1]}" style="width:auto"></div>
+    <div class="nums">Durée d’un RDV <input type="number" data-dur="consult" value="${cb.dur.consult}"> min · créneaux tous les <input type="number" data-cab="slot" value="${cb.slot}"> min</div>
+    <div class="nums">Écho T1 / T3 <input type="number" data-dur="echo" value="${cb.dur.echo}"> · Écho T2 <input type="number" data-dur="echoT2" value="${cb.dur.echoT2}"> min</div>
+    <div class="nums">Gémellaire : T1 / T3 <input type="number" data-dur="twinT1T3" value="${cb.dur.twinT1T3}"> · T2 <input type="number" data-dur="twinT2" value="${cb.dur.twinT2}"> min</div>
+    <div class="f"><span>Gardes en maternité</span><div class="flags">${cb.gardes.slice().sort().map(g=>`<button class="tag acc" data-rmg="${g}" style="border:0">${fd(parseD(g))} ✕</button>`).join('')||'<small class="agec">Aucune</small>'}</div>
+      <div class="nums"><input type="date" id="gAdd" style="width:auto"> <button class="btn small" id="gAddBtn">＋ Ajouter une garde</button></div></div>
+    <label class="chkline"><input type="checkbox" id="offAfter" ${cb.offAfter?'checked':''}> Lendemain de garde non travaillé</label>
+    <div class="f"><span>Fermetures (congés, formation…)</span><div class="flags">${list(cb.closed).map((r,i)=>`<button class="tag" data-rmc="${i}" style="border:0">${fd(parseD(r.from))}${r.to&&r.to!==r.from?' → '+fd(parseD(r.to)):''} ✕</button>`).join('')||'<small class="agec">Aucune</small>'}</div>
+      <div class="nums">Du <input type="date" id="cFrom" style="width:auto"> au <input type="date" id="cTo" style="width:auto"> <button class="btn small" id="cAddBtn">＋ Ajouter</button></div></div>
+  </div></div></section>`;
   h+=`<section class="sec"><h2>Vaccins saisonniers</h2><div class="card" id="vaccEd">${[['grippe','Grippe','pendant toute la grossesse'],['covid','Covid-19','pendant toute la grossesse'],['vrs','VRS','entre 32 et 36 SA + 6 j']].map(([k,l,w])=>`<div class="msedit" data-v="${k}"><label class="chkline" style="margin-top:0"><input type="checkbox" data-vk="on" ${VC[k]&&VC[k].on?'checked':''}> <b>${l}</b> <span style="color:var(--muted);font-size:.85rem">– ${w}</span></label><div class="nums">Campagne du <input data-vk="from" value="${dm(VC[k]&&VC[k].from)}" placeholder="JJ/MM" style="width:72px" aria-label="Début de campagne"> au <input data-vk="to" value="${dm(VC[k]&&VC[k].to)}" placeholder="JJ/MM" style="width:72px" aria-label="Fin de campagne"></div></div>`).join('')}</div>
   <p class="note">Le vaccin n’apparaît dans les dates importantes que si la grossesse (ou la fenêtre 32–36 SA pour le VRS) croise la période de campagne. Dates par défaut : campagnes 2026-2027 en France hexagonale ; à mettre à jour chaque saison.</p></section>`;
   h+=`<section class="sec"><h2>Messages</h2><div class="card"><div class="fpad"><label class="f"><span>Signature (ajoutée par {signature})</span><textarea id="sig" style="width:100%;min-height:60px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)" placeholder="Dr Dupont – Sage-femme&#10;06 …">${esc(st.signature||'')}</textarea></label></div>
@@ -2511,6 +2692,17 @@ function renderSettings(){
   v.innerHTML=h;
   $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
   $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
+  const ce=$('#cabEd');
+  ce.addEventListener('change',async e=>{ const c=cab(); const x=e.target;
+    if(x.dataset.cday!=null){ const k=+x.dataset.cday; c.days=c.days.filter(d=>d!==k); if(x.checked) c.days.push(k); }
+    else if(x.dataset.cab){ const k=x.dataset.cab; if(k==='slot') c.slot=Math.max(5,+x.value||20); else if(k.startsWith('am')) c.am[+k[2]]=x.value; else if(k.startsWith('pm')) c.pm[+k[2]]=x.value; }
+    else if(x.dataset.dur) c.dur[x.dataset.dur]=Math.max(5,+x.value||20);
+    else if(x.id==='offAfter') c.offAfter=x.checked; else return;
+    await saveSettings(); });
+  $('#gAddBtn').addEventListener('click',async()=>{ const v2=$('#gAdd').value; if(!v2) return; const c=cab(); if(!c.gardes.includes(v2)) c.gardes.push(v2); await saveSettings(); renderSettings(); });
+  $$('[data-rmg]').forEach(b=>b.addEventListener('click',async()=>{ const c=cab(); c.gardes=c.gardes.filter(g=>g!==b.dataset.rmg); await saveSettings(); renderSettings(); }));
+  $('#cAddBtn').addEventListener('click',async()=>{ const a=$('#cFrom').value, z=$('#cTo').value||a; if(!a) return; const c=cab(); c.closed=list(c.closed); c.closed.push({from:a,to:z<a?a:z}); await saveSettings(); renderSettings(); });
+  $$('[data-rmc]').forEach(b=>b.addEventListener('click',async()=>{ const c=cab(); c.closed.splice(+b.dataset.rmc,1); await saveSettings(); renderSettings(); }));
   $('#vaccEd').addEventListener('change',async e=>{ const box=e.target.closest('[data-v]'); if(!box) return; const k=box.dataset.v; st.vacc=st.vacc||{}; const c=st.vacc[k]=st.vacc[k]||{};
     const md=x=>{ const m=String(x).trim().match(/^(\d{1,2})[\/.-](\d{1,2})$/); return m?String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0'):null; };
     c.on=box.querySelector('[data-vk="on"]').checked; const fr=md(box.querySelector('[data-vk="from"]').value), to=md(box.querySelector('[data-vk="to"]').value);
