@@ -352,6 +352,15 @@ details.fiche-ed summary{cursor:pointer}
   #printArea tr{break-inside:avoid} #printArea .pal{color:#B42318}
   #printArea .pbreak{break-before:page} .pqgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px} .pq{text-align:center;break-inside:avoid;font-size:9pt} .pq svg{width:75mm;height:75mm}
 }
+
+.atag{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;line-height:1.4;padding:1px 8px 1px 6px;border-radius:999px;color:var(--ac);background:color-mix(in srgb,var(--ac) 13%,transparent);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.atag i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ac)}
+.tag.new{background:#E11D48;color:#fff;font-weight:700}
+.row.unread,.doc.unread{box-shadow:inset 4px 0 0 #E11D48;background:color-mix(in srgb,#E11D48 6%,var(--surface,#fff))}
+.abox{display:flex;gap:10px;align-items:flex-start;margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--ac) 35%,transparent);background:color-mix(in srgb,var(--ac) 8%,var(--surface,#fff))}
+.abox>i{flex:none;width:12px;height:12px;margin-top:4px;border-radius:50%;background:var(--ac)}
+.abox b{display:block}.abox small{display:block;color:var(--muted);font-size:.82rem;margin-top:1px}.abox a{color:inherit}
+.abox .ro{color:var(--ink);font-weight:600;margin-top:4px}
 </style>
 </head>
 <body>
@@ -378,7 +387,7 @@ details.fiche-ed summary{cursor:pointer}
 <div class="zoom" id="zoom" role="dialog" aria-modal="true"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden>
-<input type="file" id="importInput" accept="application/json,.json" hidden>
+<input type="file" id="importInput" accept="application/json,.json,application/pdf,.pdf" hidden>
 <input type="file" id="imgInput" accept="image/*" multiple hidden>
 
 <script>window.APP_ROLE='patient';</script>
@@ -564,7 +573,7 @@ async function cGetFile(fid){
 async function cPutFile(f){
   const s=b64(f.data); const n=Math.ceil(s.length/CHUNK)||1;
   for(let i=0;i<n;i++) await C.col.doc('c-'+f.id+'-'+i).set({kind:'chunk',fid:f.id,i,d:s.slice(i*CHUNK,(i+1)*CHUNK)});
-  await C.col.doc(f.id).set({kind:'file',id:f.id,patientId:f.patientId,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,chunks:n});
+  await C.col.doc(f.id).set({kind:'file',id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,chunks:n});
 }
 async function cDelFile(fid){ const m=await C.col.doc(fid).get(); const n=m.exists?(m.data().chunks||0):0; await C.col.doc(fid).delete(); for(let i=0;i<n;i++) await C.col.doc('c-'+fid+'-'+i).delete(); }
 
@@ -574,6 +583,7 @@ async function getAll(n){
   return idb ? rq(store(n).getAll()) : [...mem[n].values()];
 }
 async function put(n,v,k){
+  if(n==='files'&&v&&v.by===undefined&&!isPatient()){ const me=praticien(); if(me) v.by=me.id; }
   if(MODE==='cloud'){ if(n==='patients') return C.col.doc(v.id).set(Object.assign(clean(v),{kind:'patient'})); if(n==='kv') return C.col.doc(k).set({kind:'kv',value:clean(v)}); if(n==='files') return cPutFile(v); }
   if(idb) return rq(k!==undefined?store(n,'readwrite').put(v,k):store(n,'readwrite').put(v)); mem[n].set(k!==undefined?k:v.id,v);
 }
@@ -612,6 +622,7 @@ async function migrateLocalToCloud(){
 const S={ settings:null, patients:[], filter:'active', q:'', showOver:false, agendaDays:14, asOf:null, addingEvent:false, crits:[], sort:(()=>{ try{ return localStorage.getItem('sg-sort')||'terme'; }catch(e){ return 'terme'; } })(), selecting:false, sel:new Set() };
 async function saveSettings(){ try{ await put('kv',S.settings,'settings'); }catch(e){ toast('Échec de l’enregistrement des réglages'); } }
 async function savePatient(p){
+  stampAuthor(p);
   p.updatedAt=Date.now();
   const i=S.patients.findIndex(x=>x.id===p.id); if(i<0) S.patients.push(p); else S.patients[i]=p;   // toujours visible dans la liste
   try{ await put('patients',p); S.saveError=false; }
@@ -794,6 +805,7 @@ function matchOne(p,c){ const h=HC[c.slice(2)]; return h?!!h.f(p):true; }
 function matches(p,q){ if(!q) return true; q=q.toLowerCase(); return [p.nom,p.prenom,p.lieu,p.lieuPrec,p.telephone,...list(p.corr).map(c=>c.nom)].some(x=>(x||'').toLowerCase().includes(q)); }
 
 function renderList(){
+  setTimeout(ensureIdentity,400);
   if(isPatient()) return renderPatientHome();
   if(!SORTS[S.sort]) S.sort='terme';
   S.crits=S.crits.filter(c=>c.startsWith('h:'));
@@ -802,7 +814,7 @@ function renderList(){
   const actI=act.map(p=>({p,inf:info(p)}));
   const due30=actI.filter(x=>x.inf.ok && x.inf.toDpa>=0 && x.inf.toDpa<=30).length;
   let html=`<div class="summary"><strong class="num">${act.length} grossesse${act.length>1?'s':''} en cours</strong>${due30} à terme dans les 30 jours</div>`;
-  if(MODE==='local' && S.patients.length && (!S.lastBackup || Date.now()-S.lastBackup>7*DAY)) html+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:180px">${S.lastBackup?'Dernière sauvegarde le '+fd(localDay(S.lastBackup))+'.':'Aucune sauvegarde exportée pour l’instant.'} Vos dossiers ne sont enregistrés que sur cet appareil.</span><button class="btn small" id="quickBackup">Sauvegarder maintenant</button></div>`;
+  const lastCh_=Math.max(0,...S.patients.map(x=>x.updatedAt||0)); if(MODE==='local' && S.patients.length && (!S.lastBackup || lastCh_>S.lastBackup)) html+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:180px">${S.lastBackup?'Des dossiers ont été modifiés depuis la dernière sauvegarde ('+fd(localDay(S.lastBackup))+' à '+new Date(S.lastBackup).toTimeString().slice(0,5)+').':'Aucune sauvegarde exportée pour l’instant.'} Vos dossiers ne sont enregistrés que sur cet appareil.</span><button class="btn small" id="quickBackup">Sauvegarder maintenant</button></div>`;
   if(MODE==='memory') html+=`<div class="banner">Aucun stockage durable n’est disponible dans cette vue : les dossiers saisis seront perdus à la fermeture. Ouvrez l’application depuis son lien en étant connectée à votre compte Claude.</div>`;
   if(S.saveError) html+=`<div class="banner">Au moins un enregistrement a échoué. Rouvrez la fiche concernée et enregistrez-la de nouveau.</div>`;
   html+=`<div class="search"><input type="search" id="q" placeholder="Rechercher un nom, une maternité…" value="${esc(S.q)}" aria-label="Rechercher"><select id="filt" aria-label="Filtrer"><option value="active">En cours</option><option value="archived">Archivées</option><option value="all">Toutes</option></select><button class="btn" id="selMode">${S.selecting?'Terminer':'Sélectionner'}</button></div><label class="sortrow"><span>Trier :</span><select id="sort" aria-label="Ordre de tri">${Object.entries(SORTS).map(([k,o])=>`<option value="${k}" ${S.sort===k?'selected':''}>${o.l}</option>`).join('')}</select></label><div id="critBox">${critSelect()}</div>`;
@@ -1009,18 +1021,22 @@ function lastDataHTML(p){
 }
 function rdvHTML(d,time,p){ const i=info(p); return `<span class="rdvd">${esc(fDl.format(d))}${time?' à '+esc(time):''}</span>${i.ok?`<span class="rdvt">${esc(sa(Math.round((d-i.base)/DAY)))}</span>`:''}`; }
 function rdvLabel(rv){ const d=parseD(rv&&rv.date); if(d==null) return ''; return fDl.format(d)+(rv.time?' à '+rv.time:''); }
+function urgRow(p,e){
+  const d=parseD(e.date); const kinds=[e.consult!==false&&'Consultation',e.echo&&'Échographie'].filter(Boolean).join(' + ')||'Venue';
+  return `<div class="ms st-urg"><span class="chk" aria-hidden="true" style="background:var(--bad,#c0392b);border-color:var(--bad,#c0392b);color:#fff">!</span><div class="mn"><b>${esc(kinds)} en urgence</b>${newBadge(p,e)||authorBadge(p,e)?`<span class="flags" style="margin:2px 0">${newBadge(p,e)}${authorBadge(p,e)}</span>`:''}<small class="num">${e.motif?'Motif : '+esc(e.motif):'Venue non programmée'}</small>${isPatient()?'':`<button class="link" data-ev="${esc(e.id)}" style="padding:2px 0 0;font-size:.85rem;display:block;text-align:left">Voir la consultation</button>`}</div><div class="md num">${rdvHTML(d,e.heure,p)}</div></div>`;
+}
 function msRow(p,it,full){
   const hasR = it.kind==='ms' && it.rdv!=null && it.st!=='fait';
   const dd=it.kind==='ms'&&it.st==='fait'&&it.done&&!it.byDefault?parseD(it.done):null;
   const fixedD = hasR ? it.rdv : (it.kind==='ev'&&it.st!=='fait') ? it.s : (it.kind==='plan'&&it.exact!=null&&it.st!=='fait') ? it.exact : null;
-  const sub = it.byDefault ? 'Période dépassée' : dd!=null ? 'Réalisé à '+sa(Math.round((dd-info(p).base)/DAY)) : hasR ? 'Rendez-vous fixé' : it.kind==='plan' ? (it.exact!=null?'Date fixée':'38 SA – 39 SA') : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous') : sa(it.sDays);
+  const sub = it.byDefault ? 'Période dépassée' : dd!=null ? ((p.doneBy||{})[it.id]?'Validé par la consultation':'Validé manuellement') : hasR ? 'Rendez-vous fixé' : it.kind==='plan' ? (it.exact!=null?'Date fixée':'38 SA – 39 SA') : it.kind==='ms' ? (it.eDays==null? saShort(it.sDays) : saShort(it.sDays)+' – '+saShort(it.eDays)) : it.kind==='ev' ? (it.evKind==='echo'?'Échographie':it.evKind==='consult'?'Consultation':'Rendez-vous') : sa(it.sDays);
   const chk = it.kind==='dpa' ? `<span class="chk" aria-hidden="true" style="border-style:dashed"></span>` : `<button class="chk" data-done="${esc(it.id)}" aria-pressed="${it.st==='fait'}" aria-label="${it.st==='fait'?'Annuler la validation':'Marquer comme fait'} : ${esc(it.name)}">${it.st==='fait'?'✓':''}</button>`;
   let extra='';
   if(it.ideal!=null && !hasR && dd==null) extra+=`<small class="ideal num">(${sa(it.idealDays)} : ${fd(it.ideal)})</small>`;
   if(it.kind==='plan') extra+=`${it.exact!=null?'':'<small class="ideal num">(date exacte à fixer)</small>'} <button class="link" data-plan style="padding:0;font-size:.85rem">Modifier</button>`;
   if(full && it.kind==='ms' && it.st!=='fait' && (it.auto||/^rhd/.test(it.id))) extra+= it.rdv!=null ? `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Modifier la date du RDV</button>` : `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Fixer la date du RDV</button>`;
   if(it.kind==='ev') extra+=`${it.note?`<small>${esc(it.note)}</small>`:''}<button class="link" data-evedit="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem;display:block">📅 Modifier le RDV</button>`;
-  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}</div><div class="md num">${dd!=null?'':fixedD!=null?rdvHTML(fixedD,it.time,p):range(it.s,it.e===it.s?null:it.e)+(it.kind==='ms'&&(it.auto||/^rhd/.test(it.id))?'<span class="tofix">date à fixer</span>':'')}${stLabel(it)}</div></div>`;
+  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}</div><div class="md num">${dd!=null?rdvHTML(dd,(()=>{ const ev=list(p.evals).find(x=>x.id===(p.doneBy||{})[it.id]); return ev?ev.heure:''; })(),p):fixedD!=null?rdvHTML(fixedD,it.time,p):range(it.s,it.e===it.s?null:it.e)+(it.kind==='ms'&&(it.auto||/^rhd/.test(it.id))?'<span class="tofix">date à fixer</span>':'')}${stLabel(it)}</div></div>`;
 }
 async function renderPatient(id){
   const p=S.patients.find(x=>x.id===id); const v=$('#view');
@@ -1030,6 +1046,9 @@ async function renderPatient(id){
   const issueD=p.status==='archived'&&p.issue?parseD(p.issue.date):null; const at=S.asOf||issueD||today(); const inf=info(p,at); S.closed=p.status==='archived'; const a=age(p.naissance);
   const bmi=imc(p);
   let h=`<div class="back" style="display:flex;justify-content:space-between"><button class="btn ghost" id="bk">‹ ${isPatient()?'Accueil':'Patientes'}</button><button class="btn small" id="pdfTop">Imprimer / PDF</button></div>`;
+  if(!isPatient()&&p.unread&&p.unread.__fiche){ const uf=p.unread.__fiche; h+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:180px">La fiche de la patiente a été complétée par un autre soignant (${uf.n} élément${uf.n>1?'s':''}, reçu le ${fd(localDay(uf.at))}). Vérifiez-la avant la consultation.</span><button class="btn small" id="ficheRead">Vu</button></div>`; }
+  if(!isPatient()&&unreadCount(p)-(p.unread&&p.unread.__fiche?1:0)>0){ const nU=unreadCount(p)-(p.unread.__fiche?1:0); h+=`<div class="note" style="margin:0 0 10px"><span class="tag new">${nU} nouveauté${nU>1?'s':''}</span> saisie${nU>1?'s':''} par d’autres soignants, signalée${nU>1?'s':''} « Nouveau » dans les rubriques.</div>`; }
+  if(isPatient()&&p.majLe){ const md=new Date(p.majLe), nd=Math.floor((Date.now()-md.getTime())/DAY), old_=nd>42; h+=`<div class="${old_?'banner':'note'}" style="margin:0 0 10px">${old_?'⚠ ':''}Dossier mis à jour par votre médecin le <b>${fd(localDay(md.getTime()))} à ${md.toTimeString().slice(0,5)}</b>${old_?' : il date de plus de 6 semaines, pensez à le faire mettre à jour.':'.'}${p.suiviPar&&p.suiviPar.nom?'<br>Suivi : '+esc(p.suiviPar.nom)+(p.suiviPar.tel?' – <a href="tel:'+esc(p.suiviPar.tel.replace(/[^0-9+]/g,''))+'">'+esc(p.suiviPar.tel)+'</a>':''):''}</div>`; }
   h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):'', p.email?`<a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a>`:''].filter(Boolean).join(' – ')}</div>`;
   const fl=[];
   addictTags(p).forEach(x=>fl.push(`<span class="tag warn">${esc(x)}</span>`));
@@ -1100,7 +1119,7 @@ async function renderPatient(id){
     const rel=related(p);
     h+=`<section class="sec"><h2>Autres dossiers de la patiente</h2><div class="card">${rel.length?rel.map(x=>`<button class="row" data-open="${esc(x.id)}"><span class="rmain"><span class="nm">${esc(pregLabel(x))}</span><span style="color:var(--muted);font-size:.92rem">${esc(issueSummary(x)||(x.status==='archived'?'Archivée sans issue renseignée':'Grossesse en cours'))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun autre dossier pour cette patiente.</div>'}</div></section>`;
     if(p.notes||p.notesPriv) h+=`<section class="sec"><h2>Notes</h2><div class="card">${p.notes?`<div class="txt">${esc(p.notes)}</div>`:''}${p.notesPriv?`<div class="txt"><span class="k">🔒 Notes privées</span>${esc(p.notesPriv)}</div>`:''}</div></section>`;
-    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn primary" id="toPat">📲 Transmettre à la patiente</button><button class="btn" id="shareBtn">Remettre à la patiente</button><button class="btn" id="msgBtn">✉ Message</button><button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
+    h+=`<div class="actions">${p.status==='archived'?'<button class="btn primary" id="newPreg">＋ Nouvelle grossesse</button><button class="btn" id="edit">Modifier la fiche</button><button class="btn" id="unarch">Rouvrir le dossier</button>':'<button class="btn primary" id="edit">Modifier la fiche</button><button class="btn" id="arch">Clôturer la grossesse</button>'}<button class="btn primary" id="toPat">📲 Transmettre à la patiente</button><button class="btn" id="fromPat">📥 Recevoir les nouveautés de la patiente</button><button class="btn" id="shareBtn">Remettre à la patiente</button><button class="btn" id="msgBtn">✉ Message</button><button class="btn" id="pdfBtn">Imprimer / PDF</button><button class="btn danger" id="delP">Supprimer</button></div>`;
   }
   else if(T==='consult'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" data-newev="c|prog">＋ Consultation programmée</button><button class="btn" data-newev="c|urg">＋ Consultation d’urgence</button><button class="btn primary" data-newev="e|prog">＋ Échographie programmée</button><button class="btn" data-newev="e|urg">＋ Échographie d’urgence</button><button class="btn" id="addEchoPdf">＋ Compte rendu d’échographie (PDF ou photo)</button></div>
@@ -1109,7 +1128,7 @@ async function renderPatient(id){
     const evs=evalsOf(p);
     h+=`<section class="sec"><h2>Comptes rendus d’échographie</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
     h+=`<section class="sec"><h2>Historique</h2><div class="card">${evs.length?evs.map(e=>{ const l=evalLine(e,p); const kinds=[e.consult!==false&&'Consultation',e.echo&&'Échographie'].filter(Boolean).join(' + ');
-      return `<button class="row" data-ev="${esc(e.id)}"><span class="rmain"><span class="nm num" style="font-size:.95rem">${esc(l.when)}</span><span class="flags" style="margin-top:2px">${e.urg?'<span class="tag bad">Urgence</span>':'<span class="tag ok">Programmé</span>'}<span class="tag">${esc(kinds||'Évaluation')}</span></span>${e.urg&&e.motif?`<span style="font-size:.9rem">Motif : ${esc(e.motif)}</span>`:''}<span style="color:var(--muted);font-size:.9rem">${esc(l.txt)}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune consultation ni échographie enregistrée.</div>'}</div></section>`;
+      return `<button class="row${unreadCls(p,e)}" data-ev="${esc(e.id)}"><span class="rmain"><span class="nm num" style="font-size:.95rem">${esc(l.when)}</span><span class="flags" style="margin-top:2px">${newBadge(p,e)}${e.urg?'<span class="tag bad">Urgence</span>':'<span class="tag ok">Programmé</span>'}<span class="tag">${esc(kinds||'Évaluation')}</span>${authorBadge(p,e)}</span>${e.urg&&e.motif?`<span style="font-size:.9rem;display:block">Motif : ${esc(e.motif)}</span>`:''}<span style="color:var(--muted);font-size:.9rem">${esc(l.txt)}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune consultation ni échographie enregistrée.</div>'}</div></section>`;
   }
   else if(T==='agenda'){
     if(!inf.ok) h+='<div class="banner">Complétez la datation pour calculer le calendrier.</div>';
@@ -1121,21 +1140,24 @@ async function renderPatient(id){
       const done=items.filter(it=>it.st==='fait');
       h+=`<section class="sec"><h2>Rendez-vous prévus <span class="num" style="color:var(--muted);font-weight:400">${prev.length}</span></h2><div class="card" id="msList">${prev.length?prev.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Aucun rendez-vous fixé.</div>'}</div></section>`;
       h+=`<section class="sec"><h2>En attente de date <span class="num" style="color:var(--muted);font-weight:400">${wait.length}</span></h2><div class="card">${wait.length?wait.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Tout est programmé.</div>'}</div></section>`;
-      h+=`<section class="sec"><details class="sgrp"><summary>Réalisés et validés <span class="num" style="color:var(--muted);font-weight:400">${done.length}</span></summary><div class="card">${done.length?done.map(it=>msRow(p,it,true)).join(''):'<div class="txt" style="color:var(--muted)">Rien pour l’instant.</div>'}</div></details></section>`;
+      const urgs=evalsOf(p).filter(e=>e.urg&&parseD(e.date)!=null);
+      const dKey=it=>{ const d=it.done&&!it.byDefault?parseD(it.done):null; return d!=null?d:(it.rdv??it.exact??it.s??0); };
+      const doneAll=done.map(it=>({d:dKey(it),h:msRow(p,it,true)})).concat(urgs.map(e=>({d:parseD(e.date),h:urgRow(p,e)}))).sort((a,b)=>a.d-b.d);
+      h+=`<section class="sec"><details class="sgrp"><summary>Réalisés et validés <span class="num" style="color:var(--muted);font-weight:400">${doneAll.length}</span>${urgs.length?` <span class="tag bad" style="margin-left:6px">${urgs.length} urgence${urgs.length>1?'s':''}</span>`:''}</summary><div class="card">${doneAll.length?doneAll.map(x=>x.h).join(''):'<div class="txt" style="color:var(--muted)">Rien pour l’instant.</div>'}</div></details></section>`;
     }
   }
   else if(T==='bio'){
-    h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un bilan (PDF ou photo)</button></div></section>`;
+    h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un bilan (PDF ou photo)</button><button class="btn" id="readLab">🔎 Lire un compte rendu de laboratoire</button></div></section>`;
     if(p.rhesus==='-') h+=`<div class="rhbox" style="margin-top:12px">RhD− – ${esc(rhdStatus(p))}</div>`;
     const B=list(p.bio).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||''));
-    h+=`<section class="sec"><h2>Résultats</h2><div class="card">${B.length?B.map(b=>`<button class="row" data-bio="${esc(b.id)}"><span class="rmain"><span class="nm">${esc(b.exam==='Autre'?b.examAutre||'Autre examen':b.exam)}</span><span class="num" style="font-size:.95rem">${esc([b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – '))||'—'}</span><span class="flags" style="margin-top:2px">${b.interp?`<span class="tag ${b.interp==='Normal'?'ok':b.interp==='Anormal'?'bad':'warn'}">${esc(b.interp)}</span>`:''}<span class="tag num">${b.date?fd(parseD(b.date)):'Date ?'}${b.date&&info(p).ok?' – '+sa(Math.round((parseD(b.date)-info(p).base)/DAY)):''}</span></span>${b.notes?`<span style="color:var(--muted);font-size:.9rem">${esc(b.notes)}</span>`:''}</span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun résultat enregistré.</div>'}</div></section>`;
+    h+=`<section class="sec"><h2>Résultats</h2><div class="card">${B.length?B.map(b=>`<button class="row${unreadCls(p,b)}" data-bio="${esc(b.id)}"><span class="rmain"><span class="nm">${esc(b.exam==='Autre'?b.examAutre||'Autre examen':b.exam)}</span><span class="num" style="font-size:.95rem">${esc([b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – '))||'—'}</span><span class="flags" style="margin-top:2px">${newBadge(p,b)}${authorBadge(p,b)}${b.interp?`<span class="tag ${b.interp==='Normal'?'ok':b.interp==='Anormal'?'bad':'warn'}">${esc(b.interp)}</span>`:''}<span class="tag num">${b.date?fd(parseD(b.date)):'Date ?'}${b.date&&info(p).ok?' – '+sa(Math.round((parseD(b.date)-info(p).base)/DAY)):''}</span></span>${b.notes?`<span style="color:var(--muted);font-size:.9rem">${esc(b.notes)}</span>`:''}</span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun résultat enregistré.</div>'}</div></section>`;
     h+=`<section class="sec"><h2>Bilans et résultats en PDF</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
   }
   else if(T==='hosp'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addHosp2">＋ Ajouter une hospitalisation</button></div></section>`;
     const hs=list(p.hospits).slice().sort((x,y)=>(y.debut||'').localeCompare(x.debut||''));
     h+=`<section class="sec"><h2>Hospitalisations pendant la grossesse</h2><div class="card">${hs.length?hs.map(x=>{ const d=parseD(x.debut), f=parseD(x.fin); const dur=d!=null&&f!=null?Math.round((f-d)/DAY):null;
-      return `<button class="row" data-hosp="${esc(x.id)}"><span class="rmain"><span class="nm num">${d!=null?fd(d):'?'}${f!=null?' → '+fd(f):' (en cours)'}${dur!=null?` <small class="agec">${dur} j</small>`:''}</span><span>${esc(x.motif||'Motif non précisé')}</span><span style="color:var(--muted);font-size:.9rem">${esc([x.lieu,d!=null&&info(p).ok?'à '+sa(Math.round((d-info(p).base)/DAY)):'',x.notes].filter(Boolean).join(' – '))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune hospitalisation pendant cette grossesse.</div>'}</div></section>`;
+      return `<button class="row${unreadCls(p,x)}" data-hosp="${esc(x.id)}"><span class="rmain"><span class="nm num">${d!=null?fd(d):'?'}${f!=null?' → '+fd(f):' (en cours)'}${dur!=null?` <small class="agec">${dur} j</small>`:''}</span><span>${esc(x.motif||'Motif non précisé')}</span>${newBadge(p,x)||authorBadge(p,x)?`<span class="flags">${newBadge(p,x)}${authorBadge(p,x)}</span>`:''}<span style="color:var(--muted);font-size:.9rem">${esc([x.lieu,d!=null&&info(p).ok?'à '+sa(Math.round((d-info(p).base)/DAY)):'',x.notes].filter(Boolean).join(' – '))}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune hospitalisation pendant cette grossesse.</div>'}</div></section>`;
   }
   else if(T==='suites'){
     if(p.status==='archived') h+=issueHTML(p,inf);
@@ -1154,7 +1176,7 @@ async function renderPatient(id){
   const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click',fn); };
   on('#bk',()=>go('liste'));
   on('#edit',()=>openEditor(p));
-  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#toPat',async()=>{ if(!p.shareCode){ p.shareCode=newCode(); await savePatient(p); toast('Code créé pour cette patiente : '+fmtCode(p.shareCode)); } showTransferScreen(p,p.shareCode); }); on('#pCard',()=>openMyCard(p)); on('#pUpd',openScanImport); on('#pShare',()=>shareMyDossier(p)); on('#pTrans',()=>showTransferScreen(p,myCodeOf(p))); on('#msgBtn',()=>openMessage(p));
+  on('#pdfTop',()=>openPrint(p,isPatient())); on('#pdfBtn',()=>openPrint(p)); on('#shareBtn',()=>openShare(p)); on('#fromPat',()=>{ S.mergeInto=p.id; openScanImport(); }); on('#ficheRead',async()=>{ if(p.unread) delete p.unread.__fiche; await savePatient(p); renderPatient(p.id); }); on('#toPat',async()=>{ if(!p.shareCode){ p.shareCode=newCode(); await savePatient(p); toast('Code créé pour cette patiente : '+fmtCode(p.shareCode)); } showTransferScreen(p,p.shareCode); }); on('#pCard',()=>openMyCard(p)); on('#pUpd',openScanImport); on('#pShare',()=>shareMyDossier(p)); on('#pTrans',()=>showTransferScreen(p,myCodeOf(p))); on('#msgBtn',()=>openMessage(p));
   $$('[data-fiche]').forEach(c=>{ c.addEventListener('click',e=>e.stopPropagation()); c.addEventListener('change',async()=>{ const id=c.dataset.fiche; p.fichesOff=list(p.fichesOff).filter(x=>x!==id); if(!c.checked) p.fichesOff.push(id); await savePatient(p); }); });
   $$('[data-ptab]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.ptab; renderPatient(id); const nav=$('.ptabs'); if(nav) nav.scrollIntoView({block:'start',behavior:'auto'}); }));
   $$('[data-goto]').forEach(b=>b.addEventListener('click',()=>{ S.ptab=b.dataset.goto; renderPatient(id); }));
@@ -1168,7 +1190,7 @@ async function renderPatient(id){
   on('#addEv',()=>openEvent(p,null));
   const cpj=$('#cpj'); if(cpj) cpj.addEventListener('change',async e=>{ p.congePathoJ=e.target.value; await savePatient(p); renderPatient(id); });
   on('#addBio',()=>openBio(p,null)); $$('[data-bio]').forEach(b=>b.addEventListener('click',()=>openBio(p,b.dataset.bio)));
-  on('#addBioPdf',()=>openAddDoc(p,'Biologie','bio')); on('#addEchoPdf',()=>{ const ec=evalsOf(p).find(e=>e.echo); const map={'T1':'Échographie T1','T2 (morphologique)':'Échographie T2','T3':'Échographie T3'}; openAddDoc(p,ec&&map[ec.etype]||'Échographie de croissance / autre','echo'); });
+  on('#addBioPdf',()=>openAddDoc(p,'Biologie','bio')); on('#readLab',()=>openLabImport(p)); on('#addEchoPdf',()=>{ const ec=evalsOf(p).find(e=>e.echo); const map={'T1':'Échographie T1','T2 (morphologique)':'Échographie T2','T3':'Échographie T3'}; openAddDoc(p,ec&&map[ec.etype]||'Échographie de croissance / autre','echo'); });
   on('#addHosp2',()=>openHosp(p,null)); $$('[data-hosp]').forEach(b=>b.addEventListener('click',()=>openHosp(p,b.dataset.hosp)));
   on('#arch',()=>openOutcome(p)); on('#editIssue',()=>openOutcome(p));
   on('#unarch',async()=>{ if(!await ask({title:'Rouvrir ce dossier ?',body:'La grossesse repassera dans les dossiers en cours. L’issue saisie est conservée.',ok:'Rouvrir'})) return; p.status='active'; await savePatient(p); toast('Dossier rouvert'); renderPatient(id); });
@@ -1234,7 +1256,7 @@ function openBio(p,bid){
   const saAt=()=>{ const d=parseD(val('bdate')); return d!=null&&inf.ok?Math.floor((d-inf.base)/DAY/7):null; };
   const legacy=()=>!!(ex&&ex.res&&!ex.vals&&ex.exam===curExam);
   const examOpts=[...BIO_LIST,...(b.exam&&b.exam!=='Autre'&&!BIO_LIST.includes(b.exam)?[b.exam]:[]),'Autre'];
-  const {sh,val}=miniSheet(ex?'Résultat biologique':'Nouveau résultat',`<fieldset><legend>Examen</legend><div class="fbox">
+  const {sh,val}=miniSheet(ex?'Résultat biologique':'Nouveau résultat',`${ex?authorBox(p,ex):''}<fieldset><legend>Examen</legend><div class="fbox">
     ${F('Date du prélèvement','<input type="date" name="bdate" value="'+esc(b.date)+'">')}<div class="preview num" id="bAg" style="display:none"></div>
     <label class="f"><span>Examen</span><select name="bexam"><option value="">—</option>${examOpts.map(x=>`<option ${b.exam===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
     <div id="bAutre">${F('Nom de l’examen','<input name="bautre" value="'+esc(b.examAutre||'')+'">')}</div>
@@ -1280,11 +1302,12 @@ function openBio(p,bid){
     const d=parseD(val('bdate')), el=$('#bAg'); if(d!=null&&inf.ok){ el.style.display=''; el.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else el.style.display='none';
     analyse(); };
   drawFields(); sh.oninput=sync; sh.onchange=sync; sync();
+  if(ex){ lockForeign(sh,p,ex); markRead(p,ex.id); }
 }
 function openHosp(p,hid){
   if(isPatient()) return;
   const ex=hid?list(p.hospits).find(x=>x.id===hid):null; const x=Object.assign({debut:iso(today()),fin:'',motif:'',lieu:'',notes:''},ex||{});
-  miniSheet(ex?'Hospitalisation':'Nouvelle hospitalisation',`<fieldset><legend>Hospitalisation</legend><div class="fbox">
+  const {sh:hsh}=miniSheet(ex?'Hospitalisation':'Nouvelle hospitalisation',`${ex?authorBox(p,ex):''}<fieldset><legend>Hospitalisation</legend><div class="fbox">
     <div class="grid2">${F('Entrée','<input type="date" name="hd" value="'+esc(x.debut||'')+'">')}${F('Sortie','<input type="date" name="hf" value="'+esc(x.fin||'')+'">')}</div>
     ${F('Motif','<input name="hm" value="'+esc(x.motif||'')+'" placeholder="MAP, prééclampsie, pyélonéphrite…">')}
     <div class="f"><span>Lieu</span>${radios('hl',LIEUX.map(l=>[l,l]),LIEUX.includes(x.lieu)?x.lieu:(x.lieu?'Autre établissement':''))}</div>
@@ -1293,6 +1316,7 @@ function openHosp(p,hid){
     async v=>{ if(!v('hd')&&!v('hm')){ toast('Indiquez au moins la date ou le motif'); return false; } const l=v('hl'); const o={id:x.id||uid('h'),debut:v('hd'),fin:v('hf'),motif:v('hm'),lieu:l==='Autre établissement'&&v('hlp')?v('hlp'):l,lieuPrec:l&&l!=='Autre établissement'?v('hlp'):'',notes:v('hn')};
       p.hospits=list(p.hospits).filter(y=>y.id!==o.id); p.hospits.push(o); await savePatient(p); toast('Hospitalisation enregistrée'); renderPatient(p.id); },
     ex?async()=>{ p.hospits=list(p.hospits).filter(y=>y.id!==ex.id); await savePatient(p); renderPatient(p.id); }:null);
+  if(ex){ lockForeign(hsh,p,ex); markRead(p,ex.id); }
 }
 
 /* ---------- Évaluation échographique ---------- */
@@ -1344,12 +1368,12 @@ function openPlan(p){
 function openEval(p,evId,preset){
   if(isPatient()) return;
   const ex=evId?list(p.evals).find(e=>e.id===evId):null;
-  const e=Object.assign({id:uid('e'),date:iso(today()),urg:!!(preset&&preset.urg),etype:'',motif:'',poidsM:'',pas:'',pad:'',presentation:'',epf:'',pct:'',placPos:'',placIns:'',placDist:'',colLong:'',oi:'',oiMm:'',notes:''},ex?JSON.parse(JSON.stringify(ex)):(preset?{consult:!!preset.consult,echo:!!preset.echo}:{}));
+  const e=Object.assign({id:uid('e'),date:iso(today()),heure:ex?'':new Date().toTimeString().slice(0,5),urg:!!(preset&&preset.urg),etype:'',motif:'',poidsM:'',pas:'',pad:'',presentation:'',epf:'',pct:'',placPos:'',placIns:'',placDist:'',colLong:'',oi:'',oiMm:'',notes:''},ex?JSON.parse(JSON.stringify(ex)):(preset?{consult:!!preset.consult,echo:!!preset.echo}:{}));
   const sh=$('#sheet');
   const tin=(n,ph)=>`<input name="${n}" type="text" inputmode="decimal" placeholder="${ph||''}" value="${esc(e[n]??'')}">`;
-  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="eCancel">Annuler</button><h2 id="sheetTitle">${ex?'Consultation / échographie':(preset&&preset.echo?'Échographie':'Consultation')+(preset&&preset.urg?' d’urgence':' programmée')}</h2><button class="btn primary" id="eSave">Enregistrer</button></div>
+  sh.innerHTML=`<div class="sheet-h"><button class="btn ghost" id="eCancel">Annuler</button><h2 id="sheetTitle">${ex?'Consultation / échographie':(preset&&preset.echo?'Échographie':'Consultation')+(preset&&preset.urg?' d’urgence':' programmée')}</h2><button class="btn primary" id="eSave">Enregistrer</button></div>${ex?`<div style="padding:0 16px">${authorBox(p,ex)}</div>`:''}
   <div class="form">
-   <fieldset><legend>Date</legend><div class="fbox">${F('Date de l’examen','<input type="date" name="date" value="'+esc(e.date)+'">')}<div class="preview num" id="eAg"></div></div></fieldset>
+   <fieldset><legend>Date</legend><div class="fbox"><div class="grid2">${F('Date de l’examen','<input type="date" name="date" value="'+esc(e.date)+'">')}${F('Heure','<input type="time" name="heure" value="'+esc(e.heure||'')+'">')}</div><div class="preview num" id="eAg"></div></div></fieldset>
    <fieldset><legend>Type d’examen</legend><div class="fbox">
     <div class="seg"><label><input type="checkbox" name="etC" ${e.consult!==false?'checked':''}><span>Consultation</span></label><label><input type="checkbox" name="etE" ${e.echo?'checked':''}><span>Échographie</span></label></div>
     <div class="f"><span>Caractère</span>${radios('eurg',[['prog','Programmé(e)'],['urg','Urgence']],e.urg?'urg':'prog')}</div>
@@ -1407,7 +1431,7 @@ function openEval(p,evId,preset){
   const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
   $('#eCancel').addEventListener('click',close);
   $('#eSave').addEventListener('click',async()=>{
-    for(const k of ['date','presentation','placPos','placIns','oi','notes']) e[k]=val(k); e.notesPriv=sh.querySelector('[name="enp"]').checked;
+    for(const k of ['date','heure','presentation','placPos','placIns','oi','notes']) e[k]=val(k); e.notesPriv=sh.querySelector('[name="enp"]').checked;
     for(const k of ['epf','pct','placDist','colLong','oiMm','poidsM','pas','pad']) e[k]=nstr(val(k)); e.pctManual=pctManual;
     e.consult=sh.querySelector('[name="etC"]').checked; e.echo=sh.querySelector('[name="etE"]').checked;
     e.urg=val('eurg')==='urg'; e.etype=e.echo?val('etype'):''; e.motif=e.urg?val('eMotif'):'';
@@ -1418,6 +1442,7 @@ function openEval(p,evId,preset){
     await savePatient(p); close(); toast('Évaluation enregistrée'); renderPatient(p.id);
   });
   const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
+  if(ex){ lockForeign(sh,p,ex); markRead(p,ex.id); }
 }
 const DOC_CATS=['Déclaration de grossesse','Bilan du 1er trimestre','Bilan du 6e mois','Échographie T1','Échographie T2','Échographie T3','Échographie de croissance / autre','Échographie de référence','Pelviscanner','Biologie','Courrier','Compte rendu d’hospitalisation','Accouchement / suites','Autre'];
 const catOf=f=>f.cat==='bio'?'Biologie':(DOC_CATS.includes(f.cat)?f.cat:(f.cat||'Autre'));
@@ -1428,9 +1453,9 @@ async function drawDocs(p,filter){
   if(filter&&DOC_FILTERS[filter]) fs=fs.filter(f=>DOC_FILTERS[filter](catOf(f)));
   fs.sort((a,b)=>b.addedAt-a.addedAt);
   const groups=DOC_CATS.concat([...new Set(fs.map(catOf))].filter(c=>!DOC_CATS.includes(c))).map(c=>[c,fs.filter(f=>catOf(f)===c)]).filter(g=>g[1].length);
-  box.innerHTML = fs.length ? groups.map(([c,arr])=>`<div class="dgrp">${esc(c)} <small>${arr.length}</small></div>`+arr.map(f=>`<div class="doc"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button><small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))} – <button class="link" data-recat="${esc(f.id)}" style="padding:0;font-size:.8rem">Changer de rubrique</button></small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')).join('')
+  box.innerHTML = fs.length ? groups.map(([c,arr])=>`<div class="dgrp">${esc(c)} <small>${arr.length}</small></div>`+arr.map(f=>`<div class="doc${unreadCls(p,f)}"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button>${newBadge(p,f)||authorBadge(p,f)?`<span class="flags" style="margin:2px 0">${newBadge(p,f)}${authorBadge(p,f)}</span>`:''}<small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))} – <button class="link" data-recat="${esc(f.id)}" style="padding:0;font-size:.8rem">Changer de rubrique</button></small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')).join('')
     : '<div class="txt" style="color:var(--muted)">Aucun document dans cette rubrique.</div>';
-  $$('[data-view]',box).forEach(b=>b.addEventListener('click',()=>viewPdf(b.dataset.view)));
+  $$('[data-view]',box).forEach(b=>b.addEventListener('click',()=>{ viewPdf(b.dataset.view); if(p.unread&&p.unread[b.dataset.view]) markRead(p,b.dataset.view,()=>drawDocs(p,filter)); }));
   $$('[data-delf]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.delf); if(!await ask({title:'Supprimer ce document ?',body:f.name,ok:'Supprimer',danger:true})) return; await del('files',f.id); drawDocs(p,filter); }));
   $$('[data-recat]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.recat); const c=await pickCat(catOf(f),'Rubrique du document'); if(!c||c===catOf(f)) return; await setFileCat(f.id,c); toast('Document classé dans « '+c+' »'); drawDocs(p,filter); }));
 }
@@ -1486,6 +1511,472 @@ function photoToPdf(p,cat,filter){
   draw(); inp.click();
 }
 
+
+/* ---------- Lecture d’un compte rendu de laboratoire (PDF texte ou texte copié depuis une photo) ---------- */
+function labNorm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[  \t]/g,' '); }
+async function pdfTextLines(buf){
+  const lib=await loadPdfJs(); const doc=await lib.getDocument({data:new Uint8Array(buf.slice(0))}).promise; const out=[];
+  for(let n=1;n<=doc.numPages;n++){
+    const pg=await doc.getPage(n); const tc=await pg.getTextContent(); const rows=[];
+    for(const it of tc.items){ if(!it.str||!it.str.trim()) continue; const y=it.transform[5], x=it.transform[4];
+      let r=rows.find(r=>Math.abs(r.y-y)<3); if(!r){ r={y,items:[]}; rows.push(r); } r.items.push({x,s:it.str}); }
+    rows.sort((a,b)=>b.y-a.y).forEach(r=>out.push(r.items.sort((a,b)=>a.x-b.x).map(i=>i.s).join('  ').replace(/\s{3,}/g,'  ').trim()));
+  }
+  return out;
+}
+const LAB_NEG=/non detect|non decel|indetectable|negati|absen|non reacti|inferieur au seuil/, LAB_POS=/positi|detecte|presen|reacti/, LAB_DOUT=/douteu|equivoq|limite|indetermin/;
+function labNum(t){ const m=/(?:^|[^a-z0-9.,])([<>]=?\s*)?(\d{1,3}(?:[   ]\d{3})+(?![\d.,])|\d+(?:[.,]\d+)?)/i.exec(t); if(!m) return null; const end=m.index+m[0].length; return {u:t.slice(end,end+14),raw:(m[1]?m[1].replace(/\s/g,'')+' ':'')+m[2].replace(/[   ]/g,''), n:+m[2].replace(/[   ]/g,'').replace(',','.'), cmp:!!m[1]}; }
+function labFmt(v,dec){ return String(Math.round(v*Math.pow(10,dec))/Math.pow(10,dec)).replace('.',','); }
+function labOpt(f,t){ const o=f.c||[]; if(LAB_DOUT.test(t)){ const d=o.find(x=>/^Douteu/.test(x)); if(d) return d; } if(LAB_NEG.test(t)) return o.find(x=>/^N[ée]gati/.test(x))||''; if(LAB_POS.test(t)) return o.find(x=>/^Positi/.test(x))||''; return ''; }
+const LAB_RULES=[
+  // [examen, clé, expression (texte normalisé), condition de contexte, conversion]
+  ['Groupe sanguin ABO-RhD','abo',/\bgroupe\b(?: sanguin)?(?: abo)?\s*:?\s*(ab|a|b|o)\b(?![a-z])/,null,'abo'],
+  ['Groupe sanguin ABO-RhD','rh',/(rhesus|\brh\s*d\b|\brh1\b|\brh\b|antigene d\b)/,null,'qual'],
+  ['Groupe sanguin ABO-RhD','kell',/\bkell\b|\bkel1\b/,null,'qual'],
+  ['RAI (agglutinines irrégulières)','rai',/\brai\b|agglutinines irreguli|recherche d.anticorps anti.?erythro/,null,'qual'],
+  ['Prélèvement vaginal strepto B','sgb',/streptocoque (du groupe )?b|agalactiae|\bsgb\b/,null,'qual'],
+  ['Syphilis','tt',/treponem|syphilis|\btpha\b/,c=>!/vdrl|rpr/.test(c.l),'qual'],
+  ['Syphilis','vdrl',/\bvdrl\b|\brpr\b/,null,'text'],
+  ['VIH','r',/\bvih\b|\bhiv\b/,null,'qual'],
+  ['Hépatite B (Ag HBs)','ag',/\bag\.? ?hbs\b|antigene hbs/,c=>!/anti.?hbs|ac hbs/.test(c.l),'qual'],
+  ['Hépatite C','ac',/\bvhc\b|\bhcv\b|hepatite c\b/,null,'qual'],
+  ['__sero','igg',/\bigg\b/,c=>!!c.agent&&!/avidite/.test(c.l),'sero'],
+  ['__sero','igm',/\bigm\b/,c=>!!c.agent,'qualsero'],
+  ['__sero','avid',/avidite/,c=>c.agent==='Toxoplasmose'||c.agent==='CMV','num'],
+  ['Bandelette urinaire','rpc',/(rapport|ratio|index)\s*prot\w*\s*\/?\s*(sur\s*)?creat|proteines?\s*\/\s*creatinine|\brpc\b|\bpcr\b/,null,'num'],
+  ['Bandelette urinaire','rac',/(rapport|ratio|index)\s*(micro)?alb\w*\s*\/?\s*(sur\s*)?creat|albumine\s*\/\s*creatinine|\brac\b|\bacr\b/,null,'num'],
+  ['Bilan de prééclampsie','p24',/proteinurie.*24|proteines.*24 ?h/,null,'num'],
+  ['Bandelette urinaire','protq',/proteinurie|proteines urinaires/,null,'num'],
+  ['Bandelette urinaire','albq',/micro.?albumin|albuminurie/,null,'num'],
+  ['Bandelette urinaire','glu',/glycosurie|glucose urinaire/,null,'quallvl'],
+  ['ECBU','leu',/leucocyt/,c=>c.urine,'ecbu'],
+  ['ECBU','bact',/bacteri|culture|numeration bacter/,c=>c.urine,'bact'],
+  ['ECBU','germe',/\bgerme\b|identification|espece isolee/,c=>c.urine,'text'],
+  ['NFS – plaquettes','hb',/^\W*(hemoglobine|\bhb\b)(?!.*(glyqu|a1c|corpusc|moyenne|tcmh|ccmh))/,null,'hb'],
+  ['NFS – plaquettes','vgm',/\bv\.?g\.?m\b|volume globulaire moyen/,null,'num'],
+  ['NFS – plaquettes','plq',/plaquette/,null,'cell'],
+  ['NFS – plaquettes','gb',/^\W*(leucocytes|globules blancs)/,c=>!c.urine,'cell'],
+  ['Ferritine','fer',/ferritin/,null,'num'],
+  ['TSH','tsh',/\btsh\b|thyreostimul/,null,'num'],
+  ['TSH','t4',/\bt4 ?l\b|t4 libre|thyroxine libre/,null,'num'],
+  ['TSH','tpo',/anti.?tpo|thyroperoxydase/,null,'qual'],
+  ['Bilan de prééclampsie','asat',/\basat\b|\btgo\b|aspartate/,null,'num'],
+  ['Bilan de prééclampsie','alat',/\balat\b|\btgp\b|alanine amino/,null,'num'],
+  ['Bilan de prééclampsie','ldh',/\bldh\b|lactate deshydrog/,null,'num'],
+  ['Bilan de prééclampsie','hapto',/haptoglob/,null,'hapto'],
+  ['Bilan de prééclampsie','creat',/creatinin/,c=>!c.urine,'creat'],
+  ['Bilan de prééclampsie','urate',/acide urique|uricemie/,null,'urate'],
+  ['Bilan de prééclampsie','ratio',/sflt|plgf/,null,'num'],
+  ['DPNI','t21',/trisomie ?21|\bt21\b/,c=>c.dpni,'risk'],
+  ['DPNI','t18',/trisomie ?18|\bt18\b/,c=>c.dpni,'risk'],
+  ['DPNI','t13',/trisomie ?13|\bt13\b/,c=>c.dpni,'risk'],
+  ['DPNI','ff',/fraction f.?tale/,c=>c.dpni,'num'],
+  ['__gly','',/glycemie|glucose(?! urinaire)|\bglu\b/,c=>!c.urine&&!/hyperglyc|provoqu|hgpo|charge (orale|en glucose)|glyquee|hba1c/.test(c.l),'gly']
+];
+const LAB_AGENTS=[['Toxoplasmose',/toxoplasm/],['Rubéole',/rubeole/],['CMV',/\bcmv\b|cytomegalo/]];
+function parseLab(lines){
+  const all=labNorm(lines.join('\n'));
+  const c={agent:'',urine:false,hgpo:/hgpo|hyperglycemie provoquee|charge orale|75 ?g\b/.test(all),dpni:/dpni|adn (f.?tal|libre|circulant)|adnlc/.test(all),l:''};
+  const found={}; const put=(ex,k,v)=>{ if(v==null||v==='') return; found[ex]=found[ex]||{}; if(found[ex][k]==null) found[ex][k]=v; };
+  const sero={}; let glyN=0;
+  let date=''; const dm=/(preleve(?:ment)?|prelevement|recu|date de prelevement)[^0-9]{0,25}(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(all);
+  const d2=dm||/(?<!ne\(?e?\)? le\s?)(\d{1,2})[\/.](\d{1,2})[\/.](20\d{2})/.exec(all);
+  if(d2){ const g=dm?[dm[2],dm[3],dm[4]]:[d2[1],d2[2],d2[3]]; let y=+g[2]; if(y<100) y+=2000; date=`${y}-${String(+g[1]).padStart(2,'0')}-${String(+g[0]).padStart(2,'0')}`; }
+  for(const raw of lines){
+    const l=labNorm(raw); c.l=l; if(!l.trim()) continue;
+    if(/\becbu\b|cytobacteriolog|examen des urines|urines?\b(?!.*sang)|urinaire/.test(l)&&!/glycosurie/.test(l)) c.urine=true;
+    if(/hematolog|hemogramme|numeration formule|\bnfs\b|biochimie|serolog|immunolog|hormonolog|sang\b/.test(l)&&!/urin/.test(l)) c.urine=false;
+    for(const [ag,re] of LAB_AGENTS) if(re.test(l)){ c.agent=ag; }
+    if(/syphilis|treponem|\bvih\b|\bhiv\b|hbs|\bvhc\b|\bhcv\b/.test(l)) c.agent='';
+    for(const [ex,k,re,cond,conv] of LAB_RULES){
+      const m=re.exec(l); if(!m||(cond&&!cond(c))) continue;
+      const after=l.slice(m.index+m[0].length); const num=labNum(after);
+      if(ex==='__gly'){
+        if(!num) break; let v=num.n; if(/^\s*mmol/.test(num.u)) v=v/5.551; else if(v>20) v=v/100; const s=(num.cmp?num.raw.split(' ')[0]+' ':'')+labFmt(v,2);
+        if(c.hgpo){ let key=/(\b2 ?h|120 ?min|\bt ?120|deux heures)/.test(l)?'g2':/(\b1 ?h|60 ?min|\bt ?60|une heure)/.test(l)?'g1':/(a jeun|\bt ?0\b|0 ?min)/.test(l)?'g0':['g0','g1','g2'][Math.min(glyN,2)]; glyN++; put('HGPO 75 g',key,s); }
+        else put('Glycémie à jeun','gaj',s);
+        break;
+      }
+      const exam=ex==='__sero'?c.agent:ex; if(!exam) continue; const f=(BIO_FIELDS[exam]||[]).find(x=>x.k===k); if(!f) continue;
+      let v='';
+      if(conv==='abo') v=m[1].toUpperCase();
+      else if(conv==='qual'||conv==='qualsero'){ if(k==='rh'&&/(\bd\b|rh1|rhesus|rh)\s*:?\s*(\+|positif|pos\b)/.test(l)) v='Positif'; else if(k==='rh'&&/(\bd\b|rh1|rhesus|rh)\s*:?\s*(-|negatif|neg\b)/.test(l)) v='Négatif'; else if(k==='kell'&&/kel?l?1?\s*:?\s*(-|negatif)|\bk-/.test(l)) v='Négatif'; else if(k==='kell'&&/kel?l?1?\s*:?\s*(\+|positif)|\bk\+/.test(l)) v='Positif'; else v=labOpt(f,after); }
+      else if(conv==='quallvl'){ if(LAB_NEG.test(after)||(num&&num.n===0)) v='Négatif'; else if(/\+{1,3}/.test(after)) v=after.match(/\+{1,3}/)[0]; else if(num&&num.n>0) v='+'; }
+      else if(conv==='hapto'){ if(num) v=num.n<0.1?'Effondrée':'Normale'; else if(/effondr|indosable|indetect/.test(after)) v='Effondrée'; }
+      else if(conv==='risk'){ if(/faible|bas|negati|non augmente/.test(after)) v='Bas risque'; else if(/eleve|haut|positi|augmente/.test(after)) v='Haut risque'; else if(/non interpr|ininterpr|echec/.test(after)) v='Non interprétable'; }
+      else if(conv==='text'){ v=raw.replace(/^[^:]*:\s*/,'').trim().slice(0,80); if(v===raw.trim()) v=raw.slice(m.index+m[0].length).trim().slice(0,80); }
+      else if(conv==='bact'){ const e=/10\s*(?:\^|e|exp|\*\*)?\s*([1-9])\b/.exec(after); if(e) v=(/>|sup/.test(after)?'≥ ':'')+'10^'+e[1]; else if(num) v=num.raw; else if(LAB_NEG.test(after)||/sterile/.test(after)) v='0'; }
+      else if(num){ let n=num.n, dec=String(num.n).includes('.')?String(num.n).split('.')[1].length:0;
+        if(conv==='hb'&&n>25){ n=n/10; dec=1; }
+        if(conv==='cell'&&n>2000){ n=n/1000; dec=k==='gb'?1:0; }
+        if(conv==='ecbu'&&/^\s*\/?\s*(mm3|µl|ul)/.test(num.u)){ n=n*1000; dec=0; }
+        if(conv==='creat'&&/^\s*mg\s*\/\s*l/.test(num.u)){ n=n*8.84; dec=0; }
+        if(conv==='urate'&&/^\s*mg\s*\/\s*l/.test(num.u)){ n=n*5.95; dec=0; }
+        v=(num.cmp?num.raw.split(' ')[0]+' ':'')+labFmt(n,Math.min(dec,2));
+        if(conv==='sero'){ const q=labOpt({c:['Négatif','Positif','Douteux']},after.slice(after.indexOf(String(num.raw).split(' ').pop())+1)); if(q) sero[exam]=Object.assign(sero[exam]||{},{igg:q}); }
+      } else if(conv==='sero'){ const q=labOpt({c:['Négatif','Positif','Douteux']},after); if(q){ v=q; sero[exam]=Object.assign(sero[exam]||{},{igg:q}); } }
+      if(conv==='qualsero'&&v) sero[exam]=Object.assign(sero[exam]||{},{igm:v});
+      put(exam,k,v); break;
+    }
+  }
+  // Statut sérologique déduit (à vérifier)
+  const st={};
+  for(const ex of ['Toxoplasmose','CMV','Rubéole']){ const s=sero[ex]||{}, vv=found[ex]||{}; let g=s.igg;
+    if(!g&&ex==='Rubéole'&&vv.igg!=null){ const n=numx(String(vv.igg).replace(/[<>=≥≤\s]/g,'')); if(n!=null) g=/</.test(vv.igg)||n<10?'Négatif':'Positif'; }
+    if(s.igm&&/Positi|Douteu/.test(s.igm)) st[ex]='Douteuse / à contrôler'; else if(g==='Négatif') st[ex]='Négative (non immunisée)'; else if(g==='Positif') st[ex]='Positive (immunisée)'; }
+  for(const ex of ['Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C']){ const vv=found[ex]; if(!vv) continue; const x=Object.values(vv)[0]; if(/^N[ée]gati/.test(x)) st[ex]='Négative (non immunisée)'; else if(/^Positi/.test(x)) st[ex]='Positive (immunisée)'; }
+  // Hb et plaquettes reprises dans le bilan de prééclampsie si celui-ci est présent
+  const pe=found['Bilan de prééclampsie']; if(pe&&Object.keys(pe).some(k=>['asat','alat','ldh','urate','ratio','hapto'].includes(k))){ const nf=found['NFS – plaquettes']||{}; if(nf.hb&&pe.hb==null) pe.hb=nf.hb; if(nf.plq&&pe.plq==null) pe.plq=nf.plq; }
+  return {date,found,st};
+}
+async function openLabImport(p){
+  if(isPatient()) return;
+  let fs=[]; try{ fs=(await filesFor(p.id)).filter(f=>/^Biologie$|^Bilan|^Déclaration/.test(catOf(f))).sort((a,b)=>b.addedAt-a.addedAt); }catch(e){}
+  const m=$('#modal'), b=$('#modalBox'); let inp=document.getElementById('labPdfInput');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.accept='application/pdf,.pdf'; inp.id='labPdfInput'; inp.hidden=true; document.body.appendChild(inp); }
+  b.innerHTML=`<h3>Lire un compte rendu de laboratoire</h3>
+   <p style="font-size:.9rem">Les valeurs reconnues sont proposées pour vérification avant d’être enregistrées. Rien n’est envoyé sur Internet.</p>
+   <div class="bx" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" data-a="pdf">📄 Choisir le PDF du laboratoire</button></div>
+   ${fs.length?`<p style="margin:12px 0 4px;font-weight:600">Ou un PDF déjà dans le dossier</p><div class="card">${fs.slice(0,8).map(f=>`<button class="row" data-f="${esc(f.id)}"><span class="rmain"><span class="nm">${esc(f.name)}</span><small class="num" style="color:var(--muted)">${esc(catOf(f))} – ${fd(localDay(f.addedAt))}</small></span><span aria-hidden="true">›</span></button>`).join('')}</div>`:''}
+   <p style="margin:12px 0 4px;font-weight:600">Ou un compte rendu papier</p>
+   <p style="font-size:.85rem;color:var(--muted);margin:0 0 6px">Prenez-le en photo avec l’appareil photo de l’iPhone, touchez l’icône de sélection du texte (Texte en direct), « Tout sélectionner » puis « Copier », et collez ici.</p>
+   <textarea id="labTxt" rows="5" style="width:100%" placeholder="Collez ici le texte du compte rendu"></textarea>
+   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="txt">Analyser le texte</button></div>`;
+  m.classList.add('open');
+  const closeM=()=>{ m.classList.remove('open'); m.onclick=null; };
+  const go=async(lines,src)=>{ closeM(); if(!lines.some(x=>x.trim())){ toast('Aucun texte lisible : ce PDF est sans doute une image. Utilisez la copie du texte depuis la photo.'); return; } labReview(p,lines,src); };
+  const fromBuf=async(buf,src)=>{ toast('Lecture du document…'); try{ await go(await pdfTextLines(buf),src); }catch(e){ toast('Lecture impossible (connexion Internet nécessaire la première fois)'); } };
+  inp.onchange=async()=>{ const f=inp.files[0]; inp.value=''; if(!f) return; const buf=await f.arrayBuffer(); fromBuf(buf,{name:f.name,size:f.size,buf}); };
+  m.onclick=async e=>{ const a=e.target.closest('[data-a],[data-f]'); if(!a) return;
+    if(a.dataset.a==='0') return closeM();
+    if(a.dataset.a==='pdf') return inp.click();
+    if(a.dataset.a==='txt') return go($('#labTxt').value.split(/\r?\n/),null);
+    if(a.dataset.f){ const f=await get('files',a.dataset.f); if(f) fromBuf(f.data,null); } };
+}
+function labReview(p,lines,src){
+  const r=parseLab(lines); const inf=info(p); const exams=Object.keys(r.found).filter(ex=>Object.keys(r.found[ex]).length);
+  const saOf=dv=>{ const d=parseD(dv); return d!=null&&inf.ok?Math.floor((d-inf.base)/DAY/7):null; };
+  const rowsH=exams.map((ex,gi)=>{ const fsx=BIO_FIELDS[ex]||[];
+    return `<fieldset><legend>${esc(ex)}</legend><div class="fbox">${fsx.filter(f=>r.found[ex][f.k]!=null).map(f=>`<div class="f labrow" data-ex="${esc(ex)}" data-k="${f.k}"><span><label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-keep checked> ${esc(f.l)}${f.u?' <small>('+esc(f.u)+')</small>':''}</label> <b class="bfl" style="color:var(--danger,#c0392b)"></b></span><input data-v value="${esc(r.found[ex][f.k])}">${f.ref?`<small style="display:block;color:var(--muted);margin-top:2px">Réf. : ${esc(f.ref)}</small>`:''}</div>`).join('')}
+      ${SERO_EXAMS.includes(ex)?`<div class="f"><span>Statut</span>${radios('labst'+gi,SERO.map(x=>[x,x]),r.st[ex]||'')}</div>`:''}</div></fieldset>`; }).join('');
+  const {sh,val}=miniSheet('Vérifier les résultats lus',`<div class="note" style="margin:0 0 10px">Vérifiez chaque valeur avec le compte rendu avant d’enregistrer. Décochez ce qui est faux ou inutile ; vous pouvez corriger les valeurs.</div>
+    <fieldset><legend>Prélèvement</legend><div class="fbox">${F('Date du prélèvement','<input type="date" name="ldate" value="'+esc(r.date||iso(today()))+'">')}<div class="preview num" id="lAg"></div>
+    ${src?`<label class="chkline"><input type="checkbox" name="lAttach" checked> Joindre le PDF aux documents (rubrique Biologie)</label>`:''}</div></fieldset>
+    ${exams.length?rowsH:'<div class="banner">Aucune valeur reconnue. Vous pouvez saisir les résultats à la main avec « ＋ Ajouter un résultat ».</div>'}
+    <details style="margin-top:12px"><summary>Texte lu (${lines.filter(x=>x.trim()).length} lignes)</summary><pre style="white-space:pre-wrap;font-size:.75rem;max-height:300px;overflow:auto">${esc(lines.join('\n'))}</pre></details>`,
+    async v=>{ const date=v('ldate'); const sa_=saOf(date); let n=0;
+      exams.forEach((ex,gi)=>{ const vals={}; sh.querySelectorAll(`.labrow[data-ex="${CSS.escape(ex)}"]`).forEach(rw=>{ if(rw.querySelector('[data-keep]').checked){ const x=rw.querySelector('[data-v]').value.trim(); if(x) vals[rw.dataset.k]=x; } });
+        if(!Object.keys(vals).length) return; const fsx=BIO_FIELDS[ex]||[]; const bad=fsx.some(f=>bioFlag(f,vals[f.k],sa_));
+        const old=list(p.bio).find(x=>x.exam===ex&&x.date===date&&x.vals);
+        const merged=Object.assign({},old?old.vals:{},vals);
+        const o={id:old?old.id:uid('b'),date,exam:ex,examAutre:'',vals:merged,res:bioSummary(ex,merged,sa_),sero:SERO_EXAMS.includes(ex)?(v('labst'+gi)||(old&&old.sero)||''):'',unit:'',interp:fsx.some(f=>bioFlag(f,merged[f.k],sa_))?'Anormal':(old&&old.interp)||'Normal',notes:old?old.notes:'Lu sur le compte rendu du laboratoire'};
+        p.bio=list(p.bio).filter(x=>x.id!==o.id); p.bio.push(o); n++; });
+      if(src&&v('lAttach')==='on'){ try{ await put('files',{id:uid('f'),patientId:p.id,cat:'Biologie',name:src.name,type:'application/pdf',size:src.size,addedAt:Date.now(),data:src.buf}); }catch(e){ toast('PDF non joint (espace insuffisant ?)'); } }
+      if(!n&&!(src&&v('lAttach')==='on')){ toast('Rien à enregistrer'); return false; }
+      await savePatient(p); toast(n+' examen'+(n>1?'s':'')+' enregistré'+(n>1?'s':'')); renderPatient(p.id); });
+  const sync=()=>{ const sa_=saOf(val('ldate')); const d=parseD(val('ldate')), el=$('#lAg'); if(d!=null&&inf.ok){ el.style.display=''; el.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else el.style.display='none';
+    sh.querySelectorAll('.labrow').forEach(rw=>{ const f=(BIO_FIELDS[rw.dataset.ex]||[]).find(x=>x.k===rw.dataset.k); const fl=f&&rw.querySelector('[data-keep]').checked?bioFlag(f,rw.querySelector('[data-v]').value.trim(),sa_):''; rw.querySelector('.bfl').textContent=fl?fl+' hors norme':''; rw.style.opacity=rw.querySelector('[data-keep]').checked?'':'.45'; }); };
+  sh.oninput=sync; sh.onchange=sync; sync();
+}
+
+/* ---------- Saisie de mot de passe / code ---------- */
+function askPw({title,body,fields,min=4,numeric=false,ok='Valider'}){
+  return new Promise(res=>{ const m=$('#modal'), b=$('#modalBox');
+    b.innerHTML=`<h3>${esc(title)}</h3>${body?`<p>${body}</p>`:''}${fields.map((f,i)=>`<label class="f"><span>${esc(f)}</span><input type="password" data-pw="${i}" ${numeric?'inputmode="numeric"':''} autocomplete="new-password" style="width:100%;font-size:1.1rem;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)"></label>`).join('')}<p class="pwmsg" style="color:var(--danger,#c0392b);min-height:1em;margin:6px 0 0"></p><div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">${esc(ok)}</button></div>`;
+    m.classList.add('open'); setTimeout(()=>{ const i=b.querySelector('[data-pw="0"]'); if(i) i.focus(); },50);
+    m.onclick=e=>{ const a=e.target.closest('[data-a]'); if(!a) return;
+      if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return res(null); }
+      const vals=[...b.querySelectorAll('[data-pw]')].map(i=>i.value); const msg=b.querySelector('.pwmsg');
+      if(vals[0].length<min){ msg.textContent='Au moins '+min+' caractères.'; return; }
+      if(numeric&&!/^\d+$/.test(vals[0])){ msg.textContent='Chiffres uniquement.'; return; }
+      if(vals.length>1&&vals[0]!==vals[1]){ msg.textContent='Les deux saisies ne correspondent pas.'; return; }
+      m.classList.remove('open'); m.onclick=null; res(vals); }; });
+}
+async function pwKey(pw,salt,iter){ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']); }
+
+/* ---------- Sauvegarde chiffrée ---------- */
+async function sealBackup(payload,pw){
+  let u=new TextEncoder().encode(JSON.stringify(payload)); let z=false; if(canZip()){ u=await zip(u); z=true; }
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)); const k=await pwKey(pw,salt,310000);
+  const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,u));
+  return new Blob([JSON.stringify({app:'suivi-grossesse-sauvegarde-chiffree',v:1,iter:310000,z,at:payload.exportedAt,salt:u8b64(salt),iv:u8b64(iv),data:u8b64(c)})],{type:'application/json'});
+}
+async function openBackupFile(file){
+  let data; try{ data=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible : choisissez une sauvegarde .json de l’application'); return null; }
+  if(data&&data.app==='suivi-grossesse-sauvegarde-chiffree'){
+    const pw=await askPw({title:'Sauvegarde chiffrée',body:'Saisissez le mot de passe choisi lors de la sauvegarde'+(data.at?' du '+fd(localDay(Date.parse(data.at))):'')+'.',fields:['Mot de passe'],min:1,ok:'Ouvrir'}); if(!pw) return null;
+    try{ const k=await pwKey(pw[0],b64u8(data.salt),data.iter||310000); let u=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u8(data.iv)},k,b64u8(data.data))); if(data.z) u=await unzip(u); data=JSON.parse(new TextDecoder().decode(u)); }
+    catch(e){ toast(e&&e.message==='nozip'?'Appareil trop ancien pour lire cette sauvegarde':'Mot de passe incorrect'); return null; }
+  }
+  if(!data || data.app!=='suivi-grossesse' || !Array.isArray(data.patients)){ toast('Ce fichier n’est pas une sauvegarde de l’application'); return null; }
+  return data;
+}
+async function verifyBackup(file){
+  if(!file) return; const data=await openBackupFile(file); if(!data) return;
+  let nf=0; try{ nf=(await getAll('files')).length; }catch(e){}
+  const bp=data.patients.length, bf=(data.files||[]).length, cp=S.patients.length;
+  const miss=S.patients.filter(p=>!data.patients.some(q=>q.id===p.id));
+  const sizes=(data.files||[]).every(f=>f.b64&&f.b64.length>0);
+  const m=$('#modal'), b=$('#modalBox');
+  b.innerHTML=`<h3>${sizes?'✓ Sauvegarde lisible et complète':'⚠ Sauvegarde incomplète'}</h3><p>Sauvegarde du ${data.exportedAt?fd(localDay(Date.parse(data.exportedAt))):'?'} : <b>${bp} dossier(s)</b> et <b>${bf} document(s)</b>.<br>Sur cet appareil : ${cp} dossier(s) et ${nf} document(s).</p><p>${miss.length?`⚠ ${miss.length} dossier(s) créé(s) depuis ne figurent pas dans cette sauvegarde : faites une nouvelle sauvegarde.`:'Tous les dossiers actuels y figurent.'}</p><p style="color:var(--muted)">Rien n’a été modifié sur cet appareil.</p><div class="bx"><button class="btn primary" data-a="1">Fermer</button></div>`;
+  m.classList.add('open'); m.onclick=e=>{ if(e.target.closest('[data-a]')){ m.classList.remove('open'); m.onclick=null; } };
+}
+
+/* ---------- Verrouillage de l’application (code + Face ID / Touch ID) ---------- */
+const LOCK_KEY='sg-lock-'+(typeof APP_ROLE!=='undefined'&&APP_ROLE==='patient'?'patient':'pro');
+function lockCfg(){ try{ return JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
+function lockSave(c){ try{ if(c) localStorage.setItem(LOCK_KEY,JSON.stringify(c)); else localStorage.removeItem(LOCK_KEY); return true; }catch(e){ return false; } }
+async function lockHash(code,saltB64){ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(code),'PBKDF2',false,['deriveBits']); const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:b64u8(saltB64),iterations:150000,hash:'SHA-256'},base,256); return u8b64(new Uint8Array(bits)); }
+async function bioAvail(){ try{ return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; } }
+async function bioRegister(){ const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Suivi de grossesse'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'utilisateur',displayName:'Utilisateur'},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000,attestation:'none'}}); return u8b64(new Uint8Array(cred.rawId)); }
+async function bioCheck(c){ const r=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:b64u8(c.wa)}],userVerification:'required',timeout:60000}}); return !!r; }
+let lockOn=false, lockHiddenAt=0, lockFails=0, lockUntil=0;
+function lockHide(){ lockOn=false; const el=document.getElementById('lockScr'); if(el) el.remove(); }
+function lockShow(){
+  const c=lockCfg(); if(!c||lockOn) return; lockOn=true;
+  let el=document.getElementById('lockScr'); if(!el){ el=document.createElement('div'); el.id='lockScr'; document.body.appendChild(el); }
+  el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
+  el.style.cssText='position:fixed;inset:0;z-index:10000;background:var(--bg,#F2F4F6);display:flex;align-items:center;justify-content:center;padding:24px';
+  el.innerHTML=`<div style="max-width:340px;width:100%;text-align:center"><div style="font-size:2.4rem" aria-hidden="true">🔒</div><h2 style="margin:8px 0 4px">${typeof APP_ROLE!=='undefined'&&APP_ROLE==='patient'?'Mon suivi de grossesse':'Suivi de grossesse'}</h2><p style="color:var(--muted);margin:0 0 16px">Application verrouillée</p>
+    ${c.wa?'<button class="btn primary" id="lkBio" style="width:100%;margin-bottom:12px;justify-content:center;text-align:center">Déverrouiller avec Face ID / Touch ID</button>':''}
+    <input id="lkCode" type="password" inputmode="numeric" autocomplete="off" aria-label="Code" placeholder="Code" style="width:100%;font-size:1.5rem;text-align:center;letter-spacing:.3em;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface,#fff)">
+    <button class="btn ${c.wa?'':'primary'}" id="lkOk" style="width:100%;margin-top:10px;justify-content:center;text-align:center">Déverrouiller</button>
+    <p id="lkMsg" style="color:var(--danger,#c0392b);min-height:1.2em;margin:10px 0 0"></p><button class="link" id="lkForgot" style="font-size:.85rem;margin-top:6px">Code oublié ?</button></div>`;
+  const msg=t=>{ el.querySelector('#lkMsg').textContent=t; };
+  const tryCode=async()=>{ if(Date.now()<lockUntil) return msg('Trop d’essais : patientez '+Math.ceil((lockUntil-Date.now())/1000)+' s.');
+    const v=el.querySelector('#lkCode').value; if(!v) return; const h=await lockHash(v,c.s);
+    if(h===c.h){ lockFails=0; lockHide(); return; }
+    lockFails++; el.querySelector('#lkCode').value=''; if(lockFails>=5){ lockUntil=Date.now()+30000*Math.pow(2,lockFails-5); msg('Code incorrect. Nouvel essai dans '+Math.round((lockUntil-Date.now())/1000)+' s.'); } else msg('Code incorrect.'); };
+  el.querySelector('#lkOk').addEventListener('click',tryCode);
+  el.querySelector('#lkCode').addEventListener('keydown',e=>{ if(e.key==='Enter') tryCode(); });
+  const bb=el.querySelector('#lkBio'); if(bb) bb.addEventListener('click',async()=>{ try{ if(await bioCheck(c)) lockHide(); }catch(e){ msg('Face ID / Touch ID indisponible : utilisez le code.'); } });
+  el.querySelector('#lkForgot').addEventListener('click',()=>msg('Le code ne peut pas être récupéré. Supprimez l’application de l’écran d’accueil, réinstallez-la puis restaurez votre dernière sauvegarde.'));
+  if(!c.wa) setTimeout(()=>{ const i=el.querySelector('#lkCode'); if(i) i.focus(); },100);
+}
+document.addEventListener('visibilitychange',()=>{ const c=lockCfg(); if(!c) return;
+  if(document.hidden){ lockHiddenAt=Date.now(); if(!c.d) lockShow(); }
+  else if(lockHiddenAt&&Date.now()-lockHiddenAt>=(+c.d||0)*60000) lockShow(); });
+async function lockVerify(){ const c=lockCfg(); if(!c) return true; const r=await askPw({title:'Code actuel',fields:['Code de verrouillage'],min:1,numeric:true}); if(!r) return false; if(await lockHash(r[0],c.s)===c.h) return true; toast('Code incorrect'); return false; }
+async function lockSetCode(intro){
+  const r=await askPw({title:'Code de verrouillage',body:intro||'Choisissez un code d’au moins 6 chiffres, différent de celui de l’appareil.',fields:['Nouveau code','Confirmer le code'],min:6,numeric:true,ok:'Enregistrer'}); if(!r) return null;
+  const old=lockCfg()||{}; const s=u8b64(crypto.getRandomValues(new Uint8Array(16))); const c={s,h:await lockHash(r[0],s),d:old.d!=null?old.d:0,wa:old.wa||''};
+  if(!lockSave(c)){ toast('Impossible d’enregistrer le verrouillage sur cet appareil'); return null; } return c;
+}
+function lockSecHTML(){ const c=lockCfg();
+  return `<section class="sec"><h2>Verrouillage</h2><div class="card"><div class="txt">${c?`<b>Activé.</b> Le code${c.wa?' ou Face ID / Touch ID':''} est demandé à l’ouverture ${+c.d?'et après '+c.d+' min passée(s) hors de l’application':'et à chaque retour dans l’application'}.`:(isPatient()?'Protégez l’accès à l’application par un code, et Face ID / Touch ID si l’appareil le permet.':'Obligatoire pour la version professionnelle : un code, et la biométrie si l’appareil le permet.')}<span class="k" style="margin-top:6px">Le verrouillage empêche l’accès aux écrans. Les données enregistrées sont en outre chiffrées par l’iPhone lui-même, à condition qu’il soit protégé par un code.</span></div></div>
+  <div class="actions">${c?`<label class="f" style="margin:0;min-width:150px"><span>Verrouiller après</span><select id="lkDelay">${[[0,'Immédiatement'],[1,'1 minute'],[5,'5 minutes'],[15,'15 minutes']].map(([v,l])=>`<option value="${v}" ${+c.d===v?'selected':''}>${l}</option>`).join('')}</select></label><button class="btn" id="lkChange">Changer le code</button><button class="btn" id="lkBioT" style="display:none">${c.wa?'Désactiver Face ID / Touch ID':'Activer Face ID / Touch ID'}</button>${isPatient()?'<button class="btn danger" id="lkOff">Désactiver</button>':''}`:'<button class="btn primary" id="lkOn">Activer le verrouillage</button>'}</div></section>`; }
+function bindLockSettings(rerender){
+  const on=$('#lkOn'); if(on) on.addEventListener('click',async()=>{ const c=await lockSetCode(); if(!c) return; toast('Verrouillage activé');
+    if(await bioAvail()&&await ask({title:'Utiliser Face ID / Touch ID ?',body:'Vous pourrez déverrouiller l’application avec Face ID ou Touch ID ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici : le code sera utilisé'); } }
+    rerender(); });
+  const ch=$('#lkChange'); if(ch) ch.addEventListener('click',async()=>{ if(!await lockVerify()) return; if(await lockSetCode()){ toast('Code modifié'); rerender(); } });
+  const off=$('#lkOff'); if(off) off.addEventListener('click',async()=>{ if(!await lockVerify()) return; lockSave(null); toast('Verrouillage désactivé'); rerender(); });
+  const dl=$('#lkDelay'); if(dl) dl.addEventListener('change',()=>{ const c=lockCfg(); if(!c) return; c.d=+dl.value; lockSave(c); });
+  const bt=$('#lkBioT'); if(bt){ bioAvail().then(ok=>{ if(ok||(lockCfg()||{}).wa) bt.style.display=''; });
+    bt.addEventListener('click',async()=>{ const c=lockCfg(); if(!c) return; if(c.wa){ if(!await lockVerify()) return; c.wa=''; lockSave(c); toast('Face ID / Touch ID désactivé'); }
+      else { try{ c.wa=await bioRegister(); lockSave(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici'); } } rerender(); }); }
+}
+
+/* ---------- Praticien (carte d’urgence, dossier patiente) ---------- */
+function praticien(){ const x=(S.settings&&S.settings.praticien)||{}; return x.nom&&x.id?{id:x.id,nom:x.nom,prof:x.prof||'',lieu:x.lieu||'',tel:x.tel||'',mail:x.mail||'',rpps:x.rpps||'',aka:x.aka||[]}:null; }
+function praticienSecHTML(){ const x=S.settings.praticien||{};
+  return `<section class="sec"><h2>Mon identité de soignant</h2><div class="card"><div class="fpad"><div class="txt" style="margin-bottom:8px">Jointe à chaque donnée que vous saisissez et transmise avec le dossier ; affichée sur la carte d’urgence.</div>${identityFields(x)}</div></div></section>`; }
+function bindPraticien(){ ['idNom','idProf','idLieu','idTel','idRpps','idMail'].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener('change',async()=>{ const v=readIdentity(); if(!v.nom){ toast('Le nom est nécessaire'); return; } await saveIdentity(v); toast('Identité enregistrée'); }); }); }
+
+/* ---------- Auteurs des données (soignants) ---------- */
+const AUTH_COLORS=['#7B2D5E','#1D6FB8','#1E8A4C','#C2620A','#7C3AED','#0E7C7B','#B42318','#4B5563'];
+const AUTH_ARR=['evals','bio','hospits'];
+const META_KEYS=new Set(['id','evals','bio','hospits','authors','unread','updatedAt','createdAt','importedAt','fH','fUpd','majLe','suiviPar','fichesSnap','fichesOff','shareCode','myCode','notesPriv','groupId']);
+const PROFS=['Gynécologue-obstétricien(ne)','Sage-femme','Médecin généraliste','Échographiste','Anesthésiste','Pédiatre','Interne','Autre'];
+function hashStr(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193); } return (h>>>0).toString(36); }
+function itemCore(it){ const o=Object.assign({},it); delete o._h; delete o.upd; return o; }
+function scalCore(p){ const o={}; for(const k of Object.keys(p)) if(!META_KEYS.has(k)) o[k]=p[k]; return o; }
+function registerAuthor(p,me){
+  p.authors=p.authors||{}; const cur=p.authors[me.id]||{}; let c=cur.c;
+  if(c==null){ const used=new Set(Object.values(p.authors).map(a=>a.c)); c=0; while(used.has(c)&&c<AUTH_COLORS.length-1) c++; }
+  p.authors[me.id]={nom:me.nom,prof:me.prof||'',lieu:me.lieu||'',tel:me.tel||'',mail:me.mail||'',rpps:me.rpps||'',c};
+}
+function stampAuthor(p){
+  if(isPatient()||S.preview) return; const me=praticien(); if(!me||!me.id) return; const now=Date.now();
+  for(const k of AUTH_ARR) for(const it of list(p[k])){ if(!it||typeof it!=='object') continue;
+    if(!it.by){ it.by=me.id; it.byAt=now; } else if(me.aka.includes(it.by)) it.by=me.id;
+    if(it.by===me.id){ const h=hashStr(JSON.stringify(itemCore(it))); if(it._h!==h){ it._h=h; it.upd=now; } } }
+  p.fH=p.fH||{}; p.fUpd=p.fUpd||{}; const sc=scalCore(p);
+  for(const k of new Set([...Object.keys(sc),...Object.keys(p.fH)])){ const h=hashStr(JSON.stringify(sc[k]===undefined?null:sc[k])); if(p.fH[k]!==h){ p.fH[k]=h; p.fUpd[k]=now; } }
+  registerAuthor(p,me);
+}
+function mergeDossier(local,inc){
+  const p=JSON.parse(JSON.stringify(local)); const news=[], keys=[];
+  p.authors=Object.assign({},inc.authors||{},local.authors||{});
+  for(const k of AUTH_ARR){ const L=list(p[k]).slice();
+    for(const it of list(inc[k])){ if(!it||!it.id) continue; const i=L.findIndex(x=>x.id===it.id);
+      if(i<0){ L.push(it); news.push(it.id); }
+      else if((it.upd||0)>(L[i].upd||0)&&JSON.stringify(itemCore(it))!==JSON.stringify(itemCore(L[i]))){ L[i]=it; news.push(it.id); } }
+    p[k]=L; }
+  p.fH=Object.assign({},local.fH||{}); p.fUpd=Object.assign({},local.fUpd||{});
+  const ic=scalCore(inc);
+  for(const k of Object.keys(ic)){ const iu=(inc.fUpd||{})[k]||0, lu=(local.fUpd||{})[k]||0, lv=local[k];
+    const empty=lv==null||lv===''||(Array.isArray(lv)&&!lv.length)||(typeof lv==='object'&&!Array.isArray(lv)&&!Object.keys(lv).length);
+    if((iu>lu||(empty&&!lu))&&JSON.stringify(ic[k])!==JSON.stringify(lv===undefined?null:lv)){ p[k]=ic[k]; if(inc.fH&&inc.fH[k]) p.fH[k]=inc.fH[k]; if(iu) p.fUpd[k]=iu; keys.push(k); } }
+  if(isPatient()&&(inc.majLe||'')>(local.majLe||'')){ p.majLe=inc.majLe; if(inc.fichesSnap) p.fichesSnap=inc.fichesSnap; if(inc.suiviPar) p.suiviPar=inc.suiviPar; }
+  return {p,news,keys};
+}
+function isMine(it){ const me=praticien(); return !it||!it.by||!!(me&&(it.by===me.id||me.aka.includes(it.by))); }
+function authorOf(p,it){ const id=it&&it.by; if(!id) return null; const a=(p.authors||{})[id]; return a?Object.assign({id},a):{id,nom:'Soignant non identifié',c:7}; }
+function authorBadge(p,it){
+  const a=authorOf(p,it); if(!a) return '';
+  if(isPatient()){ if(Object.keys(p.authors||{}).length<2) return ''; } else if(isMine(it)) return '';
+  return `<span class="atag" style="--ac:${AUTH_COLORS[(a.c||0)%AUTH_COLORS.length]}" title="${esc([a.nom,a.prof,a.lieu].filter(Boolean).join(' – '))}"><i></i>${esc(a.nom)}</span>`;
+}
+function newBadge(p,it){ return !isPatient()&&it&&p.unread&&p.unread[it.id]?'<span class="tag new">Nouveau</span>':''; }
+function unreadCls(p,it){ return !isPatient()&&it&&p.unread&&p.unread[it.id]?' unread':''; }
+function authorBox(p,it){
+  const a=authorOf(p,it); if(!a) return ''; const mine=!isPatient()&&isMine(it);
+  const contact=[a.tel&&`<a href="tel:${esc(a.tel.replace(/[^0-9+]/g,''))}">${esc(a.tel)}</a>`,a.mail&&`<a href="mailto:${esc(a.mail)}">${esc(a.mail)}</a>`,a.rpps&&'RPPS '+esc(a.rpps)].filter(Boolean).join(' · ');
+  return `<div class="abox" style="--ac:${AUTH_COLORS[(a.c||0)%AUTH_COLORS.length]}"><i></i><div><b>${mine?'Votre saisie':'Saisi par '+esc(a.nom)}</b>${mine?'':`${a.prof||a.lieu?`<small>${esc([a.prof,a.lieu].filter(Boolean).join(' – '))}</small>`:''}${contact?`<small>${contact}</small>`:''}`}${it.byAt?`<small>Le ${fd(localDay(it.byAt))}${it.upd&&it.upd-it.byAt>60000?' – modifié le '+fd(localDay(it.upd)):''}</small>`:''}${!mine&&!isPatient()?'<small class="ro">Saisie d’un autre soignant : consultation seule.</small>':''}</div></div>`;
+}
+function lockForeign(sh,p,it){
+  if(isPatient()||!it||isMine(it)||!sh) return;
+  sh.querySelectorAll('.form input,.form select,.form textarea,.form button').forEach(el=>{ el.disabled=true; });
+  ['#mSave','#eSave','#mDel','#eDel'].forEach(s=>{ const b=sh.querySelector(s); if(b) b.style.display='none'; });
+  const c=sh.querySelector('#mCancel,#eCancel'); if(c) c.textContent='Fermer';
+}
+function markRead(p,id,after){
+  if(isPatient()||!p.unread||!p.unread[id]) return; delete p.unread[id];
+  savePatient(p).then(()=>{ if(after) after(); else if(CUR==='patient-'+p.id) renderPatient(p.id); });
+}
+function unreadCount(p){ return p&&p.unread?Object.keys(p.unread).length:0; }
+/* Identité du soignant (obligatoire dans la version professionnelle) */
+function identityFields(x){ return `${F('Nom et prénom','<input id="idNom" value="'+esc(x.nom||'')+'" placeholder="Dr Prénom NOM">')}<label class="f"><span>Profession</span><select id="idProf"><option value=""></option>${PROFS.map(o=>`<option ${x.prof===o?'selected':''}>${esc(o)}</option>`).join('')}</select></label>${F('Lieu d’exercice','<input id="idLieu" value="'+esc(x.lieu||'')+'" placeholder="Cabinet, maternité – ville">')}<div class="grid2">${F('Téléphone professionnel','<input id="idTel" type="tel" value="'+esc(x.tel||'')+'">')}${F('N° RPPS (facultatif)','<input id="idRpps" inputmode="numeric" value="'+esc(x.rpps||'')+'">')}</div>${F('Messagerie MSSanté (facultatif)','<input id="idMail" type="email" value="'+esc(x.mail||'')+'" placeholder="prenom.nom@medecin.mssante.fr">')}`; }
+function readIdentity(){ const g=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; }; return {nom:g('idNom'),prof:g('idProf'),lieu:g('idLieu'),tel:g('idTel'),rpps:g('idRpps'),mail:g('idMail')}; }
+async function saveIdentity(v){ const old=(S.settings&&S.settings.praticien)||{}; S.settings.praticien=Object.assign({},old,v,{id:old.id||uid('a')}); await saveSettings(); }
+function ensureIdentity(){
+  if(isPatient()||S.preview||!S.settings) return; const x=S.settings.praticien||{}; if(x.nom&&x.prof&&x.tel&&x.id) return void ensureLock();
+  const m=$('#modal'), b=$('#modalBox'); if(m.classList.contains('open')||document.getElementById('lockScr')) return setTimeout(ensureIdentity,1500);
+  b.innerHTML=`<h3>Votre identité de soignant</h3><p>Elle est jointe automatiquement à chaque donnée que vous saisissez (consultation, échographie, biologie, hospitalisation, document) et transmise avec le dossier : chaque soignant sait ainsi qui a écrit quoi et comment vous joindre.</p>${identityFields(x)}<p class="idmsg" style="color:var(--danger,#c0392b);min-height:1em;margin:6px 0 0"></p><div class="bx"><button class="btn primary" data-a="1">Enregistrer</button></div>`;
+  m.classList.add('open');
+  m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const v=readIdentity(); if(!v.nom||!v.prof||!v.tel){ b.querySelector('.idmsg').textContent='Le nom, la profession et le téléphone sont nécessaires.'; return; } await saveIdentity(v); m.classList.remove('open'); m.onclick=null; toast('Identité enregistrée'); setTimeout(ensureLock,400); };
+}
+
+/* ---------- Dossier chiffré glissé dans le PDF (envoi MSSanté / Mon espace santé) ---------- */
+const SGD_B='%SGDOSSIER1-DEBUT', SGD_E='%SGDOSSIER1-FIN';
+async function embedDossier(pdfBlob,p,code){
+  if(!(pdfBlob instanceof Blob)) return pdfBlob;
+  const w=await (await makeDossierFile(p,code,false)).text(); const b64=btoa(w);
+  const lines=[SGD_B]; for(let i=0;i<b64.length;i+=76) lines.push('%'+b64.slice(i,i+76)); lines.push(SGD_E);
+  const u=new Uint8Array(await pdfBlob.arrayBuffer()); const start=Math.max(0,u.length-4096);
+  const tail=new TextDecoder('latin1').decode(u.subarray(start)); const k=tail.lastIndexOf('startxref'); if(k<0) return pdfBlob;
+  const pos=start+k;
+  return new Blob([u.subarray(0,pos),new TextEncoder().encode(lines.join('\n')+'\n'),u.subarray(pos)],{type:'application/pdf'});
+}
+function extractDossier(u8){
+  const t=new TextDecoder('latin1').decode(u8); const a=t.lastIndexOf(SGD_B); if(a<0) return null; const b=t.indexOf(SGD_E,a); if(b<0) return null;
+  try{ return atob(t.slice(a+SGD_B.length,b).split(/\r?\n/).map(l=>l.replace(/^%/,'').trim()).join('')); }catch(e){ return null; }
+}
+
+/* ---------- Synchronisation entre mes appareils (même praticien) ---------- */
+function syncMeta(k){ try{ return +localStorage.getItem('sg-sync-'+k)||0; }catch(e){ return 0; } }
+function syncMetaSet(k,v){ try{ localStorage.setItem('sg-sync-'+k,String(v)); }catch(e){} }
+async function syncPwKey(pw,salt){ return pwKey(pw,salt,310000); }
+async function buildSync(full,withFiles){
+  const since=full?0:Math.max(0,syncMeta('out')-5*60000);
+  const pats=S.patients.filter(p=>(p.updatedAt||0)>since);
+  let files=[];
+  if(withFiles){ for(const p of pats){ let fs=[]; try{ fs=await filesFor(p.id); }catch(e){} for(const m of fs){ if(!full&&(m.addedAt||0)<=since) continue; const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:u8b64(new Uint8Array(f.data))}); } } }
+  return {app:'suivi-grossesse-sync',v:1,at:new Date().toISOString(),full:!!full,praticien:S.settings.praticien||null,settings:full?S.settings:null,patients:pats,files};
+}
+async function sealSync(obj,pw){
+  let u=new TextEncoder().encode(JSON.stringify(obj)); let z=0; if(canZip()){ u=await zip(u); z=1; }
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)); const k=await syncPwKey(pw,salt);
+  const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,u)); const out=new Uint8Array(29+c.length); out[0]=z; out.set(salt,1); out.set(iv,17); out.set(c,29); return out;
+}
+async function openSync(bytes,pw){ const k=await syncPwKey(pw,bytes.slice(1,17)); let u=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes.slice(17,29)},k,bytes.slice(29))); if(bytes[0]&1) u=await unzip(u); return JSON.parse(new TextDecoder().decode(u)); }
+async function askSyncPw(confirm){
+  if(S._bkpw) return S._bkpw;
+  const r=await askPw({title:'Mot de passe de synchronisation',body:confirm?'Choisissez un mot de passe d’au moins 8 caractères, identique sur vos deux appareils (vous pouvez reprendre celui de vos sauvegardes). Il reste en mémoire jusqu’à la fermeture de l’application.':'Saisissez le mot de passe choisi sur votre autre appareil.',fields:confirm?['Mot de passe','Confirmer']:['Mot de passe'],min:confirm?8:1,ok:'Valider'});
+  if(!r) return null; S._bkpw=r[0]; return r[0];
+}
+function sameNom(a,b){ return norm(a||'').replace(/^(dr|docteur|mme|m)\s+/,'')===norm(b||'').replace(/^(dr|docteur|mme|m)\s+/,''); }
+async function runSync(pkg){
+  if(!pkg||pkg.app!=='suivi-grossesse-sync'){ toast('Ce fichier n’est pas une synchronisation de l’application'); return; }
+  const inc=pkg.praticien||{}; let me=S.settings.praticien||{};
+  if(!inc.id){ toast('Identité du praticien absente du fichier'); return; }
+  if(!me.id){ S.settings.praticien=Object.assign({},inc); if(pkg.settings&&!S.patients.length){ const keep=S.settings.praticien; S.settings=Object.assign({},pkg.settings,{praticien:keep}); } await saveSettings(); }
+  else if(me.id!==inc.id){
+    if(!sameNom(me.nom,inc.nom)){ await ask({title:'Autre soignant',body:`Ce fichier provient de ${inc.nom}, pas de ${me.nom}. La synchronisation ne relie que les appareils d’un même praticien. Pour échanger avec un confrère, passez par le dossier de la patiente.`,ok:'Fermer'}); return; }
+    if(!await ask({title:'Relier cet appareil',body:`Cet appareil et votre autre appareil ont chacun une identité « ${me.nom} ». Les réunir permet de reconnaître toutes vos saisies comme les vôtres, sur les deux appareils.`,ok:'Relier'})) return;
+    const aka=[...new Set([...(inc.aka||[]),...(me.aka||[]),me.id])].filter(x=>x!==inc.id);
+    S.settings.praticien=Object.assign({},me,{id:inc.id,aka}); await saveSettings();
+  } else if(inc.aka&&inc.aka.length){ S.settings.praticien.aka=[...new Set([...(me.aka||[]),...inc.aka])]; await saveSettings(); }
+  me=praticien(); const mine=id=>id&&(id===me.id||(me.aka||[]).includes(id));
+  let nNew=0, nUpd=0, nFiles=0, nOther=0;
+  for(const q of list(pkg.patients)){
+    let loc=S.patients.find(x=>x.id===q.id)||S.patients.find(x=>(x.status||'active')!=='archived'&&(q.status||'active')!=='archived'&&sameIdentity(x,q));
+    if(!loc){ await savePatient(JSON.parse(JSON.stringify(q))); nNew++; continue; }
+    const r=mergeDossier(loc,q); const np=r.p; np.id=loc.id;
+    for(const k of ['notesPriv','shareCode','groupId']){ const iv=q[k]; if(iv&&(!loc[k]||(q.updatedAt||0)>(loc.updatedAt||0))) np[k]=iv; }
+    const foreign=r.news.filter(id=>{ const it=AUTH_ARR.flatMap(k=>list(np[k])).find(x=>x.id===id); return it&&!mine(it.by); });
+    if(foreign.length){ np.unread=Object.assign({},np.unread||{}); foreign.forEach(id=>{ np.unread[id]=1; }); nOther+=foreign.length; }
+    if(q.unread) np.unread=Object.assign({},q.unread,np.unread||{});
+    if(r.news.length||r.keys.length){ await savePatient(np); nUpd++; }
+  }
+  for(const f of list(pkg.files)){ let ex=null; try{ ex=await get('files',f.id); }catch(e){} if(ex) continue; const pid=(S.patients.find(x=>x.id===f.patientId)||{}).id; if(!pid) continue;
+    try{ await put('files',{id:f.id,patientId:pid,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type||'application/pdf',size:f.size,addedAt:f.addedAt,data:b64u8(f.b64).buffer}); nFiles++; }catch(e){} }
+  syncMetaSet('in',Date.now());
+  await ask({title:'Synchronisation terminée',body:`${nNew} nouvelle(s) patiente(s), ${nUpd} dossier(s) mis à jour, ${nFiles} document(s) ajouté(s).${nOther?' '+nOther+' saisie(s) d’autres soignants signalée(s) « Nouveau ».':''} Rien n’a été effacé.`,ok:'OK'});
+  render();
+}
+async function syncSendFile(full){
+  const pw=await askSyncPw(true); if(!pw) return; toast('Préparation…');
+  try{ const pkg=await buildSync(full,true); if(!pkg.patients.length){ toast('Aucune patiente modifiée depuis la dernière synchronisation'); return; }
+    const b=await sealSync(pkg,pw); const blob=new Blob([JSON.stringify({app:'suivi-grossesse-sync-chiffree',v:1,at:pkg.at,n:pkg.patients.length,data:u8b64(b)})],{type:'application/json'});
+    if(await saveFile(`synchro-suivi-grossesse-${iso(today())}-${new Date().toTimeString().slice(0,5).replace(':','h')}.json`,blob)){ syncMetaSet('out',Date.now()); toast(pkg.patients.length+' dossier(s) prêt(s) pour l’autre appareil'); render(); } }
+  catch(e){ toast('Préparation impossible sur cet appareil'); }
+}
+async function syncRecvFile(file){
+  if(!file) return; let w; try{ w=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible'); return; }
+  if(!w||w.app!=='suivi-grossesse-sync-chiffree'){ toast(w&&w.app==='suivi-grossesse-dossier-chiffre'?'C’est un dossier de patiente : utilisez « Importer un dossier »':'Ce fichier n’est pas une synchronisation'); return; }
+  const pw=await askSyncPw(false); if(!pw) return; let pkg;
+  try{ pkg=await openSync(b64u8(w.data),pw); }catch(e){ S._bkpw=null; toast('Mot de passe incorrect'); return; }
+  await runSync(pkg);
+}
+async function syncShowQR(full){
+  const pw=await askSyncPw(true); if(!pw) return; let pkg;
+  try{ pkg=await buildSync(full,false); }catch(e){ toast('Préparation impossible'); return; }
+  if(!pkg.patients.length){ toast('Aucune patiente modifiée depuis la dernière synchronisation'); return; }
+  const str=toUrl(u8b64(await sealSync(pkg,pw))); const n=Math.ceil(str.length/TQ_CHUNK);
+  if(n>60){ await ask({title:'Trop de données pour les QR codes',body:`Il faudrait ${n} QR codes. Utilisez plutôt le fichier de synchronisation (iCloud Drive, OneDrive, câble USB…).`,ok:'OK'}); return; }
+  const tid=newCode(); const qs=Array.from({length:n},(_,i)=>QR.encode([...new TextEncoder().encode('SGS1|'+tid+'|'+(i+1)+'|'+n+'|'+str.slice(i*TQ_CHUNK,(i+1)*TQ_CHUNK))],'M'));
+  let k=0, timer=null; const z=$('#zoom');
+  z.innerHTML=`<header><b>Synchroniser vers mon autre appareil</b><button class="btn small" id="sqClose">Fermer</button></header><div class="zbody" style="text-align:center"><p class="note" style="margin:4px 0 10px">${pkg.patients.length} dossier(s), sans les documents PDF. Sur l’autre appareil : Réglages → Mes appareils → « Recevoir par QR codes », puis visez cet écran.</p><div id="sqQr" class="trqr"></div><div id="sqLbl" class="scprog"></div></div>`;
+  z.classList.add('open'); document.body.style.overflow='hidden';
+  const show=()=>{ $('#sqQr').innerHTML=QR.svg(qs[k],320); $('#sqLbl').innerHTML=`<b>${k+1} / ${n}</b>`; }; show(); timer=setInterval(()=>{ k=(k+1)%n; show(); },1600);
+  $('#sqClose').addEventListener('click',()=>{ clearInterval(timer); z.classList.remove('open'); z.innerHTML=''; document.body.style.overflow=''; syncMetaSet('out',Date.now()); render(); });
+}
+async function syncFromQR(str){ const pw=await askSyncPw(false); if(!pw) return; let pkg; try{ pkg=await openSync(b64u8(fromUrl(str)),pw); }catch(e){ S._bkpw=null; toast('Mot de passe incorrect'); return; } await runSync(pkg); }
+function syncSecHTML(){ const o=syncMeta('out'), i=syncMeta('in'); const since=o?S.patients.filter(p=>(p.updatedAt||0)>o-5*60000).length:S.patients.length;
+  return `<section class="sec"><h2>Mes appareils (synchronisation)</h2><div class="card"><div class="txt">Utilisez l’application sur votre téléphone et sur votre ordinateur avec la même identité. En fin de journée, envoyez les dossiers modifiés vers l’autre appareil : ils y sont fusionnés sans rien effacer, notes privées comprises.<span class="k" style="margin-top:6px">Dernier envoi : ${o?fd(localDay(o))+' à '+new Date(o).toTimeString().slice(0,5):'jamais'} · Dernière réception : ${i?fd(localDay(i))+' à '+new Date(i).toTimeString().slice(0,5):'jamais'} · À envoyer : ${since} dossier(s)</span></div></div>
+  <label class="f" style="margin:10px 0 0"><span>Dossiers à envoyer</span><select id="syWhat"><option value="new">Modifiés depuis le dernier envoi</option><option value="all" ${o?'':'selected'}>Tous (premier transfert)</option></select></label>
+  <div class="actions"><button class="btn primary" id="sySend">Envoyer (fichier)</button><button class="btn" id="syQr">Envoyer (QR codes)</button><button class="btn" id="syRecv">Recevoir (fichier)</button><button class="btn" id="syScan">Recevoir par QR codes</button></div></section>`; }
+function bindSync(){ const w=()=>($('#syWhat')||{}).value==='all';
+  const a=$('#sySend'); if(!a) return; a.addEventListener('click',()=>syncSendFile(w())); $('#syQr').addEventListener('click',()=>syncShowQR(w()));
+  $('#syRecv').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>syncRecvFile(i.files[0]); i.click(); });
+  $('#syScan').addEventListener('click',()=>openScanImport()); }
+
+/* Verrouillage obligatoire (version professionnelle) */
+async function ensureLock(){
+  if(isPatient()||S.preview||lockCfg()||S._lockAsking) return;
+  try{ localStorage.setItem('sg-t','1'); localStorage.removeItem('sg-t'); }catch(e){ return; }
+  const m=$('#modal'); if(m.classList.contains('open')||document.getElementById('lockScr')) return void setTimeout(ensureLock,1500);
+  S._lockAsking=true;
+  try{
+    let c=null;
+    while(!c){ c=await lockSetCode('Pour protéger les dossiers de vos patientes, l’application doit être verrouillée. Choisissez un code d’au moins 6 chiffres, différent de celui de l’appareil. Il sera demandé à chaque ouverture.'); if(!c) toast('Le verrouillage est obligatoire pour la version professionnelle'); }
+    toast('Verrouillage activé');
+    if(await bioAvail()&&await ask({title:'Utiliser la biométrie ?',body:'Vous pourrez déverrouiller avec Face ID / Touch ID (iPhone) ou Windows Hello (PC) ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); toast('Déverrouillage biométrique activé'); }catch(e){ toast('Biométrie indisponible ici : le code sera utilisé'); } }
+    if(route().v==='reglages') render();
+  } finally { S._lockAsking=false; }
+}
 let viewing=null, vScale=1, vRun=0;
 let pdfjsP=null;
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
@@ -1754,6 +2245,8 @@ function printFallback(p,ids,patient,qrs){
 function openPrint(p,patient){
   const m=$('#modal'), b=$('#modalBox'); const avail=new Set(pdfSections(p,patient).map(s=>s.id));
   b.innerHTML=`<h3>${patient?'Synthèse pour la patiente':'Imprimer / exporter en PDF'}</h3>${patient?'<p>Les notes privées ne sont pas incluses.</p>':''}<p>Choisissez les parties du dossier à inclure.</p><div class="seg" style="flex-direction:column;align-items:stretch">${PRINT_SECTIONS.filter(([k])=>avail.has(k)).map(([k,l])=>`<label><input type="checkbox" data-ps value="${k}" checked><span style="display:block">${esc(l)}</span></label>`).join('')}</div>
+  <label class="f" style="margin-top:10px"><span>Nom du fichier</span><input id="pname" value="${esc((patient?'Synthèse grossesse':'Dossier grossesse')+' - '+[(p.nom||'').toUpperCase(),p.prenom||''].filter(Boolean).join(' ')+' - '+iso(today()).split('-').reverse().join('-'))}" style="width:100%"></label>
+  <label class="chkline"><input type="checkbox" id="pdos" ${patient?'checked':''}> Inclure le dossier chiffré dans le PDF : ouvert dans l’application (« Ouvrir un dossier »), il la met à jour à distance. Idéal pour un envoi par MSSanté / Mon espace santé.</label>
   <label class="chkline"><input type="checkbox" id="pqr" ${patient?'checked':''}> Ajouter les QR codes de transfert du dossier complet (protégés par le code de la patiente)</label>
   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Créer le PDF</button></div>`;
   m.classList.add('open');
@@ -1761,10 +2254,12 @@ function openPrint(p,patient){
     if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
     const ids=$$('[data-ps]:checked',b).map(c=>c.value); if(!ids.length){ toast('Cochez au moins une partie'); return; }
     a.disabled=true; a.textContent='Création…';
-    let qrs=[];
-    if($('#pqr')&&$('#pqr').checked){ let code=isPatient()?p.myCode:p.shareCode; if(!code&&!isPatient()){ p.shareCode=newCode(); await savePatient(p); code=p.shareCode; } if(code){ try{ qrs=await transferQRs(p,code); }catch(e){ toast('QR codes de transfert impossibles sur cet appareil'); } } }
-    try{ const blob=await makePDF(p,ids,patient,qrs); m.classList.remove('open'); m.onclick=null;
-      const name=(patient?'synthese-':'dossier-')+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())+'.pdf';
+    let qrs=[], code=null; const wq=$('#pqr')&&$('#pqr').checked, wd=$('#pdos')&&$('#pdos').checked;
+    if(wq||wd){ code=isPatient()?p.myCode:p.shareCode; if(!code&&!isPatient()){ p.shareCode=newCode(); await savePatient(p); code=p.shareCode; } }
+    if(wq&&code){ try{ qrs=await transferQRs(p,code); }catch(e){ toast('QR codes de transfert impossibles sur cet appareil'); } }
+    const nm_=(($('#pname')&&$('#pname').value)||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\.pdf$/i,'').trim();
+    try{ let blob=await makePDF(p,ids,patient,qrs); if(wd&&code){ try{ blob=await embedDossier(blob,p,code); }catch(e){ toast('Dossier chiffré non inclus dans le PDF'); } } m.classList.remove('open'); m.onclick=null;
+      const name=(nm_||((patient?'synthese-':'dossier-')+norm(p.nom||'patiente').replace(/ /g,'-')+'-'+iso(today())))+'.pdf';
       if(await saveFile(name,blob)) toast('PDF créé');
     }catch(err){ m.classList.remove('open'); m.onclick=null; printFallback(p,ids,patient,qrs); }
   };
@@ -2078,7 +2573,7 @@ async function keyFrom(code,salt,iter){ const base=await crypto.subtle.importKey
 async function seal(u8,code,iter){ const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)); const k=await keyFrom(code,salt,iter); const c=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,u8)); return {salt,iv,c}; }
 async function unseal(c,code,salt,iv,iter){ const k=await keyFrom(code,salt,iter); return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},k,c)); }
 function patientAppUrl(){ const base=((S.settings.appUrl||'').trim()||'https://perinat66.github.io/suivi-grossesse/').replace(/#.*$/,'').replace(/(index|patiente)\.html$/,''); return base.replace(/\/?$/,'/')+'patiente.html'; }
-function forPatient(p){ const q=JSON.parse(JSON.stringify(p)); delete q.shareCode; delete q.myCode; q.fichesSnap=fichesFor(p).filter(f=>!f.off).map(f=>({id:f.id,title:f.title,text:f.text})); delete q.fichesOff; delete q.notesPriv; delete q.groupId; q.evals=list(q.evals).map(e=>{ if(e.notesPriv){ e.notes=''; } delete e.notesPriv; return e; }); return q; }
+function forPatient(p){ const q=JSON.parse(JSON.stringify(p)); delete q.shareCode; delete q.myCode; if(!p.suiviPar||(praticien()&&p.suiviPar.id===praticien().id)) q.fichesSnap=fichesFor(p).filter(f=>!f.off).map(f=>({id:f.id,title:f.title,text:f.text})); delete q.fichesOff; delete q.notesPriv; delete q.groupId; delete q.unread; q.majLe=new Date().toISOString(); const pr_=praticien(); if(pr_&&(!q.suiviPar||q.suiviPar.id===pr_.id)) q.suiviPar={id:pr_.id,nom:pr_.nom,tel:pr_.tel}; q.evals=list(q.evals).map(e=>{ if(e.notesPriv){ e.notes=''; } delete e.notesPriv; return e; }); return q; }
 
 /* Carte d’urgence (QR) : résumé compact */
 function cardData(p){
@@ -2090,7 +2585,7 @@ function cardData(p){
     pr:lp?lp.v:'',cr:lc?croisCat(lc.v)||'':'',ef:le?String(le.v):'',pl:li&&li.v!=='Normalement inséré'?li.v:'',ta:lt?lt.v+'/'+(lt.ev.pad||'?'):'',
     sx:sf.join(' / '),ad:addictTags(p),li:lieuLabel(p)||'',pg:p.planned&&p.planned.type?p.planned.type+(p.planned.date?' le '+fd(parseD(p.planned.date)):''):'',
     rh:p.rhesus==='-'?(rhdStatus(p)||''):'',
-    co:list(p.corr).filter(c=>c.nom).slice(0,3).map(c=>c.role+' : '+c.nom+(c.contact?' – '+c.contact:''))};
+    mj:p.majLe?String(p.majLe).slice(0,10):iso(today()),dr:(()=>{ const x=p.suiviPar||praticien(); return x&&x.nom?x.nom+(x.tel?' – '+x.tel:''):''; })(),co:list(p.corr).filter(c=>c.nom).slice(0,3).map(c=>c.role+' : '+c.nom+(c.contact?' – '+c.contact:''))};
   for(const k of Object.keys(o)){ const v=o[k]; if(v===''||v===0||(Array.isArray(v)&&!v.length)) delete o[k]; }
   o.v=1; return o;
 }
@@ -2119,12 +2614,12 @@ function cardHTML(o){
   const kv=(k,v)=>v?`<div class="kv"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>`:'';
   const base=parseD(o.ba), t=today(), ga=base!=null?Math.round((t-base)/DAY):null;
   return `${o.al?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(o.al)}</div></div>`:''}
-  <div class="card num">${kv('Patiente',o.n)}${kv('Née le',o.nn?fd(parseD(o.nn)):'')}${kv('Groupe sanguin',o.gr)}${kv('Âge gestationnel ce jour',ga!=null&&ga>=0&&ga<310?sa(ga):'')}${kv('Terme prévu (41 SA)',o.dp?fd(parseD(o.dp)):'')}
+  <div class="card num">${kv('Patiente',o.n)}${kv('Née le',o.nn?fd(parseD(o.nn)):'')}${kv('Groupe sanguin',o.gr)}${kv('Âge gestationnel ce jour',ga!=null&&ga>=0&&ga<310?sa(ga):'')}${kv('Terme prévu (41 SA)',o.dp?fd(parseD(o.dp)):'')}${kv('Médecin assurant le suivi',o.dr)}
    ${kv('Gestité / parité',o.gp)}${kv('Utérus cicatriciel',o.uc?('Oui'+(o.ces?' ('+o.ces+' césarienne'+(o.ces>1?'s':'')+')':'')):'')}${kv('Grossesse',o.mu>1?(o.mu===2?'Gémellaire':'Multiple'):'')}${kv('Sexe fœtal',o.sx)}
    ${kv('Pathologies maternelles',(o.pm||[]).join(', '))}${kv('Pathologies fœtales',(o.pf||[]).join(', '))}${kv('Traitements',(o.tt||[]).join(' ; '))}
    ${kv('Dernière présentation',o.pr)}${kv('Croissance estimée',o.cr)}${kv('Dernier poids fœtal estimé',o.ef?o.ef+' g':'')}${kv('Placenta',o.pl)}${kv('Dernière TA',o.ta?o.ta+' mmHg':'')}
    ${kv('Rhésus D',o.rh)}${kv('Consommations',(o.ad||[]).join(', '))}${kv('Lieu d’accouchement prévu',o.li)}${kv('Programmation',o.pg)}${kv('Correspondants',(o.co||[]).join(' ; '))}</div>
-  <p class="note">Carte d’urgence établie le ${o.d?fd(parseD(o.d)):'?'} : résumé à compléter par l’interrogatoire et l’examen. Ces informations ne sont pas enregistrées sur cet appareil.</p>`;
+  <p class="note"><b>Informations à jour au ${fd(parseD(o.mj||o.d))}</b> (dernière consultation transmise par le médecin). Résumé à compléter par l’interrogatoire et l’examen. Ces informations ne sont pas enregistrées sur cet appareil.</p>`;
 }
 async function renderCarte(str){
   const v=$('#view'); v.innerHTML='<div class="card empty" style="margin-top:16px">Lecture de la carte…</div>';
@@ -2141,14 +2636,15 @@ async function renderCarte(str){
 /* Fichier dossier chiffré */
 async function makeDossierFile(p,code,withFiles){
   const q=forPatient(p); let files=[];
-  if(withFiles){ for(const m of await filesFor(p.id)){ const f=await get('files',m.id); if(f&&f.data) files.push({name:f.name,cat:f.cat||'',addedAt:f.addedAt,size:f.size,b64:u8b64(new Uint8Array(f.data))}); } }
+  if(withFiles){ for(const m of await filesFor(p.id)){ const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,by:f.by||null,name:f.name,cat:f.cat||'',addedAt:f.addedAt,size:f.size,b64:u8b64(new Uint8Array(f.data))}); } }
   let u=new TextEncoder().encode(JSON.stringify({app:'suivi-grossesse-dossier',v:1,exportedAt:new Date().toISOString(),patient:q,files}));
   let z=false; if(canZip()){ u=await zip(u); z=true; }
   const s=await seal(u,code,310000);
   return new Blob([JSON.stringify({app:'suivi-grossesse-dossier-chiffre',v:1,iter:310000,z,salt:u8b64(s.salt),iv:u8b64(s.iv),data:u8b64(s.c)})],{type:'application/json'});
 }
 async function importDossierFile(file){
-  let w; try{ w=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible'); return; }
+  let txt_; if(/\.pdf$/i.test(file.name||'')||file.type==='application/pdf'){ txt_=extractDossier(new Uint8Array(await file.arrayBuffer())); if(!txt_){ toast('Ce PDF ne contient pas de dossier transférable'); return; } } else txt_=await file.text();
+  let w; try{ w=JSON.parse(txt_); }catch(e){ toast('Fichier illisible'); return; }
   if(!w||w.app!=='suivi-grossesse-dossier-chiffre'){ toast('Ce fichier n’est pas un dossier patiente'); return; }
   const code=await askCode(); if(!code) return;
   let payload;
@@ -2182,7 +2678,7 @@ async function showTransferScreen(p,code){
   let qs; try{ qs=await transferQRs(p,code); }catch(e){ toast('Création impossible sur cet appareil'); return; }
   let k=0, play=true, timer=null; const z=$('#zoom');
   z.innerHTML=`<header><b>Transfert à un soignant</b><button class="btn small" id="trClose">Fermer</button></header><div class="zbody" style="text-align:center">
-   <p class="note" style="margin:4px 0 10px">${isPatient()?'Le soignant ouvre son application : Réglages → Données → « Importer un dossier (QR codes) », puis vise cet écran.':'La patiente ouvre « Mon suivi de grossesse » → « Mettre à jour mon dossier (QR code) », puis vise cet écran.'} Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
+   <p class="note" style="margin:4px 0 10px">${isPatient()?'Le soignant ouvre votre dossier → « 📥 Recevoir les nouveautés de la patiente » (ou Réglages → Données → « Importer un dossier »), puis vise cet écran.':'La patiente ouvre « Mon suivi de grossesse » → « Mettre à jour mon dossier (QR code) », puis vise cet écran.'} Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
    <div id="trQr" class="trqr"></div><div id="trLbl" class="scprog"></div>
    <div class="actions" style="justify-content:center"><button class="btn" id="trPrev">‹</button><button class="btn primary" id="trPlay">⏸ Pause</button><button class="btn" id="trNext">›</button></div>
    <p class="note">Aucune connexion Internet n’est nécessaire : les données passent directement de l’écran à la caméra.${isPatient()?' Donnez ensuite votre code oralement.':` Si c’est la première fois, donnez à la patiente son code : <b>${fmtCode(code)}</b>`}</p></div>`;
@@ -2327,20 +2823,31 @@ async function transferQRs(p,code){
 async function importPayload(payload,code){
   const q=payload.patient; if(!q){ toast('Dossier vide'); return; }
   const ex=S.patients.find(x=>(x.status||'active')!=='archived'&&sameIdentity(x,q));
-  let target=null;
-  if(ex&&isPatient()) target=ex;
-  else if(ex){ const c=await choose({title:'Cette patiente a déjà un dossier',body:`Un dossier en cours existe pour ${fullName(ex)}. Voulez-vous le remplacer par le dossier reçu, ou créer un dossier séparé ?`,buttons:[['replace','Remplacer le dossier existant','primary'],['new','Créer un dossier séparé',''],['cancel','Annuler','']]}); if(c==='cancel') return; if(c==='replace') target=ex; }
-  const np=Object.assign({},q,{id:target?target.id:uid('p'),createdAt:target?target.createdAt:Date.now(),importedAt:Date.now(),notesPriv:target?target.notesPriv:''});
+  let target=null, mode='new';
+  if(ex&&(isPatient()||S.mergeInto===ex.id)){ target=ex; mode='merge'; }
+  else if(ex){ const c=await choose({title:'Cette patiente a déjà un dossier',body:`Un dossier en cours existe pour ${fullName(ex)}. Les nouveautés reçues (saisies d’autres soignants, documents) peuvent y être ajoutées sans rien effacer.`,buttons:[['merge','Ajouter les nouveautés au dossier','primary'],['replace','Remplacer le dossier existant',''],['new','Créer un dossier séparé',''],['cancel','Annuler','']]}); if(!c||c==='cancel'){ S.mergeInto=null; return; } if(c!=='new'){ target=ex; mode=c; } }
+  else if(S.mergeInto&&!isPatient()){ const cur=S.patients.find(x=>x.id===S.mergeInto); if(cur&&!await ask({title:'Identité différente',body:`Le dossier reçu est celui de ${fullName(q)}, pas de ${fullName(cur)}. Il sera importé comme un nouveau dossier.`,ok:'Importer'})){ S.mergeInto=null; return; } }
+  S.mergeInto=null;
+  let np, news=[], keys=[];
+  if(mode==='merge'){ const r=mergeDossier(target,q); np=r.p; news=r.news; keys=r.keys; }
+  else np=Object.assign({},q,{id:target?target.id:uid('p'),createdAt:target?target.createdAt:Date.now(),notesPriv:target?target.notesPriv:''});
+  np.importedAt=Date.now();
   if(APP_ROLE==='patient') np.myCode=code; else np.shareCode=(target&&target.shareCode)||code;
   if(target) np.groupId=target.groupId;
+  let have=new Set(); if(target){ try{ have=new Set((await filesFor(target.id)).map(f=>f.id)); }catch(e){} }
+  let n=0;
+  for(const f of list(payload.files)){ if(mode==='merge'&&f.id&&have.has(f.id)) continue; let fid=f.id||uid('f'); if(mode!=='merge'&&f.id){ let ex_=null; try{ ex_=await get('files',f.id); }catch(e){} if(ex_) fid=uid('f'); }
+    try{ await put('files',{id:fid,patientId:np.id,by:f.by||null,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; if(mode==='merge') news.push(fid); }catch(e){} }
+  if(mode==='merge'&&!isPatient()){ np.unread=Object.assign({},np.unread||{}); news.forEach(id=>{ np.unread[id]=1; }); if(keys.length) np.unread.__fiche={n:keys.length,at:Date.now()}; for(const e of list(np.evals)) if(news.includes(e.id)&&!e.urg){ try{ applyEvalValidation(np,e); }catch(err){} } }
   await savePatient(np);
-  let n=0; for(const f of list(payload.files)){ try{ await put('files',{id:uid('f'),patientId:np.id,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; }catch(e){} }
-  toast('Dossier importé'+(n?' avec '+n+' document'+(n>1?'s':''):'')); go('patient-'+np.id);
+  if(mode==='merge') toast(news.length||keys.length?(news.length?news.length+' nouveauté'+(news.length>1?'s':'')+' ajoutée'+(news.length>1?'s':''):'Fiche mise à jour'):'Dossier déjà à jour');
+  else toast('Dossier importé'+(n?' avec '+n+' document'+(n>1?'s':''):''));
+  go('patient-'+np.id);
 }
 let jsqrP=null;
 function loadJsQR(){ if(window.jsQR) return Promise.resolve(window.jsQR); if(!jsqrP) jsqrP=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=()=>window.jsQR?res(window.jsQR):rej(new Error('load')); s.onerror=()=>{ jsqrP=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsqrP; }
 function openScanImport(){
-  const parts=new Map(); let tid=null, total=0, stream=null, timer=null, busy=false, done=false;
+  const parts=new Map(); let kind='T', tid=null, total=0, stream=null, timer=null, busy=false, done=false;
   const z=$('#zoom');
   z.innerHTML=`<header><b>${isPatient()?'Recevoir mon dossier':'Importer un dossier (QR codes)'}</b><button class="btn small" id="scClose">Fermer</button></header>
    <div class="zbody"><p class="note" style="margin:4px 4px 10px">${isPatient()?'Visez les QR codes affichés par votre soignant : ils défilent, gardez simplement le téléphone pointé vers l’écran.':'Visez les QR codes « Transfert » (page imprimée ou écran de la patiente), dans n’importe quel ordre.'}</p>
@@ -2354,13 +2861,14 @@ function openScanImport(){
   $('#scClose').addEventListener('click',close);
   const prog=()=>{ $('#scProg').innerHTML=total?`<b>${parts.size} / ${total}</b> QR code${total>1?'s':''} lu${parts.size>1?'s':''}<div class="scchips">${Array.from({length:total},(_,i)=>`<span class="${parts.has(i+1)?'ok':''}">${i+1}</span>`).join('')}</div>`:'En attente du premier QR code…'; };
   const accept=async txt=>{
-    if(done||!txt) return; const m=/^SGT1\|([A-Z0-9]{6})\|(\d+)\|(\d+)\|(.+)$/.exec(txt.trim());
+    if(done||!txt) return; const m=/^SG([TS])1\|([A-Z0-9]{6})\|(\d+)\|(\d+)\|(.+)$/.exec(txt.trim());
     if(!m){ if(/#carte\./.test(txt)) toast('C’est une carte d’urgence : utilisez les QR codes « Transfert »'); return; }
-    const [,id,i,n,data]=m; if(tid&&id!==tid){ toast('Ce QR code appartient à un autre document'); return; }
+    const [,ty,id,i,n,data]=m; if(!tid) kind=ty; if(tid&&id!==tid){ toast('Ce QR code appartient à un autre document'); return; }
     if(!tid){ tid=id; total=+n; } if(parts.has(+i)) return;
     parts.set(+i,data); if(navigator.vibrate) navigator.vibrate(40); prog();
     if(parts.size===total){ done=true; stop();
       const str=Array.from({length:total},(_,k)=>parts.get(k+1)).join('');
+      if(kind==='S'){ close(); if(isPatient()){ toast('Ces QR codes servent à synchroniser les appareils d’un soignant'); return; } await syncFromQR(str); return; }
       for(const c0 of [...new Set(S.patients.map(x=>x.myCode||x.shareCode).filter(Boolean))]){ try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),c0,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u); close(); await importPayload(JSON.parse(new TextDecoder().decode(u)),c0); return; }catch(e){} }
       const code=await askCode(); if(!code){ close(); return; }
       try{ const b=b64u8(fromUrl(str)); let u=await unseal(b.slice(29),code,b.slice(1,17),b.slice(17,29),310000); if(b[0]&1) u=await unzip(u);
@@ -2643,9 +3151,9 @@ function wd(d){ return d==null?['','']:[Math.floor(d/7), d%7]; }
 function renderSettingsPatient(){
   const v=$('#view');
   v.innerHTML=`<div class="summary"><strong>Réglages</strong>Mon suivi de grossesse</div>
-  <section class="sec"><h2>Mon dossier</h2><div class="card"><div class="txt">Vos données sont enregistrées uniquement sur ce téléphone. Pour mettre à jour votre dossier, ouvrez le nouveau fichier remis par votre soignant.</div></div>
+  ${lockSecHTML()}<section class="sec"><h2>Mon dossier</h2><div class="card"><div class="txt">Vos données sont enregistrées uniquement sur ce téléphone. Pour mettre à jour votre dossier, ouvrez le nouveau fichier remis par votre soignant.</div></div>
   <div class="actions"><button class="btn primary" id="psImp">📥 Ouvrir un dossier reçu</button><button class="btn" id="psExp">Sauvegarder mes données</button><button class="btn" id="psRest">Restaurer une sauvegarde</button><button class="btn danger" id="psWipe">Tout effacer</button></div></section>`;
-  $('#psImp').addEventListener('click',pickDossier); $('#psExp').addEventListener('click',exportBackup);
+  $('#psImp').addEventListener('click',pickDossier); bindLockSettings(renderSettingsPatient); $('#psExp').addEventListener('click',exportBackup);
   $('#psRest').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importBackup(i.files[0]); i.click(); });
   $('#psWipe').addEventListener('click',async()=>{ if(!await ask({title:'Tout effacer ?',body:'Votre dossier sera supprimé de ce téléphone.',ok:'Tout effacer',danger:true})) return; await clearAll(); S.patients=[]; toast('Données effacées'); go('liste'); });
 }
@@ -2653,6 +3161,7 @@ function renderSettings(){
   if(APP_ROLE==='patient') return renderSettingsPatient();
   const v=$('#view'); const st=S.settings;
   let h=`<div class="summary"><strong>Réglages</strong>Calendrier de suivi appliqué à toutes les patientes</div>`;
+  h+=praticienSecHTML();
   h+=`<section class="sec"><h2>Calcul du terme</h2><div class="card"><div class="msedit"><div>Terme prévu fixé à <b>41 SA</b> (usage français).</div><div class="nums" style="margin-top:12px">Cycle par défaut <input type="number" id="defCycle" min="20" max="45" value="${st.cycle}" aria-label="Cycle par défaut"> jours</div><label class="chkline"><input type="checkbox" id="congeChk" ${st.conge?'checked':''}> Afficher l’estimation du congé maternité</label></div></div></section>`;
   h+=`<section class="sec"><h2>Examens et échéances <button class="link" id="addMs">＋ Ajouter</button></h2><div class="card" id="msEd">`;
   st.milestones.forEach((m,i)=>{ const [sw,sd]=wd(m.s), [ew,ed]=wd(m.e);
@@ -2688,9 +3197,11 @@ function renderSettings(){
    <div class="fpad"><p class="note" style="margin:6px 0">Textes proposés à partir des recommandations usuelles : relisez-les et adaptez-les avant de les transmettre ; ils engagent votre responsabilité.</p><button class="btn small" id="addFiche">＋ Ajouter une fiche</button> <button class="btn small" id="rstFiche">Fiches par défaut</button></div></div></section>`;
   h+=`<section class="sec"><h2>Version patiente</h2><div class="card"><div class="txt">Les patientes ouvrent le dossier chiffré que vous leur remettez dans l’application « Mon suivi de grossesse » (adresse : …/patiente.html). Elles y retrouvent leur suivi, leurs rendez-vous, leurs conseils, leurs résultats et leurs documents, en lecture seule.</div></div><div class="actions"><button class="btn" id="prevPat">👁 Aperçu de la version patiente</button><button class="btn" id="instQr">QR code d’installation</button></div><div id="instOut"></div></section>`;
   h+=`<section class="sec"><h2>QR codes « carte d’urgence »</h2><div class="card"><div class="fpad"><label class="f"><span>Adresse de l’application en ligne (ouverte au scan du QR code)</span><input id="appUrl" value="${esc(st.appUrl||'https://perinat66.github.io/suivi-grossesse/')}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--bg)"></label></div></div></section>`;
+  h+=lockSecHTML();
+  h+=syncSecHTML();
   h+=`<section class="sec"><h2>Données</h2><div class="card"><div class="txt">${MODE==='cloud'?'Les dossiers et les PDF sont enregistrés dans votre compte Claude, dans un espace privé de cette application : ils sont conservés d’une ouverture à l’autre et retrouvés sur vos autres appareils. Cet espace n’est pas un hébergement certifié HDS.':MODE==='local'?'Version autonome : les dossiers et les PDF sont enregistrés uniquement sur cet appareil, dans l’application. Rien n’est envoyé sur Internet. Ils ne sont ni synchronisés ni sauvegardés ailleurs : exportez une sauvegarde chaque semaine (Fichiers, iCloud Drive ou clé USB) et gardez-la en lieu sûr.':'Aucun stockage durable n’est disponible : les données seront perdues à la fermeture. Exportez une sauvegarde avant de quitter.'}<span class="k" id="quota" style="margin-top:6px"></span></div></div>
-  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="impScan">Importer un dossier (QR codes)</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
-  v.innerHTML=h;
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="exp">Exporter une sauvegarde</button><button class="btn" id="imp">Importer une sauvegarde</button><button class="btn" id="verBk">Vérifier une sauvegarde</button><button class="btn" id="impDos">Importer un dossier patiente reçu</button><button class="btn" id="impScan">Importer un dossier (QR codes)</button><button class="btn" id="csv">Exporter la liste (CSV)</button><button class="btn danger" id="wipe">Tout effacer</button></div></section>`;
+  v.innerHTML=h; bindPraticien(); bindLockSettings(renderSettings); bindSync();
   $('#defCycle').addEventListener('change',async e=>{ st.cycle=Math.max(20,Math.min(45,+e.target.value||28)); await saveSettings(); });
   $('#congeChk').addEventListener('change',async e=>{ st.conge=e.target.checked; await saveSettings(); });
   const ce=$('#cabEd');
@@ -2731,6 +3242,7 @@ function renderSettings(){
   $('#rstMsg').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir les modèles par défaut ?',body:'Vos modèles personnalisés seront remplacés.',ok:'Rétablir'})) return; st.msgs=JSON.parse(JSON.stringify(MSG_DEFAULT)); await saveSettings(); renderSettings(); });
   $('#rstFiche').addEventListener('click',async()=>{ if(!await ask({title:'Rétablir les fiches par défaut ?',body:'Vos fiches personnalisées seront remplacées.',ok:'Rétablir'})) return; st.fiches=JSON.parse(JSON.stringify(FICHES_DEFAULT)); await saveSettings(); renderSettings(); });
   $('#appUrl').addEventListener('change',async e=>{ st.appUrl=e.target.value.trim(); await saveSettings(); toast('Adresse enregistrée'); });
+  $('#verBk').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>verifyBackup(i.files[0]); i.click(); });
   $('#imp').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>importBackup(i.files[0]); i.click(); });
   $('#csv').addEventListener('click',()=>exportCSV(S.patients));
   $('#wipe').addEventListener('click',async()=>{ if(!await ask({title:'Effacer toutes les données ?',body:'Tous les dossiers, documents PDF et réglages seront supprimés de cet appareil. Exportez une sauvegarde avant si besoin.',ok:'Tout effacer',danger:true})) return; await clearAll(); S.patients=[]; S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); await saveSettings(); toast('Données effacées'); go('liste'); });
@@ -2751,23 +3263,23 @@ async function saveFile(name,data){
   }catch(e){ toast('Enregistrement impossible sur cet appareil'); return false; }
 }
 async function exportBackup(){
+  const pw=S._bkpw?[S._bkpw]:await askPw({title:'Mot de passe de la sauvegarde',body:'La sauvegarde sera chiffrée. Choisissez un mot de passe d’au moins 8 caractères et notez-le en lieu sûr : <b>sans lui, la sauvegarde ne pourra pas être restaurée</b>. Il restera en mémoire jusqu’à la fermeture de l’application, pour les sauvegardes suivantes.',fields:['Mot de passe','Confirmer le mot de passe'],min:8,ok:'Chiffrer et enregistrer'}); if(!pw) return; S._bkpw=pw[0];
   toast('Préparation de la sauvegarde…');
-  const files=(await getAll('files')).map(f=>({id:f.id,patientId:f.patientId,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:b64(f.data)}));
+  const files=(await getAll('files')).map(f=>({id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:b64(f.data)}));
   const payload={app:'suivi-grossesse',version:1,exportedAt:new Date().toISOString(),settings:S.settings,patients:S.patients,files};
-  const ok=await saveFile(`sauvegarde-suivi-grossesse-${iso(today())}.json`, new Blob([JSON.stringify(payload)],{type:'application/json'}));
+  const ok=await saveFile(`sauvegarde-suivi-grossesse-${iso(today())}-chiffree.json`, await sealBackup(payload,pw[0]));
   if(ok){ toast('Sauvegarde exportée'); try{ await put('kv',Date.now(),'lastBackup'); S.lastBackup=Date.now(); }catch(e){} }
 }
 async function importBackup(file){
   if(!file) return;
-  let data; try{ data=JSON.parse(await file.text()); }catch(e){ toast('Fichier illisible : choisissez une sauvegarde .json de l’application'); return; }
-  if(!data || data.app!=='suivi-grossesse' || !Array.isArray(data.patients)){ toast('Ce fichier n’est pas une sauvegarde de l’application'); return; }
+  const data=await openBackupFile(file); if(!data) return;
   const nf=(data.files||[]).length;
   if(!await ask({title:'Remplacer les données actuelles ?',body:`La sauvegarde contient ${data.patients.length} dossier(s) et ${nf} document(s). Les données présentes sur cet appareil seront remplacées.`,ok:'Importer'})) return;
   try{
     await clearAll();
     S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),data.settings||{}); await saveSettings();
     for(const p of data.patients) await put('patients',p);
-    for(const f of (data.files||[])) await put('files',{id:f.id,patientId:f.patientId,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,data:unb64(f.b64)});
+    for(const f of (data.files||[])) await put('files',{id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,data:unb64(f.b64)});
     S.patients=await getAll('patients'); toast('Sauvegarde importée'); go('liste');
   }catch(e){ toast('Import interrompu : espace de stockage insuffisant ?'); S.patients=await getAll('patients'); }
 }
@@ -2807,6 +3319,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#viewer').cla
 
 /* ---------- Démarrage ---------- */
 (async function init(){
+  lockShow();
   $('#view').innerHTML='<div class="card empty" style="margin-top:16px">Chargement des dossiers…</div>';
   idb=await openDB();
   if(false){ MODE='cloud'; const n=await migrateLocalToCloud(); if(n) setTimeout(()=>toast(n+' dossier'+(n>1?'s':'')+' de l’appareil copié'+(n>1?'s':'')+' dans votre compte'),600); }
