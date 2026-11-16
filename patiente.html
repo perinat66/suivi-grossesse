@@ -361,6 +361,18 @@ details.fiche-ed summary{cursor:pointer}
 .abox>i{flex:none;width:12px;height:12px;margin-top:4px;border-radius:50%;background:var(--ac)}
 .abox b{display:block}.abox small{display:block;color:var(--muted);font-size:.82rem;margin-top:1px}.abox a{color:inherit}
 .abox .ro{color:var(--ink);font-weight:600;margin-top:4px}
+
+.follow{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:10px 14px;margin:-4px 0 14px;background:color-mix(in srgb,#D97706 14%,var(--surface,#fff));color:var(--ink);border:1px solid color-mix(in srgb,#D97706 45%,transparent);font-size:.93rem;line-height:1.45}
+.follow>span{font-size:1.2rem;line-height:1.2}.follow small{display:block;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem;color:#B45309}
+.follow .late{color:var(--bad);font-weight:700}
+.dep .deprow{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);align-items:flex-start}.dep .deprow:last-child{border-bottom:0}
+.depl{flex:0 0 118px;font-weight:600;font-size:.88rem;line-height:1.3}.depl.rec{color:var(--accent)}.depl small{display:block;font-weight:500;color:var(--muted);font-size:.76rem;margin-top:2px}
+.depcells{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px}
+.depc{border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);padding:4px 8px;text-align:left;font:inherit;font-size:.82rem;line-height:1.3;max-width:100%;cursor:pointer}
+.depc small{display:block;color:var(--muted);font-size:.72rem}.depc.bad{border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:color-mix(in srgb,var(--bad) 8%,var(--surface,#fff))}
+.depc.unread{box-shadow:inset 3px 0 0 #E11D48}
+.depadd{border:1px dashed var(--line);border-radius:10px;background:none;color:var(--muted);min-width:38px;min-height:38px;font-size:1.1rem;cursor:pointer}
+.sfgrid{display:flex;flex-wrap:wrap;gap:2px 14px}
 </style>
 </head>
 <body>
@@ -931,13 +943,17 @@ function list(arr){ return (arr||[]).filter(Boolean); }
 
 function evalLine(e,p){
   const inf=info(p); const d=parseD(e.date); const parts=[];
-  if(e.urg) parts.push('URGENCE'+(e.motif?' ('+e.motif+')':'')); if(e.echo&&e.etype) parts.push('écho '+e.etype);
+  if(e.urg) parts.push('URGENCE'+(e.motif?' ('+e.motif+')':''));
+  if(e.evts) parts.push('événements : '+e.evts);
+  { const sf=list(e.sf).filter(x=>x!=='Aucun'); const mf=e.mvtf&&e.mvtf!=='Perçus'?'MAF '+e.mvtf.toLowerCase():''; if(sf.length||mf||e.sfNotes) parts.push('SF : '+[...sf.map(x=>x.toLowerCase()),mf].filter(Boolean).join(', ')+(e.sfNotes?' ('+e.sfNotes+')':'')); else if(list(e.sf).includes('Aucun')) parts.push('pas de signe fonctionnel'); } if(e.echo&&e.etype) parts.push('écho '+e.etype);
   if(numv(e.poidsM)!=null) parts.push('poids '+frn(numv(e.poidsM))+' kg'); if(numv(e.pas)!=null) parts.push('TA '+frn(numv(e.pas),0)+'/'+(numv(e.pad)!=null?frn(numv(e.pad),0):'?'));
   if(e.presentation) parts.push(e.presentation);
   if(e.tv) parts.push('TV'+(numv(e.bishop)!=null?' : Bishop '+e.bishop:'')+(e.tvNotes?' ('+e.tvNotes+')':''));
   if(numv(e.epf)!=null) parts.push('EPF '+frn(numv(e.epf),0)+' g'+(numv(e.pct)!=null?' ('+frn(numv(e.pct),0)+'e p.)':''));
   if(e.placIns) parts.push('placenta '+(e.placPos?e.placPos.toLowerCase()+', ':'')+e.placIns.toLowerCase()+(numv(e.placDist)!=null?' à '+frn(numv(e.placDist),0)+' mm de l’OI':''));
   if(numv(e.colLong)!=null) parts.push('col '+frn(numv(e.colLong),0)+' mm'+(e.oi?', OI '+e.oi.toLowerCase()+(e.oi==='Ouvert'&&numv(e.oiMm)!=null?' de '+frn(numv(e.oiMm),0)+' mm':''):''));
+  if(e.rxExam) parts.push('prescrit : '+e.rxExam); if(e.rxTrt) parts.push('traitement : '+e.rxTrt);
+  if(e.atType&&e.atType!=='Aucun') parts.push(e.atType.toLowerCase()+(e.atDu?' du '+fd(parseD(e.atDu)):'')+(e.atAu?' au '+fd(parseD(e.atAu)):''));
   return {when:(d!=null?fd(d):'Date ?')+(d!=null&&inf.ok?' – '+sa(Math.round((d-inf.base)/DAY)):''), txt:parts.join(' ; ')||'—'};
 }
 function prevLine(o){
@@ -946,7 +962,7 @@ function prevLine(o){
 }
 const ECHO_TYPES=['Datation','T1','T2 (morphologique)','T3','Contrôle de croissance','Doppler / bien-être fœtal','Autre'];
 const RDV_KINDS=[['consult','Consultation'],['echo','Échographie'],['autre','Autre (bilan, avis spécialisé…)']];
-const BIO_LIST=['Groupe sanguin ABO-RhD','RAI (agglutinines irrégulières)','Génotypage RhD fœtal','Toxoplasmose','Rubéole','Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C','CMV','NFS – plaquettes','Ferritine','Glycémie à jeun','HGPO 75 g','Dépistage combiné / marqueurs sériques','DPNI','ECBU','Bandelette urinaire','TSH','Bilan de prééclampsie','Prélèvement vaginal strepto B'];
+const BIO_LIST=['Groupe sanguin ABO-RhD','RAI (agglutinines irrégulières)','Génotypage RhD fœtal','Toxoplasmose','Rubéole','Syphilis','VIH','Hépatite B (Ag HBs)','Hépatite C','CMV','NFS – plaquettes','Ferritine','Glycémie à jeun','HGPO 75 g','Dépistage combiné / marqueurs sériques','DPNI','ECBU','Bandelette urinaire','TSH','Bilan de prééclampsie','Prélèvement vaginal strepto B','HTLV','TP / TCA','Électrophorèse de l’hémoglobine','CO expiré','Injection d’immunoglobulines anti-D'];
 /* Détail des éléments à saisir par examen, avec valeurs de référence (grossesse).
    n = numérique ; c = choix ; t = texte. lo/hi : seuils (nombre ou fonction du terme en SA) ; ge : anormal si ≥ hi. */
 const BU_LVL=['Négatif','Traces','+','++','+++'];
@@ -968,16 +984,21 @@ const BIO_FIELDS={
   'NFS – plaquettes':[_hb,{k:'vgm',l:'VGM',s:'VGM',u:'fL',lo:80,hi:100,ref:'80–100 fL'},_plq,{k:'gb',l:'Leucocytes',s:'GB',u:'G/L',hi:15,ref:'jusqu’à 15 G/L pendant la grossesse'}],
   'Ferritine':[{k:'fer',l:'Ferritine',s:'',u:'µg/L',lo:30,ref:'carence martiale si < 30 µg/L'}],
   'Glycémie à jeun':[{k:'gaj',l:'Glycémie à jeun',s:'',u:'g/L',hi:0.92,ge:1,ref:'< 0,92 g/L (5,1 mmol/L) ; ≥ 0,92 : DG ; ≥ 1,26 : diabète avéré'}],
-  'HGPO 75 g':[{k:'g0',l:'Glycémie à jeun (T0)',s:'T0',u:'g/L',hi:0.92,ge:1,ref:'< 0,92 g/L (5,1 mmol/L)'},{k:'g1',l:'Glycémie 1 h après 75 g de glucose',s:'1 h',u:'g/L',hi:1.80,ge:1,ref:'< 1,80 g/L (10,0 mmol/L)'},{k:'g2',l:'Glycémie 2 h après 75 g de glucose',s:'2 h',u:'g/L',hi:1.53,ge:1,ref:'< 1,53 g/L (8,5 mmol/L)'}],
+  'HGPO 75 g':[{k:'ind',l:'Indication retenue',s:'',c:['Âge ≥ 35 ans','IMC ≥ 25','ATCD de diabète gestationnel','ATCD familial de diabète (1er degré)','ATCD de macrosomie','Glycémie à jeun T1 limite','Biométries > 97e p. / hydramnios','Autre']},{k:'g0',l:'Glycémie à jeun (T0)',s:'T0',u:'g/L',hi:0.92,ge:1,ref:'< 0,92 g/L (5,1 mmol/L)'},{k:'g1',l:'Glycémie 1 h après 75 g de glucose',s:'1 h',u:'g/L',hi:1.80,ge:1,ref:'< 1,80 g/L (10,0 mmol/L)'},{k:'g2',l:'Glycémie 2 h après 75 g de glucose',s:'2 h',u:'g/L',hi:1.53,ge:1,ref:'< 1,53 g/L (8,5 mmol/L)'}],
   'Dépistage combiné / marqueurs sériques':[{k:'cn',l:'Clarté nucale',s:'CN',u:'mm',hi:3.5,ge:1,ref:'< 3,5 mm'},{k:'lcc',l:'LCC',s:'LCC',u:'mm',ref:'45–84 mm pour le dépistage combiné'},{k:'papp',l:'PAPP-A',s:'PAPP-A',u:'MoM'},{k:'hcg',l:'β-hCG libre',s:'βhCG',u:'MoM'},{k:'t21',l:'Risque T21 : 1 /',s:'T21 1/',bad:v=>v!=null&&v<=1000,ref:'risque accru si ≥ 1/1000 (DPNI proposé) ; ≥ 1/50 : caryotype possible d’emblée'},{k:'t1318',l:'Risque T13/T18 : 1 /',s:'T13/18 1/',bad:v=>v!=null&&v<=1000}],
-  'DPNI':[{k:'t21',l:'Trisomie 21',s:'T21',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t18',l:'Trisomie 18',s:'T18',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t13',l:'Trisomie 13',s:'T13',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'ff',l:'Fraction fœtale',s:'FF',u:'%',lo:4,ref:'≥ 4 % habituellement requise'}],
+  'DPNI':[{k:'ind',l:'Indication',s:'',c:['Risque combiné HT21 ≥ 1/1000','Grossesse gémellaire','Absence de dépistage HT21','Souhait de la patiente (non remboursé)']},{k:'t21',l:'Trisomie 21',s:'T21',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t18',l:'Trisomie 18',s:'T18',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'t13',l:'Trisomie 13',s:'T13',c:['Bas risque','Haut risque','Non interprétable'],bad:v=>v&&v!=='Bas risque'},{k:'ff',l:'Fraction fœtale',s:'FF',u:'%',lo:4,ref:'≥ 4 % habituellement requise'}],
   'ECBU':[{k:'leu',l:'Leucocyturie',s:'leuco',u:'/mL',hi:1e4,ge:1,ref:'< 10⁴/mL (saisie possible : 10^4)'},{k:'bact',l:'Bactériurie',s:'bact',u:'UFC/mL',hi:1e5,ge:1,ref:'bactériurie asymptomatique si ≥ 10⁵ UFC/mL (1 espèce)'},{k:'germe',l:'Germe',s:'',t:1,ph:'E. coli, SGB…'},{k:'atb',l:'Antibiogramme / traitement',s:'',t:1}],
   'Bandelette urinaire':[{k:'prot',l:'Protéinurie (bandelette)',s:'prot',c:BU_LVL,bad:v=>v&&!['Négatif','Traces'].includes(v),ref:'significatif à partir de + (≈ 0,3 g/L)'},{k:'protq',l:'Protéinurie (échantillon)',s:'prot',u:'g/L',hi:0.3,ge:1,ref:'< 0,3 g/L'},_rpc,{k:'albq',l:'Albuminurie (échantillon)',s:'alb',u:'mg/L',hi:30,ge:1,ref:'< 30 mg/L'},{k:'rac',l:'RAC – rapport albuminurie / créatininurie',s:'RAC',u:'mg/mmol',hi:3,ge:1,ref:'< 3 mg/mmol (≈ 30 mg/g)'},{k:'glu',l:'Glycosurie',s:'gluc',c:BU_LVL,bad:v=>v&&v!=='Négatif'},{k:'leu',l:'Leucocytes',s:'leuco',c:['Négatif','Traces','+','++','+++'],bad:v=>v&&!['Négatif','Traces'].includes(v)},{k:'nit',l:'Nitrites',s:'nitrites',c:['Négatif','Positif'],bad:_pos}],
   'TSH':[{k:'tsh',l:'TSH',s:'TSH',u:'mUI/L',hi:sa=>sa!=null&&sa>=14?3:2.5,ref:'< 2,5 mUI/L au T1, < 3 aux T2–T3 (ou normes trimestrielles du laboratoire)'},{k:'t4',l:'T4 libre',s:'T4L',u:'pmol/L'},{k:'tpo',l:'Ac anti-TPO',s:'anti-TPO',c:['Négatifs','Positifs'],bad:_pos}],
   'Bilan de prééclampsie':[_hb,_plq,{k:'asat',l:'ASAT',s:'ASAT',u:'UI/L',hi:35,ref:'N < 35 UI/L ; critère de sévérité si > 2N (≈ 70)'},{k:'alat',l:'ALAT',s:'ALAT',u:'UI/L',hi:35,ref:'N < 35 UI/L ; critère de sévérité si > 2N (≈ 70)'},{k:'ldh',l:'LDH',s:'LDH',u:'UI/L',hi:600,ref:'hémolyse si > 600 UI/L'},{k:'hapto',l:'Haptoglobine',s:'hapto',c:['Normale','Effondrée'],bad:v=>v==='Effondrée'},{k:'creat',l:'Créatininémie',s:'créat',u:'µmol/L',hi:90,ref:'< 90 µmol/L (souvent 35–70 en grossesse)'},{k:'urate',l:'Uricémie',s:'ac. urique',u:'µmol/L',hi:350,ref:'< 350 µmol/L'},{k:'p24',l:'Protéinurie des 24 h',s:'prot 24 h',u:'g/24 h',hi:0.3,ge:1,ref:'< 0,3 g/24 h'},_rpc,{k:'ratio',l:'Rapport sFlt-1 / PlGF',s:'sFlt-1/PlGF',hi:sa=>sa!=null&&sa>=34?110:85,ref:'≤ 38 : prééclampsie peu probable à 1 semaine ; > 85 (< 34 SA) ou > 110 (≥ 34 SA) : très évocateur'}],
+  'HTLV':[{k:'r',l:'Sérologie HTLV',s:'',c:['Négative','Positive'],bad:_pos}],
+  'TP / TCA':[{k:'tp',l:'TP',s:'TP',u:'%',lo:70,ref:'≥ 70 %'},{k:'tca',l:'TCA (ratio patient / témoin)',s:'TCA',hi:1.2,ref:'≤ 1,2'}],
+  'Électrophorèse de l’hémoglobine':[{k:'r',l:'Résultat',s:'',c:['Normale (AA)','Trait drépanocytaire (AS)','Drépanocytose (SS / SC)','Thalassémie (trait)','Autre'],bad:v=>v&&!/^Normale/.test(v)},{k:'det',l:'Précisions',s:'',t:1}],
+  'CO expiré':[{k:'co',l:'CO expiré',s:'',u:'ppm',hi:6,ge:1,ref:'< 6 ppm : non-fumeuse ; 6–10 : exposition ou tabagisme léger ; > 10 : tabagisme actif'}],
+  'Injection d’immunoglobulines anti-D':[{k:'ind',l:'Indication',s:'',c:['Prophylaxie systématique (28 SA)','Métrorragies','Traumatisme abdominal','Geste invasif (amniocentèse…)','Version par manœuvre externe','Post-partum','Autre']},{k:'dose',l:'Dose',s:'',c:['200 µg','300 µg (Rhophylac 1500 UI)','Autre']},{k:'lot',l:'N° de lot / remarques',s:'',t:1}],
   'Prélèvement vaginal strepto B':[{k:'sgb',l:'Streptocoque B',s:'SGB',c:['Négatif','Positif'],bad:_pos}]
 };
-const BIO_NOTE={'HGPO 75 g':'Diabète gestationnel si au moins une des 3 valeurs est atteinte ou dépassée (seuils IADPSG / CNGOF).','Glycémie à jeun':'Au 1er trimestre : 0,92–1,25 g/L = diabète gestationnel précoce ; ≥ 1,26 g/L = diabète de type 2 probable.','Bandelette urinaire':'Saisissez la bandelette et, si fait, la protéinurie et le RPC, ou l’albuminurie et le RAC.','Dépistage combiné / marqueurs sériques':'Saisissez le dénominateur du risque (ex. 2500 pour 1/2500).'};
+const BIO_NOTE={'DPNI':'Indications : risque combiné HT21 ≥ 1/1000, grossesse gémellaire, absence de dépistage HT21. À la seule demande de la patiente : examen non remboursé.','HGPO 75 g':'Diabète gestationnel si au moins une des 3 valeurs est atteinte ou dépassée (seuils IADPSG / CNGOF).','Glycémie à jeun':'Au 1er trimestre : 0,92–1,25 g/L = diabète gestationnel précoce ; ≥ 1,26 g/L = diabète de type 2 probable.','Bandelette urinaire':'Saisissez la bandelette et, si fait, la protéinurie et le RPC, ou l’albuminurie et le RAC.','Dépistage combiné / marqueurs sériques':'Saisissez le dénominateur du risque (ex. 2500 pour 1/2500).'};
 function numx(s){ if(s==null) return null; s=String(s).trim().replace(/\s/g,'').replace(',','.').replace(/[×x]/gi,'*'); if(s==='') return null; const m=/^(\d+(?:\.\d+)?)?\*?10\^(-?\d+)$/.exec(s); if(m) return (m[1]?+m[1]:1)*Math.pow(10,+m[2]); const n=Number(s); return isFinite(n)?n:null; }
 function bioFlag(f,raw,sa){
   if(raw==null||raw==='') return '';
@@ -1003,7 +1024,7 @@ function renderPatientHome(){
 const PTABS=[['synth','Synthèse'],['consult','Consultations & échos'],['agenda','Agenda'],['bio','Biologie'],['hosp','Hospitalisations'],['suites','Accouchement & suites'],['docs','Documents']];
 function rhdResults(p){ return list(p.bio).filter(b=>b.exam==='Génotypage RhD fœtal'&&b.res).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')); }
 function rhdNegConfirmed(p){ const R=rhdResults(p); return R.length>=2&&R[0].res==='Négatif'&&R[1].res==='Négatif'; }
-function rhdStatus(p){ if(p.rhesus!=='-') return null; if(p.rhesusConj==='-') return 'Conjoint RhD négatif : pas de génotypage fœtal nécessaire'; const R=rhdResults(p); if(!R.length) return 'Génotypage RhD fœtal à prescrire dès 11 SA (conjoint RhD '+(p.rhesusConj==='+'?'positif':'inconnu')+')'; if(R[0].res==='Positif') return 'Fœtus RhD positif : prophylaxie anti-D à 28 SA et dans les 72 h après la naissance'; if(R.length<2) return 'Fœtus RhD '+R[0].res.toLowerCase()+' : contrôle à prévoir à ≥ 15 jours et après 15 SA'; if(rhdNegConfirmed(p)) return 'Fœtus RhD négatif confirmé : pas de prophylaxie anti-D'; return 'Fœtus RhD '+R[R.length-1].res.toLowerCase()+' au contrôle : prophylaxie anti-D maintenue'; }
+function rhdStatus(p){ if(p.rhesus!=='-') return null; if(p.rhesusConj==='-') return 'Conjoint RhD négatif : pas de génotypage fœtal nécessaire'; const R=rhdResults(p); if(!R.length) return 'Génotypage RhD fœtal à prescrire dès 11 SA (conjoint RhD '+(p.rhesusConj==='+'?'positif':'inconnu')+')'; if(R[0].res==='Positif') return 'Fœtus RhD positif : Rhophylac (anti-D) à prévoir au 6e mois (28 SA), puis dans les 72 h après la naissance'; if(R.length<2) return 'Fœtus RhD '+R[0].res.toLowerCase()+' : à confirmer par un 2e génotypage (à ≥ 15 jours d’intervalle, après 15 SA)'; if(rhdNegConfirmed(p)) return 'Fœtus RhD négatif confirmé : pas de prophylaxie anti-D'; return 'Fœtus RhD '+R[R.length-1].res.toLowerCase()+' au contrôle : prophylaxie anti-D maintenue'; }
 function lastDataHTML(p){
   const evs=evalsOf(p); if(!evs.length) return '<div class="txt" style="color:var(--muted)">Aucune consultation ni échographie enregistrée.</div>';
   const kv=(k,v)=>v?`<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`:'';
@@ -1049,7 +1070,7 @@ async function renderPatient(id){
   if(!isPatient()&&p.unread&&p.unread.__fiche){ const uf=p.unread.__fiche; h+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:180px">La fiche de la patiente a été complétée par un autre soignant (${uf.n} élément${uf.n>1?'s':''}, reçu le ${fd(localDay(uf.at))}). Vérifiez-la avant la consultation.</span><button class="btn small" id="ficheRead">Vu</button></div>`; }
   if(!isPatient()&&unreadCount(p)-(p.unread&&p.unread.__fiche?1:0)>0){ const nU=unreadCount(p)-(p.unread.__fiche?1:0); h+=`<div class="note" style="margin:0 0 10px"><span class="tag new">${nU} nouveauté${nU>1?'s':''}</span> saisie${nU>1?'s':''} par d’autres soignants, signalée${nU>1?'s':''} « Nouveau » dans les rubriques.</div>`; }
   if(isPatient()&&p.majLe){ const md=new Date(p.majLe), nd=Math.floor((Date.now()-md.getTime())/DAY), old_=nd>42; h+=`<div class="${old_?'banner':'note'}" style="margin:0 0 10px">${old_?'⚠ ':''}Dossier mis à jour par votre médecin le <b>${fd(localDay(md.getTime()))} à ${md.toTimeString().slice(0,5)}</b>${old_?' : il date de plus de 6 semaines, pensez à le faire mettre à jour.':'.'}${p.suiviPar&&p.suiviPar.nom?'<br>Suivi : '+esc(p.suiviPar.nom)+(p.suiviPar.tel?' – <a href="tel:'+esc(p.suiviPar.tel.replace(/[^0-9+]/g,''))+'">'+esc(p.suiviPar.tel)+'</a>':''):''}</div>`; }
-  h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):'', p.email?`<a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a>`:''].filter(Boolean).join(' – ')}</div>`;
+  h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}${followHTML(p)}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):'', p.email?`<a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a>`:''].filter(Boolean).join(' – ')}</div>`;
   const fl=[];
   addictTags(p).forEach(x=>fl.push(`<span class="tag warn">${esc(x)}</span>`));
   sexfArr(p).forEach((s,i,arr)=>{ if(s) fl.push(`<span class="tag acc">${arr.length>1?'Fœtus '+(i+1)+' : ':'Sexe fœtal : '}${esc(SEXF[s]||s)}</span>`); });
@@ -1149,6 +1170,7 @@ async function renderPatient(id){
   else if(T==='bio'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un bilan (PDF ou photo)</button><button class="btn" id="readLab">🔎 Lire un compte rendu de laboratoire</button></div></section>`;
     if(p.rhesus==='-') h+=`<div class="rhbox" style="margin-top:12px">RhD− – ${esc(rhdStatus(p))}</div>`;
+    h+=depHTML(p);
     const B=list(p.bio).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||''));
     h+=`<section class="sec"><h2>Résultats</h2><div class="card">${B.length?B.map(b=>`<button class="row${unreadCls(p,b)}" data-bio="${esc(b.id)}"><span class="rmain"><span class="nm">${esc(b.exam==='Autre'?b.examAutre||'Autre examen':b.exam)}</span><span class="num" style="font-size:.95rem">${esc([b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' – '))||'—'}</span><span class="flags" style="margin-top:2px">${newBadge(p,b)}${authorBadge(p,b)}${b.interp?`<span class="tag ${b.interp==='Normal'?'ok':b.interp==='Anormal'?'bad':'warn'}">${esc(b.interp)}</span>`:''}<span class="tag num">${b.date?fd(parseD(b.date)):'Date ?'}${b.date&&info(p).ok?' – '+sa(Math.round((parseD(b.date)-info(p).base)/DAY)):''}</span></span>${b.notes?`<span style="color:var(--muted);font-size:.9rem">${esc(b.notes)}</span>`:''}</span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`).join(''):'<div class="txt" style="color:var(--muted)">Aucun résultat enregistré.</div>'}</div></section>`;
     h+=`<section class="sec"><h2>Bilans et résultats en PDF</h2><div class="card" id="docs"><div class="txt" style="color:var(--muted)">Chargement…</div></div></section>`;
@@ -1189,7 +1211,7 @@ async function renderPatient(id){
   $$('[data-evedit]').forEach(b=>b.addEventListener('click',()=>openEvent(p,b.dataset.evedit)));
   on('#addEv',()=>openEvent(p,null));
   const cpj=$('#cpj'); if(cpj) cpj.addEventListener('change',async e=>{ p.congePathoJ=e.target.value; await savePatient(p); renderPatient(id); });
-  on('#addBio',()=>openBio(p,null)); $$('[data-bio]').forEach(b=>b.addEventListener('click',()=>openBio(p,b.dataset.bio)));
+  on('#addBio',()=>openBio(p,null)); $$('[data-bioadd]').forEach(b=>b.addEventListener('click',()=>openBio(p,null,b.dataset.bioadd))); $$('[data-bio]').forEach(b=>b.addEventListener('click',()=>openBio(p,b.dataset.bio)));
   on('#addBioPdf',()=>openAddDoc(p,'Biologie','bio')); on('#readLab',()=>openLabImport(p)); on('#addEchoPdf',()=>{ const ec=evalsOf(p).find(e=>e.echo); const map={'T1':'Échographie T1','T2 (morphologique)':'Échographie T2','T3':'Échographie T3'}; openAddDoc(p,ec&&map[ec.etype]||'Échographie de croissance / autre','echo'); });
   on('#addHosp2',()=>openHosp(p,null)); $$('[data-hosp]').forEach(b=>b.addEventListener('click',()=>openHosp(p,b.dataset.hosp)));
   on('#arch',()=>openOutcome(p)); on('#editIssue',()=>openOutcome(p));
@@ -1249,9 +1271,9 @@ function openEvent(p,evId){
   const sync=()=>{ const d=parseD(val('edate')), el=$('#evAg'); if(d!=null&&inf.ok){ el.style.display=''; el.textContent='Soit '+sa(Math.round((d-inf.base)/DAY)); } else el.style.display='none'; };
   sh.oninput=sync; sh.onchange=sync; sync();
 }
-function openBio(p,bid){
+function openBio(p,bid,preset){
   if(isPatient()) return;
-  const ex=bid?list(p.bio).find(b=>b.id===bid):null; const b=Object.assign({date:iso(today()),exam:'',examAutre:'',res:'',unit:'',interp:'',notes:'',vals:null},ex||{});
+  const ex=bid?list(p.bio).find(b=>b.id===bid):null; const b=Object.assign({date:iso(today()),exam:preset||'',examAutre:'',res:'',unit:'',interp:'',notes:'',vals:null},ex||{});
   const inf=info(p); let vals=Object.assign({},b.vals||{}), curExam=b.exam, interpTouched=!!(ex&&ex.interp);
   const saAt=()=>{ const d=parseD(val('bdate')); return d!=null&&inf.ok?Math.floor((d-inf.base)/DAY/7):null; };
   const legacy=()=>!!(ex&&ex.res&&!ex.vals&&ex.exam===curExam);
@@ -1381,6 +1403,8 @@ function openEval(p,evId,preset){
     <div id="eUrgBox">${F('Motif de la venue en urgence','<input name="eMotif" value="'+esc(e.motif||'')+'">')}</div>
     <div class="note" style="margin:8px 0 0">Programmé(e) : valide automatiquement le rendez-vous prévu correspondant. Urgence : ne valide aucun rendez-vous.</div>
    </div></fieldset>
+   <fieldset><legend>Événements antérieurs à la consultation</legend><div class="fbox">${F('Depuis la dernière consultation (urgences, hospitalisation, traitement, chute…)','<textarea name="evts" rows="2">'+esc(e.evts||'')+'</textarea>')}</div></fieldset>
+   <fieldset><legend>Signes fonctionnels actuels</legend><div class="fbox"><div class="sfgrid">${SF_LIST.map(x=>`<label class="chkline"><input type="checkbox" name="sf" value="${esc(x)}" ${list(e.sf).includes(x)?'checked':''}> ${esc(x)}</label>`).join('')}</div><div class="f"><span>Mouvements fœtaux</span>${radios('mvtf',[['Perçus','Perçus'],['Diminués','Diminués'],['Non perçus','Non perçus']],e.mvtf||'')}</div>${F('Précisions','<input name="sfNotes" value="'+esc(e.sfNotes||'')+'">')}</div></fieldset>
    <fieldset><legend>Mère</legend><div class="fbox">
     <div class="grid3">${F('Poids (kg)',tin('poidsM','ex. 68,5'))}${F('TA systolique',tin('pas','mmHg'))}${F('TA diastolique',tin('pad','mmHg'))}</div>
     <div class="preview num" id="eGain" style="display:none"></div>
@@ -1407,6 +1431,7 @@ function openEval(p,evId,preset){
     <div class="f"><span>Orifice interne (OI)</span>${radios('oi',[['Fermé','Fermé'],['Ouvert','Ouvert']],e.oi)}</div>
     <div id="eOi">${F('Ouverture de l’OI (mm)',tin('oiMm'))}</div>
    </div></fieldset>
+   <fieldset><legend>Prescriptions</legend><div class="fbox">${F('Examens complémentaires','<textarea name="rxExam" rows="2" placeholder="ex. HGPO 75 g, échographie de croissance, ECBU…">'+esc(e.rxExam||'')+'</textarea>')}${F('Traitement(s)','<textarea name="rxTrt" rows="2">'+esc(e.rxTrt||'')+'</textarea>')}<div class="f"><span>Arrêt de travail</span>${radios('atType',AT_TYPES.map(x=>[x,x]),e.atType||'')}</div><div id="atBox"><div class="grid2">${F('Du','<input type="date" name="atDu" value="'+esc(e.atDu||'')+'">')}${F('Au (inclus)','<input type="date" name="atAu" value="'+esc(e.atAu||'')+'">')}</div><div class="preview num" id="atDur" style="display:none"></div></div></div></fieldset>
    <fieldset><legend>Notes</legend><div class="fbox">${F('Remarques','<textarea name="notes">'+esc(e.notes||'')+'</textarea>')}<label class="chkline"><input type="checkbox" name="enp" ${e.notesPriv?'checked':''}> 🔒 Remarque privée (non transmise à la patiente)</label></div></fieldset>
    ${ex?'<div class="actions"><button class="btn danger" id="eDel">Supprimer cette évaluation</button></div>':''}
   </div>`;
@@ -1431,7 +1456,7 @@ function openEval(p,evId,preset){
   const close=()=>{ sh.classList.remove('open'); sh.innerHTML=''; sh.oninput=sh.onchange=sh.onclick=null; document.body.style.overflow=''; };
   $('#eCancel').addEventListener('click',close);
   $('#eSave').addEventListener('click',async()=>{
-    for(const k of ['date','heure','presentation','placPos','placIns','oi','notes']) e[k]=val(k); e.notesPriv=sh.querySelector('[name="enp"]').checked;
+    for(const k of ['date','heure','presentation','placPos','placIns','oi','notes','evts','mvtf','sfNotes','rxExam','rxTrt','atType','atDu','atAu']) e[k]=val(k); e.sf=[...sh.querySelectorAll('[name="sf"]:checked')].map(x=>x.value); e.notesPriv=sh.querySelector('[name="enp"]').checked;
     for(const k of ['epf','pct','placDist','colLong','oiMm','poidsM','pas','pad']) e[k]=nstr(val(k)); e.pctManual=pctManual;
     e.consult=sh.querySelector('[name="etC"]').checked; e.echo=sh.querySelector('[name="etE"]').checked;
     e.urg=val('eurg')==='urg'; e.etype=e.echo?val('etype'):''; e.motif=e.urg?val('eMotif'):'';
@@ -1441,6 +1466,10 @@ function openEval(p,evId,preset){
     const val_=applyEvalValidation(p,e); if(val_.length) setTimeout(()=>toast('Validé : '+val_.join(', ')),400);
     await savePatient(p); close(); toast('Évaluation enregistrée'); renderPatient(p.id);
   });
+  const atSync=ev=>{ const t=val('atType'), on_=t&&t!=='Aucun'; $('#atBox').style.display=on_?'':'none'; const du=parseD(val('atDu'));
+    if(ev&&ev.target&&(ev.target.name==='atType'||ev.target.name==='atDu')&&/^Congé pathologique/.test(t)&&du!=null){ const au=sh.querySelector('[name="atAu"]'); au.value=iso(du+13*DAY); }
+    const au=parseD(val('atAu')), el=$('#atDur'); if(on_&&du!=null&&au!=null&&au>=du){ el.style.display=''; el.textContent=Math.round((au-du)/DAY)+1+' jour(s)'; } else el.style.display='none'; };
+  sh.addEventListener('change',atSync); atSync();
   const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
   if(ex){ lockForeign(sh,p,ex); markRead(p,ex.id); }
 }
@@ -1754,17 +1783,18 @@ function lockShow(){
   if(!c.wa) setTimeout(()=>{ const i=el.querySelector('#lkCode'); if(i) i.focus(); },100);
 }
 document.addEventListener('visibilitychange',()=>{ const c=lockCfg(); if(!c) return;
+  if(+c.d<0) return;
   if(document.hidden){ lockHiddenAt=Date.now(); if(!c.d) lockShow(); }
   else if(lockHiddenAt&&Date.now()-lockHiddenAt>=(+c.d||0)*60000) lockShow(); });
 async function lockVerify(){ const c=lockCfg(); if(!c) return true; const r=await askPw({title:'Code actuel',fields:['Code de verrouillage'],min:1,numeric:true}); if(!r) return false; if(await lockHash(r[0],c.s)===c.h) return true; toast('Code incorrect'); return false; }
 async function lockSetCode(intro){
   const r=await askPw({title:'Code de verrouillage',body:intro||'Choisissez un code d’au moins 6 chiffres, différent de celui de l’appareil.',fields:['Nouveau code','Confirmer le code'],min:6,numeric:true,ok:'Enregistrer'}); if(!r) return null;
-  const old=lockCfg()||{}; const s=u8b64(crypto.getRandomValues(new Uint8Array(16))); const c={s,h:await lockHash(r[0],s),d:old.d!=null?old.d:0,wa:old.wa||''};
+  const old=lockCfg()||{}; const s=u8b64(crypto.getRandomValues(new Uint8Array(16))); const c={s,h:await lockHash(r[0],s),d:old.d!=null?old.d:(matchMedia('(pointer: fine)').matches?-1:0),wa:old.wa||''};
   if(!lockSave(c)){ toast('Impossible d’enregistrer le verrouillage sur cet appareil'); return null; } return c;
 }
 function lockSecHTML(){ const c=lockCfg();
-  return `<section class="sec"><h2>Verrouillage</h2><div class="card"><div class="txt">${c?`<b>Activé.</b> Le code${c.wa?' ou Face ID / Touch ID':''} est demandé à l’ouverture ${+c.d?'et après '+c.d+' min passée(s) hors de l’application':'et à chaque retour dans l’application'}.`:(isPatient()?'Protégez l’accès à l’application par un code, et Face ID / Touch ID si l’appareil le permet.':'Obligatoire pour la version professionnelle : un code, et la biométrie si l’appareil le permet.')}<span class="k" style="margin-top:6px">Le verrouillage empêche l’accès aux écrans. Les données enregistrées sont en outre chiffrées par l’iPhone lui-même, à condition qu’il soit protégé par un code.</span></div></div>
-  <div class="actions">${c?`<label class="f" style="margin:0;min-width:150px"><span>Verrouiller après</span><select id="lkDelay">${[[0,'Immédiatement'],[1,'1 minute'],[5,'5 minutes'],[15,'15 minutes']].map(([v,l])=>`<option value="${v}" ${+c.d===v?'selected':''}>${l}</option>`).join('')}</select></label><button class="btn" id="lkChange">Changer le code</button><button class="btn" id="lkBioT" style="display:none">${c.wa?'Désactiver Face ID / Touch ID':'Activer Face ID / Touch ID'}</button>${isPatient()?'<button class="btn danger" id="lkOff">Désactiver</button>':''}`:'<button class="btn primary" id="lkOn">Activer le verrouillage</button>'}</div></section>`; }
+  return `<section class="sec"><h2>Verrouillage</h2><div class="card"><div class="txt">${c?`<b>Activé.</b> Le code${c.wa?' ou Face ID / Touch ID':''} est demandé à l’ouverture ${+c.d<0?'uniquement (pas au changement de fenêtre)':+c.d?'et après '+c.d+' min passée(s) hors de l’application':'et à chaque retour dans l’application'}.`:(isPatient()?'Protégez l’accès à l’application par un code, et Face ID / Touch ID si l’appareil le permet.':'Obligatoire pour la version professionnelle : un code, et la biométrie si l’appareil le permet.')}<span class="k" style="margin-top:6px">Le verrouillage empêche l’accès aux écrans. Les données enregistrées sont en outre chiffrées par l’iPhone lui-même, à condition qu’il soit protégé par un code.</span></div></div>
+  <div class="actions">${c?`<label class="f" style="margin:0;min-width:150px"><span>Verrouiller après</span><select id="lkDelay">${[[-1,'Seulement à l’ouverture (ordinateur)'],[0,'Immédiatement'],[1,'1 minute'],[5,'5 minutes'],[15,'15 minutes']].map(([v,l])=>`<option value="${v}" ${+c.d===v?'selected':''}>${l}</option>`).join('')}</select></label><button class="btn" id="lkChange">Changer le code</button><button class="btn" id="lkBioT" style="display:none">${c.wa?'Désactiver Face ID / Touch ID':'Activer Face ID / Touch ID'}</button>${isPatient()?'<button class="btn danger" id="lkOff">Désactiver</button>':''}`:'<button class="btn primary" id="lkOn">Activer le verrouillage</button>'}</div></section>`; }
 function bindLockSettings(rerender){
   const on=$('#lkOn'); if(on) on.addEventListener('click',async()=>{ const c=await lockSetCode(); if(!c) return; toast('Verrouillage activé');
     if(await bioAvail()&&await ask({title:'Utiliser Face ID / Touch ID ?',body:'Vous pourrez déverrouiller l’application avec Face ID ou Touch ID ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici : le code sera utilisé'); } }
@@ -1977,6 +2007,51 @@ async function ensureLock(){
     if(route().v==='reglages') render();
   } finally { S._lockAsking=false; }
 }
+
+/* ---------- Dépistages (structure AUDIPOG) et suivis ---------- */
+const DEP_ROWS=[
+  ['Groupe / Rhésus',['Groupe sanguin ABO-RhD'],1],
+  ['RAI',['RAI (agglutinines irrégulières)'],1],
+  ['Génotypage RhD fœtal',['Génotypage RhD fœtal'],0,p=>p.rhesus==='-'],
+  ['Injections anti-D',['Injection d’immunoglobulines anti-D'],0,p=>p.rhesus==='-'],
+  ['Rubéole',['Rubéole'],1],['Toxoplasmose',['Toxoplasmose'],1],['Syphilis',['Syphilis'],1],['VIH',['VIH'],1],['Hépatite B',['Hépatite B (Ag HBs)'],1],
+  ['Hépatite C',['Hépatite C'],0],['CMV',['CMV'],0],['HTLV',['HTLV'],0],
+  ['NFS – plaquettes',['NFS – plaquettes'],0],['Ferritine',['Ferritine'],0],['TP / TCA',['TP / TCA'],0],['Électrophorèse de l’Hb',['Électrophorèse de l’hémoglobine'],0],['TSH',['TSH'],0],
+  ['Marqueurs sériques T21',['Dépistage combiné / marqueurs sériques'],1],['DPNI',['DPNI'],0],
+  ['Dépistage du diabète',['Glycémie à jeun','HGPO 75 g'],1],
+  ['ECBU / bandelette',['ECBU','Bandelette urinaire'],0],
+  ['PV strepto B',['Prélèvement vaginal strepto B'],1],['CO expiré',['CO expiré'],0]
+];
+const DEP_SHORT={'Glycémie à jeun':'GAJ','HGPO 75 g':'HGPO','ECBU':'ECBU','Bandelette urinaire':'BU'};
+function depShort(b){ const s=b.sero?b.sero.replace(/ \(.*\)/,''):''; const r=[s,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' · '); return r.length>70?r.slice(0,68)+'…':(r||'—'); }
+function depHTML(p){
+  const rows=DEP_ROWS.filter(r=>!r[3]||r[3](p)).map(([lab,exs,rec])=>{
+    const L=list(p.bio).filter(b=>exs.includes(b.exam)).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const st=L.filter(b=>b.sero).slice(-1)[0];
+    const cells=L.map(b=>{ const d=parseD(b.date); return `<button class="depc${b.interp==='Anormal'?' bad':''}${unreadCls(p,b)}" data-bio="${esc(b.id)}"><small class="num">${d!=null?fd(d):'?'}${exs.length>1?' · '+esc(DEP_SHORT[b.exam]||b.exam):''}</small>${esc(depShort(b))}</button>`; }).join('');
+    return `<div class="deprow"><div class="depl${rec?' rec':''}">${esc(lab)}${st?`<small>${esc(st.sero.replace(/ \(.*\)/,''))}</small>`:''}</div><div class="depcells">${cells}${isPatient()?'':exs.map(x=>`<button class="depadd" data-bioadd="${esc(x)}" title="Ajouter : ${esc(x)}" aria-label="Ajouter : ${esc(x)}">＋${exs.length>1?`<small style="font-size:.7rem"> ${esc(DEP_SHORT[x]||'')}</small>`:''}</button>`).join('')}</div></div>`; }).join('');
+  return `<section class="sec"><h2>Dépistages</h2><div class="card dep">${rows}</div><div class="note" style="margin-top:6px">En couleur : examens recommandés pour le suivi d’une grossesse normale.${isPatient()?'':' Touchez ＋ pour saisir un résultat, ou un résultat pour l’ouvrir.'}</div></section>`;
+}
+function followList(p){
+  const out=[]; if(p.status==='archived') return out; const inf=info(p); const now=today(); const saNow=inf.ok?Math.floor((now-inf.base)/DAY/7):null;
+  const last=ex=>list(p.bio).filter(b=>b.exam===ex&&b.date&&b.sero).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const R=[['Toxoplasmose','contrôle mensuel jusqu’à l’accouchement',()=>true,b=>parseD(b.date)+30*DAY],
+           ['Rubéole','contrôle mensuel jusqu’à 20 SA',()=>saNow==null||saNow<20,b=>parseD(b.date)+30*DAY],
+           ['CMV','contrôles à 10 SA et 15 SA',()=>saNow==null||saNow<16,()=>inf.ok?(saNow<10?inf.base+70*DAY:inf.base+105*DAY):null]];
+  for(const [ex,txt,act,nx] of R){ const b=last(ex); if(!b) continue;
+    if(/^Négative/.test(b.sero)&&act()) out.push({t:ex,s:txt,last:parseD(b.date),nx:nx(b)});
+    else if(/Séroconversion|Douteuse/.test(b.sero)) out.push({t:ex,s:b.sero.toLowerCase()+' : contrôle et avis spécialisé',last:parseD(b.date)}); }
+  return out;
+}
+function followHTML(p){
+  const L=followList(p); const rh=p.rhesus==='-'&&p.status!=='archived'?rhdStatus(p):null; const showRh=rh&&!/pas de génotypage|négatif confirmé/.test(rh);
+  if(!L.length&&!showRh) return ''; const now=today();
+  const items=L.map(x=>`<b>${esc(x.t)}</b> – ${esc(x.s)}${x.last!=null?` (dernière le ${fd(x.last)}${x.nx!=null?(x.nx<now?`, <span class="late">prochaine dépassée : ${fd(x.nx)}</span>`:`, prochaine vers le ${fd(x.nx)}`):''})`:''}`);
+  if(showRh) items.push(`<b>RhD négatif</b> – ${esc(rh)}`);
+  return `<div class="follow" role="note"><span aria-hidden="true">🔬</span><div><small>${L.length?'Sérologie(s) à suivre'+(showRh?' · RhD':''):'Rhésus D négatif'}</small>${items.join('<br>')}</div></div>`;
+}
+const SF_LIST=['Aucun','Métrorragies','Leucorrhées','Contractions','Troubles digestifs','Troubles urinaires','Autre anomalie'];
+const AT_TYPES=['Aucun','Arrêt maladie','Congé pathologique (14 j)','Prolongation'];
 let viewing=null, vScale=1, vRun=0;
 let pdfjsP=null;
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
