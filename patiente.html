@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ogutxvavLNM/t2+16SqcHSxE5eCUzVnxaMWNawHNSCU=' 'sha256-BOmUzCEcIakBPqjk00Xmce0zDvalKubxumAAfBBN8ac=' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js; worker-src blob:; connect-src 'self' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mon suivi de grossesse</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -356,6 +357,7 @@ details.fiche-ed summary{cursor:pointer}
 .atag{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;line-height:1.4;padding:1px 8px 1px 6px;border-radius:999px;color:var(--ac);background:color-mix(in srgb,var(--ac) 13%,transparent);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .atag i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ac)}
 .tag.new{background:#E11D48;color:#fff;font-weight:700}
+body.dropping #view{outline:3px dashed var(--accent,#2563EB);outline-offset:-6px;border-radius:14px}
 .row.unread,.doc.unread{box-shadow:inset 4px 0 0 #E11D48;background:color-mix(in srgb,#E11D48 6%,var(--surface,#fff))}
 .abox{display:flex;gap:10px;align-items:flex-start;margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--ac) 35%,transparent);background:color-mix(in srgb,var(--ac) 8%,var(--surface,#fff))}
 .abox>i{flex:none;width:12px;height:12px;margin-top:4px;border-radius:50%;background:var(--ac)}
@@ -385,6 +387,12 @@ details.fiche-ed summary{cursor:pointer}
 .chk.vx{background:var(--muted);border-color:var(--muted);color:#fff}
 body.secr [data-newev],body.secr #editIssue,body.secr #newPreg,body.secr #arch,body.secr #unarch,body.secr #delP{display:none!important}
 .secrlock{opacity:.55}.secrlock legend::after{content:" – réservé aux soignants";font-weight:500;font-size:.8rem;color:var(--muted)}
+
+.pag .pa-row{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}.pag .pa-row:last-child{border-bottom:0}
+.pa-main{flex:1;min-width:0}.pa-main b{display:block;font-size:.95rem}.pa-main small{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.pa-when{color:#6D28D9;font-weight:700}.pa-who{color:var(--muted);font-weight:500}.pa-done{color:var(--good,#1E8A4C);font-weight:600}.pa-late{color:#B45309;font-weight:600}
+.pa-act{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pa-dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--line)}.pa-dot.fixed{background:#6D28D9}.pa-dot.done{background:var(--good,#1E8A4C)}.pa-dot.todo{background:#D97706}
 </style>
 </head>
 <body>
@@ -469,7 +477,6 @@ const DEFAULT_MS = [
   {id:'anesth',name:'Consultation d’anesthésie',       s:224, e:259, cond:'all'},
   {id:'voie',  name:'Consultation voie d’accouchement',s:224, e:252, cond:'cesar'},
   {id:'cm8',   name:'Consultation du 8e mois',         s:231, e:258, cond:'all', auto:'consult', ideal:252},
-  {id:'sgb',   name:'Prélèvement vaginal strepto B',   s:238, e:266, cond:'all'},
   {id:'cm9',   name:'Consultation du 9e mois',         s:259, e:286, cond:'all', auto:'consult', ideal:273}
 ];
 const MS_VERSION = 6;
@@ -597,19 +604,22 @@ async function cGetFile(fid){
 async function cPutFile(f){
   const s=b64(f.data); const n=Math.ceil(s.length/CHUNK)||1;
   for(let i=0;i<n;i++) await C.col.doc('c-'+f.id+'-'+i).set({kind:'chunk',fid:f.id,i,d:s.slice(i*CHUNK,(i+1)*CHUNK)});
-  await C.col.doc(f.id).set({kind:'file',id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,chunks:n});
+  await C.col.doc(f.id).set({kind:'file',id:f.id,patientId:f.patientId,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,chunks:n});
 }
 async function cDelFile(fid){ const m=await C.col.doc(fid).get(); const n=m.exists?(m.data().chunks||0):0; await C.col.doc(fid).delete(); for(let i=0;i<n;i++) await C.col.doc('c-'+fid+'-'+i).delete(); }
 
 function store(n,mode){ return idb.transaction(n,mode||'readonly').objectStore(n); }
 async function getAll(n){
   if(MODE==='cloud'){ if(n==='patients') return cQuery('patient'); if(n==='files'){ const ms=await cQuery('file'); const out=[]; for(const m of ms){ const f=await cGetFile(m.id); if(f) out.push(f); } return out; } return []; }
-  return idb ? rq(store(n).getAll()) : [...mem[n].values()];
+  return idb ? Promise.all((await rq(store(n).getAll())).map(decRec)) : [...mem[n].values()];
 }
 async function put(n,v,k){
+  if(n==='files'&&v&&S._docMeta){ Object.assign(v,S._docMeta); S._docMeta=null; const pid=v.patientId; setTimeout(()=>{ if(CUR==='patient-'+pid) renderPatient(pid); },400); }
   if(n==='files'&&v&&v.by===undefined&&!isPatient()){ const me=praticien(); if(me) v.by=me.id; }
   if(MODE==='cloud'){ if(n==='patients') return C.col.doc(v.id).set(Object.assign(clean(v),{kind:'patient'})); if(n==='kv') return C.col.doc(k).set({kind:'kv',value:clean(v)}); if(n==='files') return cPutFile(v); }
-  if(idb) return rq(k!==undefined?store(n,'readwrite').put(v,k):store(n,'readwrite').put(v)); mem[n].set(k!==undefined?k:v.id,v);
+  if(idb){ let w=v; if(encSupported()&&!(n==='kv'&&ENC_PLAIN_KV.has(k))){ if(ENC.key) w=await encRec(v,ENC_KEEP[n]); else if(encLockedNow()) throw new Error('Application verrouillée : enregistrement impossible'); }
+    return rq(k!==undefined?store(n,'readwrite').put(w,k):store(n,'readwrite').put(w)); }
+  mem[n].set(k!==undefined?k:v.id,v);
 }
 async function del(n,k){
   if(MODE==='cloud'){ if(n==='files') return cDelFile(k); return C.col.doc(k).delete(); }
@@ -617,11 +627,11 @@ async function del(n,k){
 }
 async function get(n,k){
   if(MODE==='cloud'){ if(n==='files') return cGetFile(k); const d=await C.col.doc(k).get(); if(!d.exists) return undefined; return n==='kv'?clean(d.data().value):strip(d.data()); }
-  return idb ? rq(store(n).get(k)) : mem[n].get(k);
+  return idb ? decRec(await rq(store(n).get(k))) : mem[n].get(k);
 }
 async function filesFor(pid){
   if(MODE==='cloud') return cQuery('file',['patientId',pid]);
-  if(idb) return rq(store('files').index('patientId').getAll(pid)); return [...mem.files.values()].filter(f=>f.patientId===pid);
+  if(idb) return Promise.all((await rq(store('files').index('patientId').getAll(pid))).map(decRec)); return [...mem.files.values()].filter(f=>f.patientId===pid);
 }
 async function clearAll(){
   if(MODE==='cloud'){ for(const kind of ['patient','file','chunk']){ const sn=await C.col.where('kind','==',kind).limit(1000).get(); for(const d of sn.docs) await C.col.doc(d.id).delete(); } await C.col.doc('settings').delete(); return; }
@@ -647,7 +657,7 @@ const S={ settings:null, patients:[], filter:'active', q:'', showOver:false, age
 async function saveSettings(){ try{ await put('kv',S.settings,'settings'); }catch(e){ toast('Échec de l’enregistrement des réglages'); } }
 async function savePatient(p){
   stampAuthor(p);
-  if(!S._syncing&&!isPatient()&&!S.preview) syncLocMark(p.id);
+  if(!S._syncing&&!isPatient()&&!S.preview){ syncLocMark(p.id); foldSoon(); }
   p.updatedAt=Date.now();
   const i=S.patients.findIndex(x=>x.id===p.id); if(i<0) S.patients.push(p); else S.patients[i]=p;   // toujours visible dans la liste
   try{ await put('patients',p); S.saveError=false; }
@@ -780,6 +790,7 @@ function rowHTML(p){
   if(p.planned&&p.planned.type&&p.status!=='archived') flags.push(`<span class="tag acc">${p.planned.type==='Césarienne programmée'?'Césarienne prog.':'Déclenchement prog.'}${p.planned.date?' le '+fd(parseD(p.planned.date)):' (date à fixer)'}</span>`);
   if(p.lieu) flags.push(`<span class="tag">${esc(lieuLabel(p))}</span>`);
   if(dupesOf(p).length) flags.push('<span class="tag bad">Doublon possible</span>');
+  { const nr_=resN(p); if(nr_) flags.unshift(`<span class="tag new">🧪 ${nr_} nouveau${nr_>1?'x':''} résultat${nr_>1?'s':''}</span>`); }
   if(p.status==='archived') flags.push(`<span class="tag ${p.issue&&BIRTH.has(p.issue.type)?'ok':''}">${esc(p.issue&&p.issue.type?p.issue.type+(p.issue.date?' – '+fd(parseD(p.issue.date)):''):'Archivée')}</span>`);
   const nr=related(p).length; if(nr) flags.push(`<span class="tag acc">${nr} autre${nr>1?'s':''} grossesse${nr>1?'s':''}</span>`);
   let trio='<div class="trio"><span><small>Datation</small>à compléter</span></div>', prog='';
@@ -843,10 +854,12 @@ function renderList(){
   const lastCh_=Math.max(0,...S.patients.map(x=>x.updatedAt||0)); if(MODE==='local' && S.patients.length && (!S.lastBackup || lastCh_>S.lastBackup)) html+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:180px">${S.lastBackup?'Des dossiers ont été modifiés depuis la dernière sauvegarde ('+fd(localDay(S.lastBackup))+' à '+new Date(S.lastBackup).toTimeString().slice(0,5)+').':'Aucune sauvegarde exportée pour l’instant.'} Vos dossiers ne sont enregistrés que sur cet appareil.</span><button class="btn small" id="quickBackup">Sauvegarder maintenant</button></div>`;
   if(MODE==='memory') html+=`<div class="banner">Aucun stockage durable n’est disponible dans cette vue : les dossiers saisis seront perdus à la fermeture. Ouvrez l’application depuis son lien en étant connectée à votre compte Claude.</div>`;
   html+=syncBannerHTML();
+  html+=resBannerHTML();
   if(S.saveError) html+=`<div class="banner">Au moins un enregistrement a échoué. Rouvrez la fiche concernée et enregistrez-la de nouveau.</div>`;
   html+=`<div class="search"><input type="search" id="q" placeholder="Rechercher un nom, une maternité…" value="${esc(S.q)}" aria-label="Rechercher"><select id="filt" aria-label="Filtrer"><option value="active">En cours</option><option value="archived">Archivées</option><option value="all">Toutes</option></select><button class="btn" id="selMode">${S.selecting?'Terminer':'Sélectionner'}</button></div><label class="sortrow"><span>Trier :</span><select id="sort" aria-label="Ordre de tri">${Object.entries(SORTS).map(([k,o])=>`<option value="${k}" ${S.sort===k?'selected':''}>${o.l}</option>`).join('')}</select></label><div id="critBox">${critSelect()}</div>`;
   html+='<div id="lst"></div><div id="selbar"></div>';
   v.innerHTML=html;
+  resBadge().then(ch=>{ if(ch&&$('#lst')&&!/^patient-/.test(CUR)) renderList(); });
   $('#filt').value=S.filter;
   $('#q').addEventListener('input',e=>{ S.q=e.target.value; drawList(); });
   $('#filt').addEventListener('change',e=>{ S.filter=e.target.value; drawList(); });
@@ -1078,7 +1091,7 @@ function msRow(p,it,full){
   if(full && it.kind==='ms' && it.st!=='fait' && (it.auto||/^rhd/.test(it.id))) extra+= it.rdv!=null ? `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Modifier la date du RDV</button>` : `<button class="link" data-rdv="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem">📅 Fixer la date du RDV</button>`;
   if(it.isVac&&!isPatient()) extra+=vacBtns(it);
   if(it.kind==='ev') extra+=`${it.note?`<small>${esc(it.note)}</small>`:''}<button class="link" data-evedit="${esc(it.id)}" style="padding:2px 0 0;font-size:.85rem;display:block">📅 Modifier le RDV</button>`;
-  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}</div><div class="md num">${dd!=null?(()=>{ const ev=list(p.evals).find(x=>x.id===(p.doneBy||{})[it.id]); return rdvHTML(dd,ev?ev.heure:'',p)+(ev?authorLine(p,ev):it.isVac?vacWho(p,it):''); })():fixedD!=null?rdvHTML(fixedD,it.time,p):range(it.s,it.e===it.s?null:it.e)+(it.kind==='ms'&&(it.auto||/^rhd/.test(it.id))?'<span class="tofix">date à fixer</span>':'')}${stLabel(it)}</div></div>`;
+  return `<div class="ms st-${it.st}">${chk}<div class="mn"><b>${esc(it.name)}</b><small class="num">${sub}</small>${extra}${patNote(p,it)}</div><div class="md num">${dd!=null?(()=>{ const ev=list(p.evals).find(x=>x.id===(p.doneBy||{})[it.id]); return rdvHTML(dd,ev?ev.heure:'',p)+(ev?authorLine(p,ev):it.isVac?vacWho(p,it):''); })():fixedD!=null?rdvHTML(fixedD,it.time,p):range(it.s,it.e===it.s?null:it.e)+(it.kind==='ms'&&(it.auto||/^rhd/.test(it.id))?'<span class="tofix">date à fixer</span>':'')}${stLabel(it)}</div></div>`;
 }
 async function renderPatient(id){
   const p=S.patients.find(x=>x.id===id); const v=$('#view');
@@ -1089,7 +1102,8 @@ async function renderPatient(id){
   const bmi=imc(p);
   let h=`<div class="back" style="display:flex;justify-content:space-between"><button class="btn ghost" id="bk">‹ ${isPatient()?'Accueil':'Patientes'}</button><button class="btn small" id="pdfTop">Imprimer / PDF</button></div>`;
   if(!isPatient()&&p.unread&&p.unread.__fiche){ const uf=p.unread.__fiche; h+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:180px">La fiche de la patiente a été complétée par un autre soignant (${uf.n} élément${uf.n>1?'s':''}, reçu le ${fd(localDay(uf.at))}). Vérifiez-la avant la consultation.</span><button class="btn small" id="ficheRead">Vu</button></div>`; }
-  if(!isPatient()&&unreadCount(p)-(p.unread&&p.unread.__fiche?1:0)>0){ const nU=unreadCount(p)-(p.unread.__fiche?1:0); h+=`<div class="note" style="margin:0 0 10px"><span class="tag new">${nU} nouveauté${nU>1?'s':''}</span> saisie${nU>1?'s':''} par d’autres soignants, signalée${nU>1?'s':''} « Nouveau » dans les rubriques.</div>`; }
+  if(!isPatient()&&resN(p)) h+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:180px">🧪 <b>${resN(p)} nouveau${resN(p)>1?'x':''} résultat${resN(p)>1?'s':''}</b> reçu${resN(p)>1?'s':''}, rangé${resN(p)>1?'s':''} dans Documents.</span>${S.ptab!=='docs'?`<button class="btn small" data-resgo="${esc(p.id)}">Voir</button>`:''}</div>`;
+  if(!isPatient()&&unreadCount(p)-(p.unread&&p.unread.__fiche?1:0)-resN(p)>0){ const nU=unreadCount(p)-(p.unread.__fiche?1:0)-resN(p); h+=`<div class="note" style="margin:0 0 10px"><span class="tag new">${nU} nouveauté${nU>1?'s':''}</span> saisie${nU>1?'s':''} par d’autres soignants, signalée${nU>1?'s':''} « Nouveau » dans les rubriques.</div>`; }
   if(isPatient()&&p.majLe){ const md=new Date(p.majLe), nd=Math.floor((Date.now()-md.getTime())/DAY), old_=nd>42; h+=`<div class="${old_?'banner':'note'}" style="margin:0 0 10px">${old_?'⚠ ':''}Dossier mis à jour par votre médecin le <b>${fd(localDay(md.getTime()))} à ${md.toTimeString().slice(0,5)}</b>${old_?' : il date de plus de 6 semaines, pensez à le faire mettre à jour.':'.'}${p.suiviPar&&p.suiviPar.nom?'<br>Suivi : '+esc(p.suiviPar.nom)+(p.suiviPar.tel?' – <a href="tel:'+esc(p.suiviPar.tel.replace(/[^0-9+]/g,''))+'">'+esc(p.suiviPar.tel)+'</a>':''):''}</div>`; }
   h+=`<section class="hero">${p.allergies?`<div class="allergy" role="alert"><span aria-hidden="true">⚠</span><div><small>Allergie</small>${esc(p.allergies)}</div></div>`:''}${followHTML(p)}<h1>${esc(fullName(p))}</h1><div class="sub">${[a!=null?a+' ans':'', p.gestite!==''&&p.gestite!=null?'G'+esc(p.gestite)+' P'+esc(p.parite||0):'', p.groupe||p.rhesus?'Groupe '+esc(p.groupe||'?')+(p.rhesus?(p.rhesus==='-'?' Rh−':' Rh+'):''):'', bmi!=null?'IMC initial '+frn(bmi):'', p.telephone?esc(p.telephone):'', p.email?`<a href="mailto:${esc(p.email)}" style="color:inherit">${esc(p.email)}</a>`:''].filter(Boolean).join(' – ')}</div>${insLine(p)}${syncLocLine(p)}`;
   const fl=[];
@@ -1172,6 +1186,7 @@ async function renderPatient(id){
     h+=`<section class="sec"><h2>Historique</h2><div class="card">${evs.length?evs.map(e=>{ const l=evalLine(e,p); const kinds=[e.consult!==false&&'Consultation',e.echo&&'Échographie'].filter(Boolean).join(' + ');
       return `<button class="row${unreadCls(p,e)}" data-ev="${esc(e.id)}"><span class="rmain"><span class="nm num" style="font-size:.95rem">${esc(l.when)}</span><span class="flags" style="margin-top:2px">${newBadge(p,e)}${e.urg?'<span class="tag bad">Urgence</span>':'<span class="tag ok">Programmé</span>'}<span class="tag">${esc(kinds||'Évaluation')}</span>${authorBadge(p,e)}</span>${e.urg&&e.motif?`<span style="font-size:.9rem;display:block">Motif : ${esc(e.motif)}</span>`:''}<span style="color:var(--muted);font-size:.9rem">${esc(l.txt)}</span></span><span aria-hidden="true" style="color:var(--muted)">›</span></button>`; }).join(''):'<div class="txt" style="color:var(--muted)">Aucune consultation ni échographie enregistrée.</div>'}</div></section>`;
   }
+  else if(T==='agenda'&&isPatient()&&!S.preview){ h+=patAgendaHTML(p); }
   else if(T==='agenda'){
     if(!inf.ok) h+='<div class="banner">Complétez la datation pour calculer le calendrier.</div>';
     else {
@@ -1190,6 +1205,7 @@ async function renderPatient(id){
   }
   else if(T==='bio'){
     h+=`<section class="sec"><div class="newev"><button class="btn primary" id="addBio">＋ Ajouter un résultat</button><button class="btn" id="addBioPdf">＋ Ajouter un bilan (PDF ou photo)</button><button class="btn" id="readLab">🔎 Lire un compte rendu de laboratoire</button></div></section>`;
+    if(isPatient()&&!S.preview) h+=paLabHTML(p);
     if(p.rhesus==='-') h+=`<div class="rhbox" style="margin-top:12px">RhD− – ${esc(rhdStatus(p))}</div>`;
     h+=depHTML(p);
     const B=list(p.bio).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||''));
@@ -1460,7 +1476,7 @@ function openEval(p,evId,preset){
    </div></fieldset>
    <fieldset><legend>Prescriptions</legend><div class="fbox">${F('Examens complémentaires','<textarea name="rxExam" rows="2" placeholder="ex. HGPO 75 g, échographie de croissance, ECBU…">'+esc(e.rxExam||'')+'</textarea>')}${F('Traitement(s)','<textarea name="rxTrt" rows="2">'+esc(e.rxTrt||'')+'</textarea>')}<div class="f"><span>Arrêt de travail</span>${radios('atType',AT_TYPES.map(x=>[x,x]),e.atType||'')}</div><div id="atBox"><div class="grid2">${F('Du','<input type="date" name="atDu" value="'+esc(e.atDu||'')+'">')}${F('Au (inclus)','<input type="date" name="atAu" value="'+esc(e.atAu||'')+'">')}</div><div class="preview num" id="atDur" style="display:none"></div></div></div></fieldset>
    <fieldset><legend>Notes</legend><div class="fbox">${F('Remarques','<textarea name="notes">'+esc(e.notes||'')+'</textarea>')}<label class="chkline"><input type="checkbox" name="enp" ${e.notesPriv?'checked':''}> 🔒 Remarque privée (non transmise à la patiente)</label></div></fieldset>
-   ${ex?'<div class="actions"><button class="btn danger" id="eDel">Supprimer cette évaluation</button></div>':''}
+   ${ex?'<div class="actions"><button class="btn primary" id="eCr" data-ro-ok>📄 Compte rendu PDF (avec les documents du jour)</button><button class="btn danger" id="eDel">Supprimer cette évaluation</button></div>':''}
   </div>`;
   sh.classList.add('open'); document.body.style.overflow='hidden'; sh.scrollTop=0;
   const val=n=>{ const r=sh.querySelector(`[name="${n}"]:checked`); if(r) return r.value; const el=sh.querySelector(`[name="${n}"]`); return el && el.type!=='radio' ? el.value.trim() : ''; };
@@ -1498,6 +1514,7 @@ function openEval(p,evId,preset){
     if(ev&&ev.target&&(ev.target.name==='atType'||ev.target.name==='atDu')&&/^Congé pathologique/.test(t)&&du!=null){ const au=sh.querySelector('[name="atAu"]'); au.value=iso(du+13*DAY); }
     const au=parseD(val('atAu')), el=$('#atDur'); if(on_&&du!=null&&au!=null&&au>=du){ el.style.display=''; el.textContent=Math.round((au-du)/DAY)+1+' jour(s)'; } else el.style.display='none'; };
   sh.addEventListener('change',atSync); atSync();
+  const cr=$('#eCr'); if(cr) cr.addEventListener('click',()=>openCR(p,ex));
   const dl=$('#eDel'); if(dl) dl.addEventListener('click',async()=>{ if(!await ask({title:'Supprimer cette évaluation ?',body:'Cette action est irréversible.',ok:'Supprimer',danger:true})) return; p.evals=list(p.evals).filter(x=>x.id!==e.id); applyEvalValidation(p,{id:e.id,date:''}); await savePatient(p); close(); renderPatient(p.id); });
   if(ex){ lockForeign(sh,p,ex); markRead(p,ex.id); }
 }
@@ -1508,9 +1525,9 @@ async function drawDocs(p,filter){
   const box=$('#docs'); if(!box) return;
   let fs=[]; try{ fs=await filesFor(p.id); }catch(e){}
   if(filter&&DOC_FILTERS[filter]) fs=fs.filter(f=>DOC_FILTERS[filter](catOf(f)));
-  fs.sort((a,b)=>b.addedAt-a.addedAt);
+  fs.sort((a,b)=>(b.date?parseD(b.date):localDay(b.addedAt||0))-(a.date?parseD(a.date):localDay(a.addedAt||0))||b.addedAt-a.addedAt);
   const groups=DOC_CATS.concat([...new Set(fs.map(catOf))].filter(c=>!DOC_CATS.includes(c))).map(c=>[c,fs.filter(f=>catOf(f)===c)]).filter(g=>g[1].length);
-  box.innerHTML = fs.length ? groups.map(([c,arr])=>`<div class="dgrp">${esc(c)} <small>${arr.length}</small></div>`+arr.map(f=>`<div class="doc${unreadCls(p,f)}"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button>${authorOf(p,f)?`<small class="docby">Ajouté par ${esc(authorOf(p,f).nom)}${f.addedAt?' le '+fd(localDay(f.addedAt)):''}</small>`:''}${newBadge(p,f)||authorBadge(p,f)?`<span class="flags" style="margin:2px 0">${newBadge(p,f)}${authorBadge(p,f)}</span>`:''}<small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))} – <button class="link" data-recat="${esc(f.id)}" style="padding:0;font-size:.8rem">Changer de rubrique</button></small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')).join('')
+  box.innerHTML = fs.length ? groups.map(([c,arr])=>`<div class="dgrp">${esc(c)} <small>${arr.length}</small></div>`+arr.map(f=>`<div class="doc${unreadCls(p,f)}"><span aria-hidden="true">📄</span><div style="flex:1;min-width:0"><button class="dn" data-view="${esc(f.id)}">${esc(f.name)}</button>${f.date?`<small style="display:block;color:var(--muted);font-size:.8rem">Prélèvement du ${fd(parseD(f.date))}${(()=>{ const x=moisDe(p,f.date); return x?' – '+x.txt:''; })()}</small>`:''}${authorOf(p,f)?`<small class="docby">Ajouté par ${esc(authorOf(p,f).nom)}${f.addedAt?' le '+fd(localDay(f.addedAt)):''}</small>`:''}${newBadge(p,f)||authorBadge(p,f)?`<span class="flags" style="margin:2px 0">${newBadge(p,f)}${authorBadge(p,f)}</span>`:''}<small class="num">${fsize(f.size)} – ajouté le ${fd(localDay(f.addedAt))} – <button class="link" data-recat="${esc(f.id)}" style="padding:0;font-size:.8rem">Changer de rubrique</button></small></div><button class="x" data-delf="${esc(f.id)}" aria-label="Supprimer ${esc(f.name)}">×</button></div>`).join('')).join('')
     : '<div class="txt" style="color:var(--muted)">Aucun document dans cette rubrique.</div>';
   $$('[data-view]',box).forEach(b=>b.addEventListener('click',()=>{ viewPdf(b.dataset.view); if(p.unread&&p.unread[b.dataset.view]) markRead(p,b.dataset.view,()=>drawDocs(p,filter)); }));
   $$('[data-delf]',box).forEach(b=>b.addEventListener('click',async()=>{ const f=fs.find(x=>x.id===b.dataset.delf); if(!await ask({title:'Supprimer ce document ?',body:f.name,ok:'Supprimer',danger:true})) return; await del('files',f.id); drawDocs(p,filter); }));
@@ -1572,7 +1589,7 @@ function photoToPdf(p,cat,filter){
 /* ---------- Lecture d’un compte rendu de laboratoire (PDF texte ou texte copié depuis une photo) ---------- */
 function labNorm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[  \t]/g,' '); }
 async function pdfTextLines(buf){
-  const lib=await loadPdfJs(); const doc=await lib.getDocument({data:new Uint8Array(buf.slice(0))}).promise; const out=[];
+  const lib=await loadPdfJs(); const doc=await lib.getDocument({data:new Uint8Array(buf.slice(0)),isEvalSupported:false}).promise; const out=[];
   for(let n=1;n<=doc.numPages;n++){
     const pg=await doc.getPage(n); const tc=await pg.getTextContent(); const rows=[];
     for(const it of tc.items){ if(!it.str||!it.str.trim()) continue; const y=it.transform[5], x=it.transform[4];
@@ -1691,7 +1708,7 @@ function parseLab(lines){
 }
 async function openLabImport(p){
   if(isPatient()) return;
-  let fs=[]; try{ fs=(await filesFor(p.id)).filter(f=>/^Biologie$|^Bilan|^Déclaration/.test(catOf(f))).sort((a,b)=>b.addedAt-a.addedAt); }catch(e){}
+  let fs=[]; try{ fs=(await filesFor(p.id)).filter(f=>/^Biologie$|^Bilan|^Déclaration/.test(catOf(f))).sort((a,b)=>(b.date?parseD(b.date):localDay(b.addedAt||0))-(a.date?parseD(a.date):localDay(a.addedAt||0))||b.addedAt-a.addedAt); }catch(e){}
   const m=$('#modal'), b=$('#modalBox'); let inp=document.getElementById('labPdfInput');
   if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.accept='application/pdf,.pdf'; inp.id='labPdfInput'; inp.hidden=true; document.body.appendChild(inp); }
   b.innerHTML=`<h3>Lire un compte rendu de laboratoire</h3>
@@ -1782,36 +1799,117 @@ async function verifyBackup(file){
   m.classList.add('open'); m.onclick=e=>{ if(e.target.closest('[data-a]')){ m.classList.remove('open'); m.onclick=null; } };
 }
 
+/* ---------- Chiffrement des dossiers sur l’appareil (AES-256-GCM, clé protégée par le code de verrouillage) ---------- */
+const ENC={key:null,waiters:[]};
+const ENC_PLAIN_KV=new Set(['_test','lastBackup','migratedToCloud']);
+let dbReadyR; const DBREADY=new Promise(r=>dbReadyR=r);
+function encSupported(){ return !!(window.crypto&&crypto.subtle); }
+function encLockedNow(){ const c=lockCfg(); return !!(c&&c.ek&&!ENC.key); }
+function encWait(){ return ENC.key?Promise.resolve():new Promise(r=>ENC.waiters.push(r)); }
+function encSetKey(k){ ENC.key=k; ENC.waiters.splice(0).forEach(f=>f()); }
+async function kekFrom(code,saltB64){ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(code),'PBKDF2',false,['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2',salt:b64u8(saltB64),iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['wrapKey','unwrapKey']); }
+async function wrapDek(dek,kek){ const iv=crypto.getRandomValues(new Uint8Array(12)); const w=await crypto.subtle.wrapKey('raw',dek,kek,{name:'AES-GCM',iv}); return u8b64(iv)+'.'+u8b64(new Uint8Array(w)); }
+async function unwrapDek(s,kek){ const [a,b]=s.split('.'); return crypto.subtle.unwrapKey('raw',b64u8(b),kek,{name:'AES-GCM',iv:b64u8(a)},{name:'AES-GCM',length:256},true,['encrypt','decrypt']); }
+async function encRec(v,keep){
+  const hb=!!(v&&typeof v==='object'&&v.data instanceof ArrayBuffer); let meta=v===undefined?null:v; if(hb){ meta=Object.assign({},v); delete meta.data; meta.__buf=1; }
+  const j=new TextEncoder().encode(JSON.stringify(meta)), d=hb?new Uint8Array(v.data):new Uint8Array(0);
+  const pt=new Uint8Array(4+j.length+d.length); new DataView(pt.buffer).setUint32(0,j.length); pt.set(j,4); pt.set(d,4+j.length);
+  const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},ENC.key,pt));
+  const e=new Uint8Array(12+ct.length); e.set(iv); e.set(ct,12); const o={_e:e.buffer}; if(keep) for(const k of keep) if(v&&v[k]!==undefined) o[k]=v[k]; return o;
+}
+async function decRec(r){
+  if(!r||typeof r!=='object'||!(r._e instanceof ArrayBuffer)) return r;
+  if(!ENC.key) throw new Error('Application verrouillée');
+  const e=new Uint8Array(r._e); const pt=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:e.slice(0,12)},ENC.key,e.slice(12)));
+  const n=new DataView(pt.buffer).getUint32(0); const o=JSON.parse(new TextDecoder().decode(pt.subarray(4,4+n)));
+  if(o&&o.__buf){ delete o.__buf; o.data=pt.slice(4+n).buffer; } return o;
+}
+const ENC_KEEP={patients:['id'],files:['id','patientId'],kv:null};
+async function rawAll(n){ const t=idb.transaction(n,'readonly').objectStore(n); const [ks,vs]=await Promise.all([rq(t.getAllKeys()),rq(t.getAll())]); return ks.map((k,i)=>({k,v:vs[i]})); }
+async function rawPut(n,k,v){ const t=idb.transaction(n,'readwrite').objectStore(n); return rq(n==='kv'?t.put(v,k):t.put(v)); }
+async function encMigrate(c){
+  let n=0; for(const st of ['patients','files','kv']){ for(const {k,v} of await rawAll(st)){ if(st==='kv'&&ENC_PLAIN_KV.has(k)) continue; if(v&&typeof v==='object'&&v._e instanceof ArrayBuffer) continue; await rawPut(st,k,await encRec(v,ENC_KEEP[st])); n++; } }
+  c.em=1; lockSave(c); return n;
+}
+async function encEnable(code,c){
+  const dek=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+  c.es=u8b64(crypto.getRandomValues(new Uint8Array(16))); c.ek=await wrapDek(dek,await kekFrom(code,c.es)); c.em=0; delete c.ep; delete c.ps; lockSave(c);
+  ENC.key=dek; toast('Chiffrement des dossiers sur cet appareil…'); const n=await encMigrate(c); encSetKey(dek);
+  if(n) toast('Dossiers chiffrés sur cet appareil');
+}
+async function encDisable(){ if(!idb||!ENC.key) return; for(const st of ['patients','files','kv']){ for(const {k,v} of await rawAll(st)){ if(v&&typeof v==='object'&&v._e instanceof ArrayBuffer) await rawPut(st,k,await decRec(v)); } } ENC.key=null; }
+async function encAfterCode(code,c){
+  if(ENC.key||!encSupported()) return; await DBREADY; if(MODE!=='local') return;
+  if(c.ek){ const dek=await unwrapDek(c.ek,await kekFrom(code,c.es)); if(!c.em){ ENC.key=dek; await encMigrate(c); } encSetKey(dek); return; }
+  await encEnable(code,c);
+}
+async function encOnCode(code,c){ if(!encSupported()) return; await DBREADY; if(MODE!=='local') return;
+  if(ENC.key){ c.es=u8b64(crypto.getRandomValues(new Uint8Array(16))); c.ek=await wrapDek(ENC.key,await kekFrom(code,c.es)); lockSave(c); return; }
+  await encEnable(code,c); }
+function encExpected(c){ return !!(c&&c.ek)||(encSupported()&&!window.claude); }
+function encBioOk(c){ return !!ENC.key||!!c.ep||!encExpected(c); }
+function bioLbl(){ return /iPhone|iPad|Macintosh/.test(navigator.userAgent)?'Face ID / Touch ID':/Android/.test(navigator.userAgent)?'l’empreinte':'Windows Hello'; }
+async function bioPrfKey(c,salt){
+  const r=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:b64u8(c.wa)}],userVerification:'required',timeout:60000,extensions:{prf:{eval:{first:b64u8(salt)}}}}});
+  const x=r&&r.getClientExtensionResults&&r.getClientExtensionResults().prf; const f=x&&x.results&&x.results.first; if(!f) return null;
+  return crypto.subtle.importKey('raw',f,{name:'AES-GCM'},false,['wrapKey','unwrapKey']);
+}
+async function encBioWrap(c){ if(!ENC.key||!c.wa) return false; const ps=u8b64(crypto.getRandomValues(new Uint8Array(32))); let k=null; try{ k=await bioPrfKey(c,ps); }catch(e){}
+  if(!k){ delete c.ep; delete c.ps; lockSave(c); return false; } c.ep=await wrapDek(ENC.key,k); c.ps=ps; lockSave(c); return true; }
+async function encBioWrapToast(c){ if(!ENC.key) return; if(!await encBioWrap(c)) toast('Biométrie activée pour les re-verrouillages. À l’ouverture, le code reste demandé : cet appareil ne permet pas de déchiffrer les dossiers par biométrie.'); }
+async function encBioUnlock(c){
+  if(ENC.key||!c.ek||!encExpected(c)){ const ok=await bioCheck(c); if(ok&&!ENC.key&&!c.ek) ENC.waiters.splice(0).forEach(f=>f()); return ok; }
+  if(!c.ep) return false; const k=await bioPrfKey(c,c.ps); if(!k) throw new Error('prf');
+  await DBREADY; encSetKey(await unwrapDek(c.ep,k)); return true;
+}
+function encStatus(){ const c=lockCfg();
+  if(MODE==='cloud') return 'Le verrouillage empêche l’accès aux écrans.';
+  if(c&&c.ek) return '🔐 Vos dossiers sont chiffrés sur cet appareil (AES-256) avec votre code : sans lui, ils sont illisibles, même en copiant les fichiers. '+(c.wa?(c.ep?'La biométrie permet aussi de les déchiffrer à l’ouverture. ':'À l’ouverture, le code est demandé (cet appareil ne permet pas le déchiffrement par biométrie) ; la biométrie sert ensuite aux re-verrouillages. '):'')+'Code oublié = dossiers irrécupérables sur cet appareil : gardez une sauvegarde à jour.';
+  return 'Le verrouillage chiffre aussi vos dossiers sur l’appareil, avec votre code.'; }
+
+/* ---------- Bibliothèques externes « scellées » : empreinte enregistrée au premier usage, toute copie modifiée est refusée ---------- */
+function pinsGet(){ try{ return JSON.parse(localStorage.getItem('sg-pins')||'{}')||{}; }catch(e){ return {}; } }
+async function libDigest(b){ return 'sha384-'+u8b64(new Uint8Array(await crypto.subtle.digest('SHA-384',b))); }
+async function libPin(url){ const p=pinsGet(); if(p[url]) return p[url]; if(!encSupported()) return null;
+  try{ const r=await fetch(url,{mode:'cors',credentials:'omit'}); if(!r.ok) return null; const h=await libDigest(await r.arrayBuffer()); p[url]=h; try{ localStorage.setItem('sg-pins',JSON.stringify(p)); }catch(e){} return h; }catch(e){ return null; } }
+let libWarned=false;
+function libRefused(){ if(libWarned) return; libWarned=true; toast('Sécurité : une bibliothèque externe a été modifiée et a été refusée. Prévenez le développeur de l’application.'); }
+function loadLib(url,check){ return libPin(url).then(h=>new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=url; s.crossOrigin='anonymous'; s.referrerPolicy='no-referrer'; if(h) s.integrity=h;
+  s.onload=()=>check()?res():rej(new Error('load')); s.onerror=()=>{ s.remove(); if(h&&navigator.onLine!==false){ fetch(url,{mode:'cors',credentials:'omit'}).then(r=>r.arrayBuffer()).then(libDigest).then(d=>{ if(d!==h) libRefused(); }).catch(()=>{}); } rej(new Error('load')); }; document.head.appendChild(s); })); }
+async function libBlobUrl(url){ const h=await libPin(url); const b=await (await fetch(url,{mode:'cors',credentials:'omit'})).arrayBuffer(); if(h&&await libDigest(b)!==h){ libRefused(); throw new Error('integrity'); } return URL.createObjectURL(new Blob([b],{type:'text/javascript'})); }
+let cspWarned=false;
+document.addEventListener('securitypolicyviolation',e=>{ try{ console.warn('Politique de sécurité :',e.violatedDirective,e.blockedURI); if(!cspWarned){ cspWarned=true; toast('Sécurité : un envoi ou un contenu non autorisé a été bloqué ('+String(e.blockedURI||e.violatedDirective).slice(0,60)+')'); } }catch(_){} });
+
 /* ---------- Verrouillage de l’application (code + Face ID / Touch ID) ---------- */
 const LOCK_KEY='sg-lock-'+(typeof APP_ROLE!=='undefined'&&APP_ROLE==='patient'?'patient':'pro');
 function lockCfg(){ try{ return JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
 function lockSave(c){ try{ if(c) localStorage.setItem(LOCK_KEY,JSON.stringify(c)); else localStorage.removeItem(LOCK_KEY); return true; }catch(e){ return false; } }
 async function lockHash(code,saltB64){ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(code),'PBKDF2',false,['deriveBits']); const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:b64u8(saltB64),iterations:150000,hash:'SHA-256'},base,256); return u8b64(new Uint8Array(bits)); }
 async function bioAvail(){ try{ return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); }catch(e){ return false; } }
-async function bioRegister(){ const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Suivi de grossesse'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'utilisateur',displayName:'Utilisateur'},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000,attestation:'none'}}); return u8b64(new Uint8Array(cred.rawId)); }
+async function bioRegister(){ const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Suivi de grossesse'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'utilisateur',displayName:'Utilisateur'},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000,attestation:'none',extensions:{prf:{}}}}); return u8b64(new Uint8Array(cred.rawId)); }
 async function bioCheck(c){ const r=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:b64u8(c.wa)}],userVerification:'required',timeout:60000}}); return !!r; }
 let lockOn=false, lockHiddenAt=0, lockFails=0, lockUntil=0;
 function lockHide(){ lockOn=false; const el=document.getElementById('lockScr'); if(el) el.remove(); }
 function lockShow(){
-  const c=lockCfg(); if(!c||lockOn) return; lockOn=true;
+  const c=lockCfg(); if(!c||lockOn) return; lockOn=true; const BW=!!(c.wa&&encBioOk(c));
   let el=document.getElementById('lockScr'); if(!el){ el=document.createElement('div'); el.id='lockScr'; document.body.appendChild(el); }
   el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
   el.style.cssText='position:fixed;inset:0;z-index:10000;background:var(--bg,#F2F4F6);display:flex;align-items:center;justify-content:center;padding:24px';
   el.innerHTML=`<div style="max-width:340px;width:100%;text-align:center"><div style="font-size:2.4rem" aria-hidden="true">🔒</div><h2 style="margin:8px 0 4px">${typeof APP_ROLE!=='undefined'&&APP_ROLE==='patient'?'Mon suivi de grossesse':'Suivi de grossesse'}</h2><p style="color:var(--muted);margin:0 0 16px">Application verrouillée</p>
-    ${c.wa?'<button class="btn primary" id="lkBio" style="width:100%;margin-bottom:12px;justify-content:center;text-align:center">Déverrouiller avec Face ID / Touch ID</button>':''}
+    ${BW?'<button class="btn primary" id="lkBio" style="width:100%;margin-bottom:12px;justify-content:center;text-align:center">Déverrouiller avec '+bioLbl()+'</button>':(c.wa?'<p style="font-size:.85rem;color:var(--muted);margin:0 0 10px">À l’ouverture, saisissez votre code : il déchiffre vos dossiers. '+bioLbl()+' fonctionne ensuite pour les re-verrouillages.</p>':'')}
     <input id="lkCode" type="password" inputmode="numeric" autocomplete="off" aria-label="Code" placeholder="Code" style="width:100%;font-size:1.5rem;text-align:center;letter-spacing:.3em;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface,#fff)">
-    <button class="btn ${c.wa?'':'primary'}" id="lkOk" style="width:100%;margin-top:10px;justify-content:center;text-align:center">Déverrouiller</button>
+    <button class="btn ${BW?'':'primary'}" id="lkOk" style="width:100%;margin-top:10px;justify-content:center;text-align:center">Déverrouiller</button>
     <p id="lkMsg" style="color:var(--danger,#c0392b);min-height:1.2em;margin:10px 0 0"></p><button class="link" id="lkForgot" style="font-size:.85rem;margin-top:6px">Code oublié ?</button></div>`;
   const msg=t=>{ el.querySelector('#lkMsg').textContent=t; };
   const tryCode=async()=>{ if(Date.now()<lockUntil) return msg('Trop d’essais : patientez '+Math.ceil((lockUntil-Date.now())/1000)+' s.');
     const v=el.querySelector('#lkCode').value; if(!v) return; const h=await lockHash(v,c.s);
-    if(h===c.h){ lockFails=0; lockHide(); return; }
+    if(h===c.h){ lockFails=0; msg(c.ek&&!ENC.key?'Déchiffrement…':''); try{ await encAfterCode(v,lockCfg()||c); }catch(e){ msg('Déchiffrement impossible ('+(e&&e.message||e)+').'); return; } lockHide(); return; }
     lockFails++; el.querySelector('#lkCode').value=''; if(lockFails>=5){ lockUntil=Date.now()+30000*Math.pow(2,lockFails-5); msg('Code incorrect. Nouvel essai dans '+Math.round((lockUntil-Date.now())/1000)+' s.'); } else msg('Code incorrect.'); };
   el.querySelector('#lkOk').addEventListener('click',tryCode);
   el.querySelector('#lkCode').addEventListener('keydown',e=>{ if(e.key==='Enter') tryCode(); });
-  const bb=el.querySelector('#lkBio'); if(bb) bb.addEventListener('click',async()=>{ try{ if(await bioCheck(c)) lockHide(); }catch(e){ msg('Face ID / Touch ID indisponible : utilisez le code.'); } });
-  el.querySelector('#lkForgot').addEventListener('click',()=>msg('Le code ne peut pas être récupéré. Supprimez l’application de l’écran d’accueil, réinstallez-la puis restaurez votre dernière sauvegarde.'));
-  if(!c.wa) setTimeout(()=>{ const i=el.querySelector('#lkCode'); if(i) i.focus(); },100);
+  const bb=el.querySelector('#lkBio'); if(bb) bb.addEventListener('click',async()=>{ try{ if(await encBioUnlock(lockCfg()||c)) lockHide(); else msg('Utilisez le code.'); }catch(e){ msg(bioLbl()+' indisponible : utilisez le code.'); } });
+  el.querySelector('#lkForgot').addEventListener('click',()=>msg('Le code ne peut pas être récupéré, et vos dossiers sont chiffrés avec lui. Supprimez l’application, réinstallez-la puis restaurez votre dernière sauvegarde (ou resynchronisez depuis un autre appareil).'));
+  if(!BW) setTimeout(()=>{ const i=el.querySelector('#lkCode'); if(i) i.focus(); },100);
 }
 document.addEventListener('visibilitychange',()=>{ const c=lockCfg(); if(!c) return;
   if(+c.d<0) return;
@@ -1820,22 +1918,24 @@ document.addEventListener('visibilitychange',()=>{ const c=lockCfg(); if(!c) ret
 async function lockVerify(){ const c=lockCfg(); if(!c) return true; const r=await askPw({title:'Code actuel',fields:['Code de verrouillage'],min:1,numeric:true}); if(!r) return false; if(await lockHash(r[0],c.s)===c.h) return true; toast('Code incorrect'); return false; }
 async function lockSetCode(intro){
   const r=await askPw({title:'Code de verrouillage',body:intro||'Choisissez un code d’au moins 6 chiffres, différent de celui de l’appareil.',fields:['Nouveau code','Confirmer le code'],min:6,numeric:true,ok:'Enregistrer'}); if(!r) return null;
-  const old=lockCfg()||{}; const s=u8b64(crypto.getRandomValues(new Uint8Array(16))); const c={s,h:await lockHash(r[0],s),d:old.d!=null?old.d:(matchMedia('(pointer: fine)').matches?-1:0),wa:old.wa||''};
-  if(!lockSave(c)){ toast('Impossible d’enregistrer le verrouillage sur cet appareil'); return null; } return c;
+  const old=lockCfg()||{}; const s=u8b64(crypto.getRandomValues(new Uint8Array(16))); const c=Object.assign({},old,{s,h:await lockHash(r[0],s),d:old.d!=null?old.d:(matchMedia('(pointer: fine)').matches?-1:0),wa:old.wa||''});
+  if(!lockSave(c)){ toast('Impossible d’enregistrer le verrouillage sur cet appareil'); return null; }
+  try{ await encOnCode(r[0],c); }catch(e){ toast('Chiffrement impossible : '+(e&&e.message||e)); } return c;
 }
 function lockSecHTML(){ const c=lockCfg();
-  return `<section class="sec"><h2>Verrouillage</h2><div class="card"><div class="txt">${c?`<b>Activé.</b> Le code${c.wa?' ou Face ID / Touch ID':''} est demandé à l’ouverture ${+c.d<0?'uniquement (pas au changement de fenêtre)':+c.d?'et après '+c.d+' min passée(s) hors de l’application':'et à chaque retour dans l’application'}.`:(isPatient()?'Protégez l’accès à l’application par un code, et Face ID / Touch ID si l’appareil le permet.':'Obligatoire pour la version professionnelle : un code, et la biométrie si l’appareil le permet.')}<span class="k" style="margin-top:6px">Le verrouillage empêche l’accès aux écrans. Les données enregistrées sont en outre chiffrées par l’iPhone lui-même, à condition qu’il soit protégé par un code.</span></div></div>
-  <div class="actions">${c?`<label class="f" style="margin:0;min-width:150px"><span>Verrouiller après</span><select id="lkDelay">${[[-1,'Seulement à l’ouverture (ordinateur)'],[0,'Immédiatement'],[1,'1 minute'],[5,'5 minutes'],[15,'15 minutes']].map(([v,l])=>`<option value="${v}" ${+c.d===v?'selected':''}>${l}</option>`).join('')}</select></label><button class="btn" id="lkChange">Changer le code</button><button class="btn" id="lkBioT" style="display:none">${c.wa?'Désactiver Face ID / Touch ID':'Activer Face ID / Touch ID'}</button>${isPatient()?'<button class="btn danger" id="lkOff">Désactiver</button>':''}`:'<button class="btn primary" id="lkOn">Activer le verrouillage</button>'}</div></section>`; }
+  return `<section class="sec"><h2>Verrouillage</h2><div class="card"><div class="txt">${c?`<b>Activé.</b> Le code${c.wa?' ou Face ID / Touch ID':''} est demandé à l’ouverture ${+c.d<0?'uniquement (pas au changement de fenêtre)':+c.d?'et après '+c.d+' min passée(s) hors de l’application':'et à chaque retour dans l’application'}.`:(isPatient()?'Protégez l’accès à l’application par un code, et Face ID / Touch ID si l’appareil le permet.':'Obligatoire pour la version professionnelle : un code, et la biométrie si l’appareil le permet.')}<span class="k" style="margin-top:6px">${encStatus()}</span></div></div>
+  <div class="actions">${c?`<label class="f" style="margin:0;min-width:150px"><span>Verrouiller après</span><select id="lkDelay">${[[-1,'Seulement à l’ouverture (ordinateur)'],[0,'Immédiatement'],[1,'1 minute'],[5,'5 minutes'],[15,'15 minutes']].map(([v,l])=>`<option value="${v}" ${+c.d===v?'selected':''}>${l}</option>`).join('')}</select></label><button class="btn" id="lkChange">Changer le code</button>${c.wa&&c.ek&&!c.ep?'<button class="btn" id="lkBioPrf">Biométrie aussi à l’ouverture</button>':''}<button class="btn" id="lkBioT" style="display:none">${c.wa?'Désactiver Face ID / Touch ID':'Activer Face ID / Touch ID'}</button>${isPatient()?'<button class="btn danger" id="lkOff">Désactiver</button>':''}`:'<button class="btn primary" id="lkOn">Activer le verrouillage</button>'}</div></section>`; }
 function bindLockSettings(rerender){
   const on=$('#lkOn'); if(on) on.addEventListener('click',async()=>{ const c=await lockSetCode(); if(!c) return; toast('Verrouillage activé');
-    if(await bioAvail()&&await ask({title:'Utiliser Face ID / Touch ID ?',body:'Vous pourrez déverrouiller l’application avec Face ID ou Touch ID ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici : le code sera utilisé'); } }
+    if(await bioAvail()&&await ask({title:'Utiliser Face ID / Touch ID ?',body:'Vous pourrez déverrouiller l’application avec Face ID ou Touch ID ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); await encBioWrapToast(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici : le code sera utilisé'); } }
     rerender(); });
   const ch=$('#lkChange'); if(ch) ch.addEventListener('click',async()=>{ if(!await lockVerify()) return; if(await lockSetCode()){ toast('Code modifié'); rerender(); } });
-  const off=$('#lkOff'); if(off) off.addEventListener('click',async()=>{ if(!await lockVerify()) return; lockSave(null); toast('Verrouillage désactivé'); rerender(); });
+  const off=$('#lkOff'); if(off) off.addEventListener('click',async()=>{ if(!await lockVerify()) return; try{ await encDisable(); }catch(e){ toast('Impossible de déchiffrer les dossiers : verrouillage conservé'); return; } lockSave(null); toast('Verrouillage désactivé'); rerender(); });
+  const bp=$('#lkBioPrf'); if(bp) bp.addEventListener('click',async()=>{ const c=lockCfg(); if(!c||!ENC.key) return; try{ c.wa=await bioRegister(); lockSave(c); await encBioWrapToast(c); if(c.ep) toast(bioLbl()+' déchiffre désormais vos dossiers à l’ouverture'); }catch(e){ toast(bioLbl()+' indisponible ici'); } rerender(); });
   const dl=$('#lkDelay'); if(dl) dl.addEventListener('change',()=>{ const c=lockCfg(); if(!c) return; c.d=+dl.value; lockSave(c); });
   const bt=$('#lkBioT'); if(bt){ bioAvail().then(ok=>{ if(ok||(lockCfg()||{}).wa) bt.style.display=''; });
-    bt.addEventListener('click',async()=>{ const c=lockCfg(); if(!c) return; if(c.wa){ if(!await lockVerify()) return; c.wa=''; lockSave(c); toast('Face ID / Touch ID désactivé'); }
-      else { try{ c.wa=await bioRegister(); lockSave(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici'); } } rerender(); }); }
+    bt.addEventListener('click',async()=>{ const c=lockCfg(); if(!c) return; if(c.wa){ if(!await lockVerify()) return; c.wa=''; delete c.ep; delete c.ps; lockSave(c); toast('Face ID / Touch ID désactivé'); }
+      else { try{ c.wa=await bioRegister(); lockSave(c); await encBioWrapToast(c); toast('Face ID / Touch ID activé'); }catch(e){ toast('Face ID / Touch ID indisponible ici'); } } rerender(); }); }
 }
 
 /* ---------- Praticien (carte d’urgence, dossier patiente) ---------- */
@@ -1847,7 +1947,7 @@ function bindPraticien(){ ['idNom','idProf','idLieu','idTel','idRpps','idMail'].
 /* ---------- Auteurs des données (soignants) ---------- */
 const AUTH_COLORS=['#7B2D5E','#1D6FB8','#1E8A4C','#C2620A','#7C3AED','#0E7C7B','#B42318','#4B5563'];
 const AUTH_ARR=['evals','bio','hospits'];
-const META_KEYS=new Set(['id','evals','bio','hospits','authors','unread','updatedAt','createdAt','importedAt','fH','fUpd','majLe','suiviPar','fichesSnap','fichesOff','shareCode','myCode','notesPriv','groupId']);
+const META_KEYS=new Set(['patRdv','patVac','id','evals','bio','hospits','authors','unread','updatedAt','createdAt','importedAt','fH','fUpd','majLe','suiviPar','fichesSnap','fichesOff','shareCode','myCode','notesPriv','groupId']);
 const PROFS=['Gynécologue-obstétricien(ne)','Sage-femme','Médecin généraliste','Échographiste','Anesthésiste','Pédiatre','Interne','Secrétariat médical','Autre'];
 function hashStr(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193); } return (h>>>0).toString(36); }
 function itemCore(it){ const o=Object.assign({},it); delete o._h; delete o.upd; return o; }
@@ -1872,18 +1972,19 @@ function mergeDossier(local,inc){
   for(const k of AUTH_ARR){ const L=list(p[k]).slice();
     for(const it of list(inc[k])){ if(!it||!it.id) continue; const i=L.findIndex(x=>x.id===it.id);
       if(i<0){ L.push(it); news.push(it.id); }
-      else if((it.upd||0)>(L[i].upd||0)&&JSON.stringify(itemCore(it))!==JSON.stringify(itemCore(L[i]))){ L[i]=it; news.push(it.id); } }
+      else if((it.upd||0)>(L[i].upd||0)&&JSON.stringify(itemCore(it))!==JSON.stringify(itemCore(L[i]))){ const old=L[i], nw=Object.assign({},it); if(old.notesPriv&&nw.notesPriv&&!nw.notes&&old.notes) nw.notes=old.notes; if(old.hist&&!nw.hist) nw.hist=old.hist; L[i]=nw; news.push(it.id); } }
     p[k]=L; }
   p.fH=Object.assign({},local.fH||{}); p.fUpd=Object.assign({},local.fUpd||{});
   const ic=scalCore(inc);
   for(const k of Object.keys(ic)){ const iu=(inc.fUpd||{})[k]||0, lu=(local.fUpd||{})[k]||0, lv=local[k];
     const empty=lv==null||lv===''||(Array.isArray(lv)&&!lv.length)||(typeof lv==='object'&&!Array.isArray(lv)&&!Object.keys(lv).length);
     if((iu>lu||(empty&&!lu))&&JSON.stringify(ic[k])!==JSON.stringify(lv===undefined?null:lv)){ p[k]=ic[k]; if(inc.fH&&inc.fH[k]) p.fH[k]=inc.fH[k]; if(iu) p.fUpd[k]=iu; keys.push(k); } }
+  for(const k of ['patRdv','patVac']){ if(isPatient()){ if(local[k]==null&&inc[k]!=null) p[k]=inc[k]; } else if(inc[k]!=null) p[k]=inc[k]; }
   if(isPatient()&&(inc.majLe||'')>(local.majLe||'')){ p.majLe=inc.majLe; if(inc.fichesSnap) p.fichesSnap=inc.fichesSnap; if(inc.suiviPar) p.suiviPar=inc.suiviPar; }
   return {p,news,keys};
 }
 function isMine(it){ const me=praticien(); return !it||!it.by||!!(me&&(it.by===me.id||me.aka.includes(it.by))); }
-function authorOf(p,it){ const id=it&&it.by; if(!id) return null; const a=(p.authors||{})[id]; return a?Object.assign({id},a):{id,nom:'Soignant non identifié',c:7}; }
+function authorOf(p,it){ const id=it&&it.by; if(!id) return null; if(id==='patiente') return {id,nom:'la patiente',prof:'',lieu:'',c:6}; const a=(p.authors||{})[id]; return a?Object.assign({id},a):{id,nom:'Soignant non identifié',c:7}; }
 function authorBadge(p,it){
   const a=authorOf(p,it); if(!a) return '';
   if(isPatient()){ if(Object.keys(p.authors||{}).length<2) return ''; } else if(isMine(it)) return '';
@@ -1898,7 +1999,7 @@ function authorBox(p,it){
 }
 function lockForeign(sh,p,it){
   if(isPatient()||!it||canEdit(p,it)||!sh) return;
-  sh.querySelectorAll('.form input,.form select,.form textarea,.form button').forEach(el=>{ el.disabled=true; });
+  sh.querySelectorAll('.form input,.form select,.form textarea,.form button').forEach(el=>{ if(!el.hasAttribute('data-ro-ok')) el.disabled=true; });
   ['#mSave','#eSave','#mDel','#eDel'].forEach(s=>{ const b=sh.querySelector(s); if(b) b.style.display='none'; });
   const c=sh.querySelector('#mCancel,#eCancel'); if(c) c.textContent='Fermer';
 }
@@ -1943,7 +2044,7 @@ async function buildSync(full,withFiles){
   const since=full?0:Math.max(0,syncMeta('out')-5*60000);
   const pats=S.patients.filter(p=>(p.updatedAt||0)>since);
   let files=[];
-  if(withFiles){ for(const p of pats){ let fs=[]; try{ fs=await filesFor(p.id); }catch(e){} for(const m of fs){ if(!full&&(m.addedAt||0)<=since) continue; const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:u8b64(new Uint8Array(f.data))}); } } }
+  if(withFiles){ for(const p of pats){ let fs=[]; try{ fs=await filesFor(p.id); }catch(e){} for(const m of fs){ if(!full&&(m.addedAt||0)<=since) continue; const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,patientId:f.patientId,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:u8b64(new Uint8Array(f.data))}); } } }
   return {app:'suivi-grossesse-sync',v:1,at:new Date().toISOString(),full:!!full,praticien:S.settings.praticien||null,settings:(full||!isSecr())?S.settings:null,patients:pats,files};
 }
 async function sealSync(obj,pw){
@@ -1958,17 +2059,19 @@ async function askSyncPw(confirm){
   if(!r) return null; S._bkpw=r[0]; return r[0];
 }
 function sameNom(a,b){ return norm(a||'').replace(/^(dr|docteur|mme|m)\s+/,'')===norm(b||'').replace(/^(dr|docteur|mme|m)\s+/,''); }
-async function runSync(pkg){
+async function runSync(pkg,opts){ opts=opts||{};
   if(!pkg||pkg.app!=='suivi-grossesse-sync'){ toast('Ce fichier n’est pas une synchronisation de l’application'); return; }
   const inc=pkg.praticien||{}; let me=S.settings.praticien||{};
   if(!inc.id){ toast('Identité du praticien absente du fichier'); return; }
   if(!me.id){ S.settings.praticien=Object.assign({},inc); if(pkg.settings&&!S.patients.length){ const keep=S.settings.praticien; S.settings=Object.assign({},pkg.settings,{praticien:keep}); } await saveSettings(); }
   else if(me.id!==inc.id&&(isSecrP(me)||isSecrP(inc))){
-    if(!await ask({title:'Synchroniser avec le cabinet',body:`Ce fichier vient du poste de ${inc.nom} (${inc.prof||'soignant'}). Les dossiers seront fusionnés ; chacun garde son identité.${isSecrP(me)?' Les notes privées des soignants ne sont pas copiées sur ce poste.':''}`,ok:'Synchroniser'})) return;
+    let peers_=[]; try{ peers_=JSON.parse(localStorage.getItem('sg-peers')||'[]'); }catch(e){}
+    if(!(opts.quiet&&peers_.includes(inc.id))&&!await ask({title:'Synchroniser avec le cabinet',body:`Ce fichier vient du poste de ${inc.nom} (${inc.prof||'soignant'}). Les dossiers seront fusionnés ; chacun garde son identité.${isSecrP(me)?' Les notes privées des soignants ne sont pas copiées sur ce poste.':''}`,ok:'Synchroniser'})) return {skipped:true};
+    try{ if(!peers_.includes(inc.id)){ peers_.push(inc.id); localStorage.setItem('sg-peers',JSON.stringify(peers_)); } }catch(e){}
     if(isSecrP(me)&&!isSecrP(inc)&&pkg.settings){ const keep=S.settings.praticien; S.settings=Object.assign({},JSON.parse(JSON.stringify(pkg.settings)),{praticien:keep}); await saveSettings(); }
   }
   else if(me.id!==inc.id){
-    if(!sameNom(me.nom,inc.nom)){ await ask({title:'Autre soignant',body:`Ce fichier provient de ${inc.nom}, pas de ${me.nom}. La synchronisation ne relie que les appareils d’un même praticien. Pour échanger avec un confrère, passez par le dossier de la patiente.`,ok:'Fermer'}); return; }
+    if(!sameNom(me.nom,inc.nom)){ if(opts.quiet) return {skipped:true}; await ask({title:'Autre soignant',body:`Ce fichier provient de ${inc.nom}, pas de ${me.nom}. La synchronisation ne relie que les appareils d’un même praticien. Pour échanger avec un confrère, passez par le dossier de la patiente.`,ok:'Fermer'}); return; }
     if(!await ask({title:'Relier cet appareil',body:`Cet appareil et votre autre appareil ont chacun une identité « ${me.nom} ». Les réunir permet de reconnaître toutes vos saisies comme les vôtres, sur les deux appareils.`,ok:'Relier'})) return;
     const aka=[...new Set([...(inc.aka||[]),...(me.aka||[]),me.id])].filter(x=>x!==inc.id);
     S.settings.praticien=Object.assign({},me,{id:inc.id,aka}); await saveSettings();
@@ -1987,9 +2090,10 @@ async function runSync(pkg){
     if(r.news.length||r.keys.length){ await savePatient(np); nUpd++; }
   }
   for(const f of list(pkg.files)){ let ex=null; try{ ex=await get('files',f.id); }catch(e){} if(ex) continue; const pid=(S.patients.find(x=>x.id===f.patientId)||{}).id; if(!pid) continue;
-    try{ await put('files',{id:f.id,patientId:pid,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type||'application/pdf',size:f.size,addedAt:f.addedAt,data:b64u8(f.b64).buffer}); nFiles++; }catch(e){} }
+    try{ await put('files',{id:f.id,patientId:pid,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type||'application/pdf',size:f.size,addedAt:f.addedAt,data:b64u8(f.b64).buffer}); nFiles++; }catch(e){} }
   } finally { S._syncing=false; }
   syncMetaSet('in',Date.now());
+  if(opts.quiet) return {nNew,nUpd,nFiles,nOther};
   await ask({title:'Synchronisation terminée',body:`${nNew} nouvelle(s) patiente(s), ${nUpd} dossier(s) mis à jour, ${nFiles} document(s) ajouté(s).${nOther?' '+nOther+' saisie(s) d’autres soignants signalée(s) « Nouveau ».':''} Rien n’a été effacé.`,ok:'OK'});
   render();
 }
@@ -2024,8 +2128,9 @@ async function syncFromQR(str){ const pw=await askSyncPw(false); if(!pw) return;
 function syncSecHTML(){ const o=syncMeta('out'), i=syncMeta('in'); const since=o?S.patients.filter(p=>(p.updatedAt||0)>o-5*60000).length:S.patients.length;
   return `<section class="sec"><h2>Mes appareils (synchronisation)</h2><div class="card"><div class="txt">Utilisez l’application sur votre téléphone et sur votre ordinateur avec la même identité. En fin de journée, envoyez les dossiers modifiés vers l’autre appareil : ils y sont fusionnés sans rien effacer, notes privées comprises.<span class="k" style="margin-top:6px">Dernier envoi : ${o?fd(localDay(o))+' à '+new Date(o).toTimeString().slice(0,5):'jamais'} · Dernière réception : ${i?fd(localDay(i))+' à '+new Date(i).toTimeString().slice(0,5):'jamais'} · À envoyer : ${since} dossier(s)</span></div></div>
   <label class="f" style="margin:10px 0 0"><span>Dossiers à envoyer</span><select id="syWhat"><option value="new">Modifiés depuis le dernier envoi</option><option value="all" ${o?'':'selected'}>Tous (premier transfert)</option></select></label>
-  <div class="actions"><button class="btn primary" id="sySend">Envoyer (fichier)</button><button class="btn" id="syQr">Envoyer (QR codes)</button><button class="btn" id="syRecv">Recevoir (fichier)</button><button class="btn" id="syScan">Recevoir par QR codes</button></div></section>`; }
+  <div class="actions"><button class="btn primary" id="sySend">Envoyer (fichier)</button><button class="btn" id="syQr">Envoyer (QR codes)</button><button class="btn" id="syRecv">Recevoir (fichier)</button><button class="btn" id="syScan">Recevoir par QR codes</button></div>${foldSecHTML()}</section>`; }
 function bindSync(){ const w=()=>($('#syWhat')||{}).value==='all';
+  const fp=$('#fdPick'); if(fp) fp.addEventListener('click',foldSetup); const fsy=$('#fdSync'); if(fsy) fsy.addEventListener('click',()=>foldSync(true)); const fo=$('#fdOff'); if(fo) fo.addEventListener('click',async()=>{ if(!await ask({title:'Arrêter la synchronisation par dossier ?',body:'Rien n’est effacé, ni sur ce poste ni dans le dossier.',ok:'Arrêter'})) return; foldCfgSet(null); foldH=null; try{ await hSet(null); }catch(e){} render(); });
   const a=$('#sySend'); if(!a) return; a.addEventListener('click',()=>syncSendFile(w())); $('#syQr').addEventListener('click',()=>syncShowQR(w()));
   $('#syRecv').addEventListener('click',()=>{ const i=$('#importInput'); i.value=''; i.onchange=()=>syncRecvFile(i.files[0]); i.click(); });
   $('#syScan').addEventListener('click',()=>openScanImport()); }
@@ -2040,7 +2145,7 @@ async function ensureLock(){
     let c=null;
     while(!c){ c=await lockSetCode('Pour protéger les dossiers de vos patientes, l’application doit être verrouillée. Choisissez un code d’au moins 6 chiffres, différent de celui de l’appareil. Il sera demandé à chaque ouverture.'); if(!c) toast('Le verrouillage est obligatoire pour la version professionnelle'); }
     toast('Verrouillage activé');
-    if(await bioAvail()&&await ask({title:'Utiliser la biométrie ?',body:'Vous pourrez déverrouiller avec Face ID / Touch ID (iPhone) ou Windows Hello (PC) ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); toast('Déverrouillage biométrique activé'); }catch(e){ toast('Biométrie indisponible ici : le code sera utilisé'); } }
+    if(await bioAvail()&&await ask({title:'Utiliser la biométrie ?',body:'Vous pourrez déverrouiller avec Face ID / Touch ID (iPhone) ou Windows Hello (PC) ; le code reste utilisable.',ok:'Activer'})){ try{ c.wa=await bioRegister(); lockSave(c); await encBioWrapToast(c); toast('Déverrouillage biométrique activé'); }catch(e){ toast('Biométrie indisponible ici : le code sera utilisé'); } }
     if(route().v==='reglages') render();
   } finally { S._lockAsking=false; }
 }
@@ -2149,7 +2254,9 @@ function syncInUse(){ return !!(syncMeta('out')||syncMeta('in')); }
 function syncDirty(){ const o=syncMeta('out'), m=syncLoc(); return S.patients.filter(p=>(m[p.id]||0)>o); }
 const syHm=t=>new Date(t).toTimeString().slice(0,5);
 function syncBannerHTML(){
-  if(isPatient()||S.preview||!syncInUse()) return '';
+  if(isPatient()||S.preview) return '';
+  const fc=foldCfg(); if(fc&&FOLD_OK){ if(S._foldOk&&Date.now()-(fc.last||0)<15*60000) return ''; return `<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">🔄 Dossier partagé « ${esc(fc.name)} » : ${fc.last?'dernière synchronisation le '+fd(localDay(fc.last))+' à '+syHm(fc.last):'pas encore synchronisé'}.</span><button class="btn small primary" data-syncact="fold">Synchroniser</button></div>`; }
+  if(!syncInUse()) return '';
   let h=''; const i=syncMeta('in'), now=Date.now(); let skip=0; try{ skip=+localStorage.getItem('sg-sync-skip')||0; }catch(e){}
   if((!i||now-i>24*3600e3)&&now-skip>12*3600e3) h+=`<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">🔄 ${i?`Dernière réception depuis votre autre appareil : ${fd(localDay(i))} à ${syHm(i)}.`:'Aucune réception depuis votre autre appareil pour l’instant.'} Recevez d’abord ses dossiers avant d’en ouvrir un.</span><button class="btn small primary" data-syncact="recv">Recevoir (fichier)</button><button class="btn small" data-syncact="scan">QR codes</button><button class="btn small ghost" data-syncact="skip">Plus tard</button></div>`;
   const d=syncDirty(); if(d.length) h+=`<div class="note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:200px">📤 <b>${d.length} dossier${d.length>1?'s':''}</b> modifié${d.length>1?'s':''} sur ce poste et pas encore envoyé${d.length>1?'s':''} à votre autre appareil : ${d.slice(0,4).map(p=>esc(fullName(p))).join(', ')}${d.length>4?'…':''}</span><button class="btn small primary" data-syncact="send">Envoyer</button><button class="btn small" data-syncact="sendqr">QR codes</button></div>`;
@@ -2162,15 +2269,404 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-syncact]'
   else if(a==='scan') openScanImport();
   else if(a==='send') syncSendFile(false);
   else if(a==='sendqr') syncShowQR(false);
+  else if(a==='fold') foldSync(true);
   else if(a==='skip'){ try{ localStorage.setItem('sg-sync-skip',String(Date.now())); }catch(err){} render(); } });
+
+/* ---------- Dossier de synchronisation partagé (ordinateur : Chrome, Edge) ---------- */
+const FOLD_OK=typeof window.showDirectoryPicker==='function';
+function hdb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('sg-handles',1); r.onupgradeneeded=()=>r.result.createObjectStore('h'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function hGet(){ try{ const d=await hdb(); return await new Promise(res=>{ const q=d.transaction('h').objectStore('h').get('sync'); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }catch(e){ return null; } }
+async function hSet(v){ const d=await hdb(); await new Promise((res,rej)=>{ const t=d.transaction('h','readwrite'); if(v) t.objectStore('h').put(v,'sync'); else t.objectStore('h').delete('sync'); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+function devId(){ try{ let d=localStorage.getItem('sg-dev'); if(!d){ d=uid('d'); localStorage.setItem('sg-dev',d); } return d; }catch(e){ return 'poste'; } }
+function foldCfg(){ try{ return JSON.parse(localStorage.getItem('sg-fold')||'null'); }catch(e){ return null; } }
+function foldCfgSet(c){ try{ if(c) localStorage.setItem('sg-fold',JSON.stringify(c)); else localStorage.removeItem('sg-fold'); }catch(e){} }
+function foldRead_(){ try{ return JSON.parse(localStorage.getItem('sg-fold-read')||'{}')||{}; }catch(e){ return {}; } }
+let foldH=null, foldBusy=false, foldTimer=null;
+async function foldHandle(askP){ if(!foldH) foldH=await hGet(); if(!foldH) return null;
+  let st='granted'; try{ st=await foldH.queryPermission({mode:'readwrite'}); if(st!=='granted'&&askP) st=await foldH.requestPermission({mode:'readwrite'}); }catch(e){ return null; }
+  return st==='granted'?foldH:null; }
+async function foldPw(interactive){ if(S._bkpw) return S._bkpw; const c=foldCfg()||{};
+  if(c.rem){ try{ const v=await get('kv','foldpw'); if(v){ S._bkpw=v; return v; } }catch(e){} }
+  if(c.pw){ try{ const v=decodeURIComponent(escape(atob(c.pw))); S._bkpw=v; try{ await put('kv',v,'foldpw'); c.rem=1; delete c.pw; foldCfgSet(c); }catch(e){} return v; }catch(e){} }
+  return interactive?await askSyncPw(false):null; }
+async function foldWriteFile(h,name,blob){ const fh=await h.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); }
+async function foldNames(h){ const out=new Map(); for await (const [n,e] of h.entries()) if(e.kind==='file') out.set(n,e); return out; }
+async function foldSync(interactive){
+  if(foldBusy||!foldCfg()||encLockedNow()) return; foldBusy=true; const c=foldCfg(); let changes=0, docsIn=0, docsOut=0; const resIn=[];
+  try{
+    const h=await foldHandle(interactive); if(!h){ S._foldOk=false; if(interactive) toast('Accès au dossier refusé ou indisponible'); return; }
+    const pw=await foldPw(interactive); if(!pw){ S._foldOk=false; return; }
+    const names=await foldNames(h), read=foldRead_(), me=devId();
+    // 1. Recevoir les autres postes
+    for(const [n,e] of names){ const m=/^synchro-(.+)\.json$/.exec(n); if(!m||m[1]===me) continue;
+      const f=await e.getFile(); if(f.lastModified<=(read[n]||0)) continue;
+      let pkg; try{ const w=JSON.parse(await f.text()); pkg=await openSync(b64u8(w.data),pw); }catch(err){ if(interactive) toast('Fichier '+n+' illisible (mot de passe différent ?)'); continue; }
+      const r=await runSync(pkg,{quiet:true}); if(r&&!r.skipped){ changes+=r.nNew+r.nUpd; } read[n]=f.lastModified; }
+    for(const [n,e] of names){ const m=/^doc-(.+)\.bin$/.exec(n); if(!m) continue; let ex=null; try{ ex=await get('files',m[1]); }catch(err){} if(ex) continue;
+      try{ const meta=await openSync(new Uint8Array(await (await e.getFile()).arrayBuffer()),pw); const pid=(S.patients.find(x=>x.id===meta.patientId)||{}).id; if(!pid) continue;
+        await put('files',{id:meta.id,patientId:pid,by:meta.by||null,date:meta.date||null,cat:meta.cat||'',name:meta.name,type:meta.type||'application/pdf',size:meta.size,addedAt:meta.addedAt,data:b64u8(meta.b64).buffer}); docsIn++;
+        if(meta.by&&meta.by!==(praticien()||{}).id&&Date.now()-(meta.addedAt||0)<30*864e5){ const pp=S.patients.find(x=>x.id===pid); pp.unread=Object.assign({},pp.unread||{}); pp.unread[meta.id]=/^Biologie/.test(meta.cat||'')?2:1; await put('patients',pp); if(pp.unread[meta.id]===2) resIn.push({st:'ok',p:pp,name:meta.name}); } }catch(err){} }
+    try{ localStorage.setItem('sg-fold-read',JSON.stringify(read)); }catch(err){}
+    // 2. Déposer l'état de ce poste (sans notes privées)
+    const pkg=await buildSync(true,false); pkg.dev=c.dev||''; pkg.patients=pkg.patients.map(p=>{ const q=JSON.parse(JSON.stringify(p)); delete q.unread; stripPriv(q); return q; });
+    if(pkg.settings){ pkg.settings=JSON.parse(JSON.stringify(pkg.settings)); }
+    const b=await sealSync(pkg,pw);
+    await foldWriteFile(h,'synchro-'+me+'.json',new Blob([JSON.stringify({app:'suivi-grossesse-sync-chiffree',v:1,at:pkg.at,n:pkg.patients.length,dev:c.dev||'',by:(praticien()||{}).nom||'',data:u8b64(b)})],{type:'application/json'}));
+    for(const p of S.patients){ let fs=[]; try{ fs=await filesFor(p.id); }catch(err){} for(const m of fs){ const n='doc-'+m.id+'.bin'; if(names.has(n)) continue; const f=await get('files',m.id); if(!f||!f.data) continue;
+      const blob=await sealSync({id:f.id,patientId:f.patientId,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:u8b64(new Uint8Array(f.data))},pw); await foldWriteFile(h,n,new Blob([blob])); docsOut++; } }
+    c.last=Date.now(); foldCfgSet(c); syncMetaSet('out',c.last); syncMetaSet('in',c.last); S._foldOk=true;
+    if(resIn.length){ await resBadge(); if(!interactive) resNotify(resIn); }
+    if(interactive) toast(`Synchronisé : ${changes} dossier(s) reçu(s), ${docsIn} document(s) reçu(s), ${docsOut} déposé(s)`); else if(changes||docsIn) toast(`Synchronisation : ${changes} dossier(s) mis à jour${docsIn?', '+docsIn+' document(s)':''}`);
+    if((changes||docsIn||interactive)&&!document.querySelector('#sheet.open,#modal.open')) render();
+  }catch(e){ S._foldOk=false; if(interactive) toast('Synchronisation impossible : '+(e&&e.message||e)); }
+  finally{ foldBusy=false; }
+}
+function foldSoon(){ if(!foldCfg()) return; clearTimeout(foldTimer); foldTimer=setTimeout(()=>foldSync(false),8000); }
+async function foldSetup(){
+  if(!FOLD_OK){ toast('Disponible avec Chrome ou Edge sur ordinateur'); return; }
+  let h; try{ h=await window.showDirectoryPicker({mode:'readwrite',id:'sg-sync'}); }catch(e){ if(e&&e.name!=='AbortError') toast('Choix du dossier impossible dans cette vue : ouvrez l’application installée'); return; }
+  try{ await hSet(h); }catch(e){} foldH=h;
+  const me=praticien()||{}; const dev=(await askName('Nom de ce poste',(isSecr()?'Secrétariat':'Poste '+(me.nom||''))+(matchMedia('(pointer: fine)').matches?' – ordinateur':'')))||'Poste';
+  const pw=await askSyncPw(true); if(!pw) return;
+  const rem=await ask({title:'Retenir le mot de passe sur ce poste ?',body:'La synchronisation pourra alors se faire toute seule, à l’ouverture et après chaque enregistrement. Le mot de passe reste sur ce poste, protégé par le verrouillage de l’application.',ok:'Retenir'});
+  if(rem){ try{ await put('kv',pw,'foldpw'); }catch(e){} } S._bkpw=pw; foldCfgSet({name:h.name,dev,rem:rem?1:0,last:0}); await foldSync(true); render();
+}
+function askName(title,def){ return new Promise(res=>{ const m=$('#modal'), b=$('#modalBox'); b.innerHTML=`<h3>${esc(title)}</h3><p>Il apparaît dans le dossier partagé, pour savoir d’où vient chaque mise à jour.</p><input id="anIn" value="${esc(def||'')}" style="width:100%;font-size:1.05rem;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)"><div class="bx"><button class="btn primary" data-a="1">Valider</button></div>`; m.classList.add('open'); m.onclick=e=>{ if(!e.target.closest('[data-a]')) return; const v=$('#anIn').value.trim(); m.classList.remove('open'); m.onclick=null; res(v); }; }); }
+function foldSecHTML(){
+  if(!FOLD_OK) return `<div class="note" style="margin-top:10px">Synchronisation automatique par dossier partagé : disponible avec Chrome ou Edge sur ordinateur. Sur iPhone, utilisez le fichier ou les QR codes.</div>`;
+  const c=foldCfg();
+  return `<div class="card" style="margin-top:12px"><div class="txt"><b>Dossier de synchronisation automatique (ordinateur)</b><br>${c?`Dossier « ${esc(c.name)} » · ce poste : « ${esc(c.dev)} » · dernière synchronisation : ${c.last?fd(localDay(c.last))+' à '+syHm(c.last):'jamais'}${(c.rem||c.pw)?' · automatique':' · mot de passe demandé à chaque fois'}`:'Choisissez un dossier commun (partage réseau du cabinet, dossier OneDrive partagé…). Chaque poste y dépose et y récupère les nouveautés, tout seul : à l’ouverture, toutes les 3 minutes et après chaque enregistrement.'}<span class="k" style="margin-top:6px">Les fichiers du dossier sont chiffrés par le mot de passe de synchronisation. Les notes privées n’y sont jamais déposées : elles ne passent entre vos appareils que par le fichier ou les QR codes.</span></div></div>
+  <div class="actions">${c?'<button class="btn primary" id="fdSync">Synchroniser maintenant</button><button class="btn" id="fdPick">Changer de dossier</button><button class="btn danger" id="fdOff">Arrêter</button>':'<button class="btn primary" id="fdPick">Choisir le dossier…</button>'}</div>`; }
+
+/* ---------- Résultats reçus (MSSanté, laboratoire) : classement automatique ---------- */
+function idN(s){ return ' '+String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()+' '; }
+function resN(p){ return p&&p.unread?Object.values(p.unread).filter(v=>v===2).length:0; }
+function resIdentify(lines){
+  const raw=lines.join('\n'), t=idN(raw), dg=raw.toUpperCase().replace(/[^0-9AB]/g,''); const sc=[];
+  for(const p of S.patients){
+    let nm=false,pr=false,db=false,ins=false;
+    for(const n of [p.nom,p.nomNaiss]){ const k=idN(n).trim(); if(k.length>=2&&t.includes(' '+k+' ')) nm=true; }
+    const pk=idN(p.prenom).trim().split(' ')[0]; if(pk&&pk.length>=2&&t.includes(' '+pk+' ')) pr=true;
+    if(p.naissance){ const [y,m,d]=p.naissance.split('-'); if([` ${d} ${m} ${y} `,` ${+d} ${+m} ${y} `,` ${y} ${m} ${d} `,` ${d} ${m} ${y.slice(2)} `].some(x=>t.includes(x))) db=true; }
+    const c=insCheck(p.insMat); if(c.ok&&dg.includes(c.v)) ins=true;
+    if(ins||(nm&&(pr||db))) sc.push({p,s:(ins?10:0)+(nm?4:0)+(pr?2:0)+(db?4:0),act:(!p.status||p.status==='active')?1:0});
+  }
+  sc.sort((a,b)=>b.s-a.s||b.act-a.act);
+  if(!sc.length) return null;
+  if(sc.length>1&&sc[1].s===sc[0].s&&sc[1].act===sc[0].act&&!sameIdentity(sc[0].p,sc[1].p)) return null; // deux patientes possibles : on laisse choisir
+  return sc[0].p;
+}
+function resDate(lines,p){
+  const all=labNorm(lines.join('\n')), inf=p?info(p):{ok:false};
+  const mk=(dd,mm,yy)=>{ let y=+yy; if(y<100) y+=2000; if(+mm<1||+mm>12||+dd<1||+dd>31) return ''; return `${y}-${String(+mm).padStart(2,'0')}-${String(+dd).padStart(2,'0')}`; };
+  const ok=d=>{ if(!d) return false; const t=parseD(d); if(t==null||t>today()+DAY) return false; if(p&&d===p.naissance) return false; if(inf.ok&&t<inf.base-90*DAY) return false; return true; };
+  let m; const re1=/(?:preleve(?:ment)?|date de prelevement|prel\.)[^0-9\n]{0,30}(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/g;
+  while((m=re1.exec(all))){ const d=mk(m[1],m[2],m[3]); if(ok(d)) return d; }
+  const re2=/(\d{1,2})[\/.](\d{1,2})[\/.](20\d{2})/g;
+  while((m=re2.exec(all))){ const d=mk(m[1],m[2],m[3]); if(ok(d)) return d; }
+  return '';
+}
+function resName(rec,p,lines){
+  const d=resDate(lines,p), all=labNorm(lines.join(' '));
+  const echo=/compte.rendu d.?echograph|echographie (obstetricale|du (1er|2e|3e|premier|deuxieme|troisieme)|morpholog|de croissance)/.test(all)&&!/laboratoire|biologi/.test(all);
+  rec.cat=echo?'Échographie de croissance / autre':'Biologie'; rec.date=d||null;
+  rec.name=(echo?'Échographie'+(d?' – '+fd(parseD(d)):''):bilanName(p,d||null))+'.pdf';
+}
+async function resHash(buf){ try{ const h=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(h).slice(0,12)].map(x=>x.toString(16).padStart(2,'0')).join(''); }catch(e){ return 's'+buf.byteLength; } }
+async function resMarkNew(p,id){ p.unread=Object.assign({},p.unread||{}); p.unread[id]=2; await savePatient(p); }
+async function resIngest(file,src){
+  const buf=await file.arrayBuffer(), h=await resHash(buf);
+  let lines=[]; try{ lines=await pdfTextLines(buf); }catch(e){}
+  const p=lines.some(x=>x.trim())?resIdentify(lines):null;
+  let fs=[]; try{ fs=await filesFor(p?p.id:'__inbox'); }catch(e){}
+  if(fs.some(f=>f.h===h)) return {st:'dup',p};
+  const rec={id:uid('f'),patientId:p?p.id:'__inbox',cat:'Biologie',name:file.name,srcName:file.name,type:'application/pdf',size:buf.byteLength,addedAt:Date.now(),data:buf,h,auto:src||'mss'};
+  if(p) resName(rec,p,lines);
+  await put('files',rec);
+  if(p) await resMarkNew(p,rec.id);
+  return {st:p?'ok':'pend',p,name:rec.name,txt:lines.length>0};
+}
+async function resProcess(files,src){
+  const out=[]; for(const f of files){ if(!/pdf$/i.test(f.type||'')&&!/\.pdf$/i.test(f.name)){ out.push({file:f.name,st:'bad'}); continue; }
+    try{ out.push(Object.assign({file:f.name},await resIngest(f,src))); }catch(e){ out.push({file:f.name,st:'bad'}); } }
+  await resBadge(); return out;
+}
+async function resImport(files){ files=[...files]; if(!files.length) return; toast('Lecture de '+files.length+' document'+(files.length>1?'s':'')+'…'); const out=await resProcess(files,'mss'); render(); resReport(out); }
+function resReport(out){
+  const ok=out.filter(x=>x.st==='ok'), pend=out.filter(x=>x.st==='pend'), dup=out.filter(x=>x.st==='dup'), bad=out.filter(x=>x.st==='bad');
+  const m=$('#modal'), b=$('#modalBox');
+  b.innerHTML=`<h3>Résultats reçus</h3>
+   ${ok.length?`<p style="margin:8px 0 4px;font-weight:600">✓ ${ok.length} classé${ok.length>1?'s':''} automatiquement</p><div class="card">${ok.map(x=>`<button class="row" data-resgo="${esc(x.p.id)}"><span class="rmain"><span class="nm">${esc(fullName(x.p))}</span><small style="color:var(--muted)">${esc(x.name.replace(/\.pdf$/,''))}</small></span><span aria-hidden="true">›</span></button>`).join('')}</div>`:''}
+   ${pend.length?`<p style="margin:12px 0 4px;font-weight:600">${pend.length} document${pend.length>1?'s':''} sans patiente reconnue</p><p style="font-size:.88rem;margin:0">${pend.map(x=>esc(x.file)+(x.txt?'':' (image sans texte)')).join('<br>')}</p>`:''}
+   ${dup.length?`<p style="font-size:.88rem;color:var(--muted)">${dup.length} déjà présent${dup.length>1?'s':''} dans le dossier : ignoré${dup.length>1?'s':''}.</p>`:''}
+   ${bad.length?`<p style="font-size:.88rem;color:var(--muted)">${bad.length} fichier${bad.length>1?'s':''} non lu${bad.length>1?'s':''} (PDF uniquement).</p>`:''}
+   <div class="bx">${pend.length?'<button class="btn primary" data-a="pend">Classer maintenant</button>':''}<button class="btn ${pend.length?'':'primary'}" data-a="0">Fermer</button></div>`;
+  m.classList.add('open');
+  m.onclick=e=>{ const a=e.target.closest('[data-a]'); if(!a) return; m.classList.remove('open'); m.onclick=null; if(a.dataset.a==='pend') resPending(); };
+}
+async function resPending(){
+  let fs=[]; try{ fs=await filesFor('__inbox'); }catch(e){} fs.sort((a,b)=>b.addedAt-a.addedAt);
+  const m=$('#modal'), b=$('#modalBox');
+  if(!fs.length){ m.classList.remove('open'); m.onclick=null; await resBadge(); render(); return; }
+  const pts=S.patients.slice().sort((a,b)=>((b.status||'active')==='active')-((a.status||'active')==='active')||fullName(a).localeCompare(fullName(b)));
+  const opts='<option value="">Choisir la patiente…</option>'+pts.map(p=>`<option value="${esc(p.id)}">${esc(fullName(p))}${p.naissance?' – née le '+fd(parseD(p.naissance)):''}${p.status==='archived'?' (archivée)':''}</option>`).join('');
+  b.innerHTML=`<h3>Résultats à classer</h3><p style="font-size:.88rem">Nom ou date de naissance non trouvés dans le document, ou plusieurs patientes possibles. Ouvrez-le puis choisissez la patiente : il sera nommé et daté tout seul.</p>
+   ${fs.map(f=>`<div class="card" style="padding:10px;margin:8px 0"><div style="font-weight:600;word-break:break-word">${esc(f.name)}</div><small style="color:var(--muted)">reçu le ${fd(localDay(f.addedAt))}</small>
+     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn small" data-rv="${esc(f.id)}">Voir</button><select data-rsel="${esc(f.id)}" style="flex:1;min-width:160px">${opts}</select><button class="btn small primary" data-rok="${esc(f.id)}">Classer</button><button class="btn small danger" data-rdel="${esc(f.id)}">Supprimer</button></div></div>`).join('')}
+   <div class="bx"><button class="btn" data-a="0">Fermer</button></div>`;
+  m.classList.add('open');
+  m.onclick=async e=>{ const a=e.target.closest('[data-a],[data-rv],[data-rok],[data-rdel]'); if(!a) return;
+    if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; await resBadge(); render(); return; }
+    if(a.dataset.rv) return viewPdf(a.dataset.rv);
+    if(a.dataset.rdel){ await del('files',a.dataset.rdel); return resPending(); }
+    if(a.dataset.rok){ const pid=b.querySelector(`[data-rsel="${a.dataset.rok}"]`).value; const p=S.patients.find(x=>x.id===pid); if(!p){ toast('Choisissez la patiente'); return; }
+      const f=await get('files',a.dataset.rok); if(!f) return resPending(); let lines=[]; try{ lines=await pdfTextLines(f.data); }catch(err){}
+      resName(f,p,lines); f.patientId=p.id; await put('files',f); await resMarkNew(p,f.id); toast('Classé chez '+fullName(p)+' : '+f.name.replace(/\.pdf$/,'')); return resPending(); }
+  };
+}
+async function resBadge(){ if(isPatient()) return false; let pend=0; try{ pend=(await filesFor('__inbox')).length; }catch(e){}
+  const ch=pend!==(S._resPend||0); S._resPend=pend; const n=S.patients.reduce((a,p)=>a+resN(p),0)+pend;
+  try{ if(navigator.setAppBadge){ if(n) navigator.setAppBadge(n); else navigator.clearAppBadge(); } }catch(e){} return ch; }
+async function resNotify(out){
+  const ok=out.filter(x=>x.st==='ok'), pend=out.filter(x=>x.st==='pend').length; if(!ok.length&&!pend) return;
+  toast((ok.length?ok.length+' résultat'+(ok.length>1?'s':'')+' classé'+(ok.length>1?'s':'')+' ('+[...new Set(ok.map(x=>fullName(x.p)))].slice(0,3).join(', ')+')':'')+(pend?(ok.length?' · ':'')+pend+' à classer':''));
+  // Notification système sans nom de patiente (elle peut s’afficher sur un écran visible de tous)
+  try{ if('Notification' in window&&Notification.permission==='granted'){ const t='Suivi de grossesse – nouveaux résultats'; const body=(ok.length?ok.length+' résultat'+(ok.length>1?'s':'')+' classé'+(ok.length>1?'s':'')+' dans les dossiers':'')+(pend?(ok.length?', ':'')+pend+' à classer':'')+'. Ouvrez l’application pour les consulter.';
+    const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(reg&&reg.showNotification) await reg.showNotification(t,{body,tag:'sg-res'}); else new Notification(t,{body,tag:'sg-res'}); } }catch(e){}
+}
+function resBannerHTML(){
+  if(isPatient()) return ''; const L=S.patients.filter(p=>resN(p)>0), pend=S._resPend||0, ib=inboxCfg();
+  let h=`<div class="card" style="margin:0 0 10px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="flex:1;min-width:200px"><b>📥 Résultats reçus</b><br><small style="color:var(--muted)">PDF reçus par MSSanté ou du laboratoire : classés tout seuls dans le bon dossier${matchMedia('(pointer: fine)').matches?' (vous pouvez aussi les glisser ici)':''}.${ib?' Dossier de réception « '+esc(ib.name)+' » surveillé.':''}</small></span><button class="btn small primary" data-resadd>Déposer des PDF…</button>${FOLD_OK?`<button class="btn small" data-resinbox>${ib?'Dossier de réception':'Dossier de réception…'}</button>`:''}</div>`;
+  if(L.length||pend) h+=`<div class="banner" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="flex-basis:100%"><b>🧪 Nouveaux résultats à consulter</b></span>${L.map(p=>`<button class="btn small" data-resgo="${esc(p.id)}">${esc(fullName(p))} <span class="tag new">${resN(p)}</span></button>`).join('')}${pend?`<button class="btn small primary" data-respend>${pend} à classer</button>`:''}</div>`;
+  return h;
+}
+/* Dossier de réception (ordinateur, Chrome/Edge) : pièces jointes MSSanté enregistrées dans un dossier */
+async function hGetK(k){ try{ const d=await hdb(); return await new Promise(res=>{ const q=d.transaction('h').objectStore('h').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }catch(e){ return null; } }
+async function hSetK(k,v){ const d=await hdb(); await new Promise((res,rej)=>{ const t=d.transaction('h','readwrite'); if(v) t.objectStore('h').put(v,k); else t.objectStore('h').delete(k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+function inboxCfg(){ try{ return JSON.parse(localStorage.getItem('sg-inbox')||'null'); }catch(e){ return null; } }
+function inboxCfgSet(c){ try{ if(c) localStorage.setItem('sg-inbox',JSON.stringify(c)); else localStorage.removeItem('sg-inbox'); }catch(e){} }
+let inboxH=null, inboxBusy=false;
+async function inboxList(h,c){ const out=[]; for await (const [n,e] of h.entries()){ if(e.kind!=='file'||!/\.pdf$/i.test(n)) continue; const f=await e.getFile(); const k=hashStr(n+'|'+f.size+'|'+f.lastModified); if(!c.done[k]) out.push({f,k}); } return out; }
+async function inboxScan(interactive){
+  if(inboxBusy||!inboxCfg()||isPatient()||encLockedNow()) return; inboxBusy=true; const c=inboxCfg(); c.done=c.done||{};
+  try{
+    if(!inboxH) inboxH=await hGetK('inbox'); if(!inboxH){ if(interactive) toast('Dossier de réception introuvable : choisissez-le de nouveau'); return; }
+    let st='granted'; try{ st=await inboxH.queryPermission({mode:'read'}); if(st!=='granted'&&interactive) st=await inboxH.requestPermission({mode:'read'}); }catch(e){ return; }
+    if(st!=='granted'){ S._inboxOk=false; if(interactive) toast('Accès au dossier refusé'); return; }
+    const todo=await inboxList(inboxH,c); const out=[];
+    for(const {f,k} of todo){ let r; try{ r=await resIngest(f,'dossier'); }catch(e){ r={st:'bad'}; } out.push(Object.assign({file:f.name},r)); c.done[k]=Date.now(); }
+    const ks=Object.keys(c.done); if(ks.length>3000) ks.sort((a,b)=>c.done[a]-c.done[b]).slice(0,ks.length-3000).forEach(k=>delete c.done[k]);
+    c.last=Date.now(); inboxCfgSet(c); S._inboxOk=true; await resBadge();
+    if(interactive){ if(out.length) resReport(out); else toast('Aucun nouveau PDF dans le dossier de réception'); }
+    else if(out.length){ resNotify(out); if(!document.querySelector('#sheet.open,#modal.open')) render(); }
+  }catch(e){ if(interactive) toast('Lecture du dossier impossible : '+(e&&e.message||e)); }
+  finally{ inboxBusy=false; }
+}
+async function inboxSetup(){
+  if(!FOLD_OK){ toast('Disponible avec Chrome ou Edge sur ordinateur'); return; }
+  let h; try{ h=await window.showDirectoryPicker({mode:'read',id:'sg-inbox'}); }catch(e){ if(e&&e.name!=='AbortError') toast('Choix du dossier impossible dans cette vue : ouvrez l’application installée'); return; }
+  try{ await hSetK('inbox',h); }catch(e){} inboxH=h;
+  const c={name:h.name,done:{},last:0}; const exist=await inboxList(h,c);
+  if(exist.length&&!await ask({title:`Classer les ${exist.length} PDF déjà présents ?`,body:'Sinon, seuls les documents ajoutés à partir de maintenant seront classés.',ok:'Oui, les classer'})) exist.forEach(x=>{ c.done[x.k]=Date.now(); });
+  inboxCfgSet(c);
+  if('Notification' in window&&Notification.permission==='default'){ try{ await Notification.requestPermission(); }catch(e){} }
+  await inboxScan(true); render();
+}
+function inboxPanel(){
+  const c=inboxCfg(), m=$('#modal'), b=$('#modalBox');
+  const notif='Notification' in window?(Notification.permission==='granted'?'activées':Notification.permission==='denied'?'bloquées dans le navigateur':'non activées'):'non disponibles';
+  b.innerHTML=`<h3>Dossier de réception des résultats</h3>
+   <p style="font-size:.9rem">Enregistrez dans ce dossier les PDF reçus par MSSanté (pièces jointes) ou exportés de votre logiciel. L’application le lit à l’ouverture puis toutes les 3 minutes, et range chaque document dans le dossier de la bonne patiente, reconnue par son nom, sa date de naissance ou son INS. Les fichiers du dossier ne sont ni modifiés ni supprimés.</p>
+   ${c?`<div class="card" style="padding:10px"><b>« ${esc(c.name)} »</b><br><small style="color:var(--muted)">dernière lecture : ${c.last?fd(localDay(c.last))+' à '+syHm(c.last):'jamais'} · notifications : ${notif}</small></div>`:''}
+   <div class="bx" style="flex-wrap:wrap">${c?'<button class="btn danger" data-a="off">Arrêter</button><button class="btn" data-a="pick">Changer de dossier</button>'+(('Notification' in window&&Notification.permission==='default')?'<button class="btn" data-a="notif">Activer les notifications</button>':'')+'<button class="btn primary" data-a="scan">Vérifier maintenant</button>':'<button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="pick">Choisir le dossier…</button>'}</div>`;
+  m.classList.add('open');
+  m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const k=a.dataset.a; m.classList.remove('open'); m.onclick=null;
+    if(k==='pick') inboxSetup(); else if(k==='scan') inboxScan(true); else if(k==='notif'){ try{ await Notification.requestPermission(); }catch(err){} inboxPanel(); }
+    else if(k==='off'){ inboxCfgSet(null); try{ await hSetK('inbox',null); }catch(err){} inboxH=null; toast('Dossier de réception arrêté'); render(); } };
+}
+document.addEventListener('click',e=>{ if(isPatient()) return; const a=e.target.closest('[data-resadd],[data-resinbox],[data-resgo],[data-respend]'); if(!a) return;
+  if(a.hasAttribute('data-resgo')){ const m=$('#modal'); m.classList.remove('open'); m.onclick=null; S.ptabFor=a.dataset.resgo; S.ptab='docs'; go('patient-'+a.dataset.resgo); return; }
+  if(a.hasAttribute('data-respend')) return resPending();
+  if(a.hasAttribute('data-resinbox')) return inboxPanel();
+  let i=document.getElementById('resInput'); if(!i){ i=document.createElement('input'); i.type='file'; i.accept='application/pdf,.pdf'; i.multiple=true; i.id='resInput'; i.hidden=true; document.body.appendChild(i); }
+  i.value=''; i.onchange=()=>resImport(i.files); i.click(); });
+document.addEventListener('dragover',e=>{ if(isPatient()||!e.dataTransfer||![...e.dataTransfer.types].includes('Files')||document.querySelector('#modal.open,#sheet.open')) return; e.preventDefault(); document.body.classList.add('dropping'); });
+document.addEventListener('dragleave',e=>{ if(!e.relatedTarget) document.body.classList.remove('dropping'); });
+document.addEventListener('drop',e=>{ document.body.classList.remove('dropping'); if(isPatient()||!e.dataTransfer||!e.dataTransfer.files.length||document.querySelector('#modal.open,#sheet.open')) return; e.preventDefault(); resImport(e.dataTransfer.files); });
+
+/* ---------- Compte rendu PDF de fin de consultation (+ documents du jour) ---------- */
+let pdfLibP=null;
+function loadPdfLib(){ if(window.PDFLib) return Promise.resolve(window.PDFLib);
+  if(!pdfLibP) pdfLibP=(async()=>{ for(const u of ['https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js','https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js']){ try{ await loadLib(u,()=>!!window.PDFLib); return window.PDFLib; }catch(e){} } pdfLibP=null; throw new Error('pdf-lib'); })();
+  return pdfLibP; }
+function crRows(p,e){
+  const inf=info(p), d=parseD(e.date), R=[]; const add=(k,v)=>{ if(v!=null&&String(v).trim()) R.push([k,String(v)]); };
+  const kinds=[e.consult!==false&&'Consultation',e.echo&&('Échographie'+(e.etype?' '+e.etype:''))].filter(Boolean).join(' + ')||'Évaluation';
+  add('Date',(d!=null?fd(d):'?')+(e.heure?' à '+e.heure:'')+(d!=null&&inf.ok?' – '+sa(Math.round((d-inf.base)/DAY)):''));
+  add('Type',kinds+(e.urg?' – en urgence':' – programmée'));
+  if(e.urg) add('Motif',e.motif);
+  add('Événements antérieurs',e.evts);
+  { const sf=list(e.sf).filter(x=>x!=='Aucun'); const t=[...sf,e.mvtf?'mouvements fœtaux : '+e.mvtf.toLowerCase():''].filter(Boolean).join(', '); add('Signes fonctionnels',(t||(list(e.sf).includes('Aucun')?'aucun':''))+(e.sfNotes?' ('+e.sfNotes+')':'')); }
+  add('Examen',[numv(e.poidsM)!=null?'poids '+frn(numv(e.poidsM))+' kg':'',numv(e.pas)!=null?'TA '+frn(numv(e.pas),0)+'/'+(numv(e.pad)!=null?frn(numv(e.pad),0):'?')+' mmHg':'',e.presentation?'présentation '+e.presentation.toLowerCase():''].filter(Boolean).join(' ; '));
+  if(e.tv) add('Toucher vaginal',(numv(e.bishop)!=null?'Bishop '+e.bishop:'réalisé')+(e.tvNotes?' – '+e.tvNotes:''));
+  add('Échographie',[numv(e.epf)!=null?'EPF '+frn(numv(e.epf),0)+' g'+(numv(e.pct)!=null?' ('+frn(numv(e.pct),0)+'e percentile)':''):'',e.placIns?'placenta '+(e.placPos?e.placPos.toLowerCase()+', ':'')+e.placIns.toLowerCase()+(numv(e.placDist)!=null?' à '+frn(numv(e.placDist),0)+' mm de l’OI':''):'',numv(e.colLong)!=null?'col '+frn(numv(e.colLong),0)+' mm'+(e.oi?', OI '+e.oi.toLowerCase():''):''].filter(Boolean).join(' ; '));
+  const bio=list(p.bio).filter(b=>b.date===e.date&&b.exam); if(bio.length) add('Biologie du jour',bio.map(b=>(b.exam==='Autre'?b.examAutre||'Examen':b.exam)+' : '+[b.sero,[b.res,b.unit].filter(Boolean).join(' ')].filter(Boolean).join(' · ')+(b.interp==='Anormal'?' (anormal)':'')).join('\n'));
+  add('Examens prescrits',e.rxExam); add('Traitement(s)',e.rxTrt);
+  if(e.atType&&e.atType!=='Aucun') add('Arrêt de travail',e.atType+(e.atDu?' du '+fd(parseD(e.atDu)):'')+(e.atAu?' au '+fd(parseD(e.atAu)):''));
+  if(!e.notesPriv) add('Conclusion / remarques',e.notes);
+  return R;
+}
+async function makeCrPDF(p,e){
+  const JsPDF=await loadJsPDF(); const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210, M=16, KW=48; let y=18;
+  const brk=h=>{ if(y+h>280){ doc.addPage(); y=18; } };
+  const inf=info(p), a=authorOf(p,e)||praticien()||{};
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(30); doc.text(pdfTxt('Compte rendu de '+(e.echo&&e.consult===false?'l’échographie':'consultation')+(e.urg?' en urgence':'')),M,y); y+=7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(70);
+  const idl=[fullName(p),p.naissance?'née le '+fd(parseD(p.naissance)):'',(()=>{ const c=insCheck(p.insMat); return c.ok?'INS '+insFmt(c.v):''; })()].filter(Boolean).join(' – ');
+  doc.text(pdfTxt(idl),M,y); y+=5;
+  const l2=[inf.ok&&inf.dpa!=null?'terme prévu (41 SA) le '+fd(inf.dpa):'',p.groupe||p.rhesus?'groupe '+(p.groupe||'?')+' '+(p.rhesus==='-'?'Rh−':p.rhesus==='+'?'Rh+':''):'',p.allergies?'ALLERGIE : '+p.allergies:''].filter(Boolean).join(' – ');
+  if(l2){ doc.splitTextToSize(pdfTxt(l2),W-2*M).forEach(t=>{ doc.text(t,M,y); y+=4.6; }); }
+  doc.setDrawColor(180); doc.line(M,y,W-M,y); y+=6;
+  for(const [k,v] of crRows(p,e)){
+    const lines=doc.splitTextToSize(pdfTxt(v),W-2*M-KW); brk(lines.length*5+3);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(60); doc.text(pdfTxt(k),M,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(20); lines.forEach((t,i)=>doc.text(t,M+KW,y+i*5)); y+=lines.length*5+3; }
+  brk(24); y+=4; doc.setDrawColor(200); doc.line(M,y,W-M,y); y+=6; doc.setFontSize(10); doc.setTextColor(40);
+  doc.setFont('helvetica','bold'); doc.text(pdfTxt(a.nom||'Soignant'),M,y); y+=5; doc.setFont('helvetica','normal');
+  const sig=[[a.prof,a.lieu].filter(Boolean).join(' – '),[a.tel?'Tél. '+a.tel:'',a.mail||'',a.rpps?'RPPS '+a.rpps:''].filter(Boolean).join(' · ')].filter(Boolean);
+  sig.forEach(t=>{ doc.text(pdfTxt(t),M,y); y+=4.6; });
+  const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text(pdfTxt(fullName(p)+' – compte rendu du '+(parseD(e.date)!=null?fd(parseD(e.date)):'')+' – page '+i+'/'+n),W-M,291,{align:'right'}); }
+  return doc.output('blob');
+}
+async function mergePdfs(first,files){
+  const L=await loadPdfLib(); const out=await L.PDFDocument.load(await first.arrayBuffer()); let bad=0;
+  for(const f of files){ try{ const src=await L.PDFDocument.load(f.data,{ignoreEncryption:true}); const pages=await out.copyPages(src,src.getPageIndices()); pages.forEach(pg=>out.addPage(pg)); }catch(err){ bad++; } }
+  const bytes=await out.save(); return {blob:new Blob([bytes],{type:'application/pdf'}),bad};
+}
+async function openCR(p,e){
+  let fs=[]; try{ fs=(await filesFor(p.id)).sort((a,b)=>(a.addedAt||0)-(b.addedAt||0)); }catch(err){}
+  const day=e.date; const same=fs.filter(f=>iso(localDay(f.addedAt||0))===day), other=fs.filter(f=>iso(localDay(f.addedAt||0))!==day);
+  const inf=info(p), d=parseD(e.date); const term=d!=null&&inf.ok?sa(Math.round((d-inf.base)/DAY)).replace(/\s*\+\s*/,' '):'';
+  const defName=[e.date,[(p.nom||'').toUpperCase(),p.prenom||''].filter(Boolean).join(' '),(e.echo&&e.consult===false?'Échographie':'Consultation')+(e.urg?' urgence':'')+(term?' '+term:'')].filter(Boolean).join(' – ');
+  const row=(f,on)=>`<label class="chkline"><input type="checkbox" data-crf="${esc(f.id)}" ${on?'checked':''}> ${esc(f.name)} <small style="color:var(--muted)">(${esc(catOf(f))}, ajouté le ${fd(localDay(f.addedAt||0))})</small></label>`;
+  const m=$('#modal'), b=$('#modalBox');
+  b.innerHTML=`<h3>Compte rendu PDF</h3><p style="font-size:.9rem">Un seul PDF : le compte rendu de cette ${e.echo&&e.consult===false?'échographie':'consultation'}, puis les pages des documents cochés. À enregistrer puis à glisser dans le dossier de la patiente de votre logiciel (Odaiji, Weda…), ou à envoyer par MSSanté.</p>
+   <p style="margin:10px 0 4px;font-weight:600">Documents du ${d!=null?fd(d):'jour'}</p>${same.length?same.map(f=>row(f,true)).join(''):'<p style="color:var(--muted);font-size:.9rem;margin:0">Aucun document ajouté ce jour-là.</p>'}
+   ${other.length?`<details style="margin-top:8px"><summary style="cursor:pointer">Autres documents du dossier (${other.length})</summary>${other.map(f=>row(f,false)).join('')}</details>`:''}
+   <label class="f" style="margin-top:12px"><span>Nom du fichier</span><input id="crName" value="${esc(defName)}" style="width:100%"></label>
+   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn primary" data-a="1">Créer le PDF</button></div>`;
+  m.classList.add('open');
+  m.onclick=async ev=>{ const a=ev.target.closest('[data-a]'); if(!a) return; if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
+    const ids=$$('[data-crf]:checked',b).map(x=>x.dataset.crf); const name=(($('#crName').value||defName).replace(/[\\/:*?"<>|]+/g,'-').replace(/\.pdf$/i,'').trim())+'.pdf';
+    m.classList.remove('open'); m.onclick=null; toast('Préparation du compte rendu…');
+    let blob; try{ blob=await makeCrPDF(p,e); }catch(err){ toast('Création du PDF impossible (connexion Internet nécessaire la première fois)'); return; }
+    if(ids.length){ const docs=[]; for(const id of ids){ const f=await get('files',id); if(f&&f.data) docs.push(f); }
+      try{ const r=await mergePdfs(blob,docs); blob=r.blob; if(r.bad) toast(r.bad+' document(s) illisible(s) non joint(s)'); }catch(err){ toast('Documents non joints : connexion Internet nécessaire la première fois'); } }
+    if(await saveFile(name,blob)) toast('Compte rendu prêt : '+name); };
+}
+
+/* ---------- Agenda simplifié de l’application patiente ---------- */
+const PA_WHO=['Médecin','Sage-femme','Échographiste','Anesthésiste','Autre'];
+function paFixed(p,it){
+  const mine=list(p.patRdv).filter(r=>r.ms===it.id).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||''))).pop();
+  if(mine) return {date:mine.date,time:mine.time,who:mine.who,whoName:mine.whoName,urg:mine.urg,src:'moi',id:mine.id};
+  if(it.rdv!=null) return {date:iso(it.rdv),time:it.time,src:'cab'};
+  return null;
+}
+function paWhen(f){ const d=parseD(f.date); return `<span class="pa-when">${d!=null?fd(d):'?'}${f.time?' à '+esc(f.time):''}</span>${f.who||f.whoName?` <span class="pa-who">· ${esc([f.who,f.whoName].filter(Boolean).join(' '))}</span>`:''}${f.urg?' <span class="tag bad">urgence</span>':''}`; }
+function paRow(p,it){
+  const f=paFixed(p,it), t=today(), done=it.st==='fait', late=!done&&!f&&it.e!=null&&t>it.e;
+  const per=it.s!=null?(it.s===it.e?'le '+fd(it.s):`entre le ${fd(it.s)} et le ${fd(it.e)}`):'';
+  let sub, cls;
+  if(done){ sub=`<span class="pa-done">✓ Fait${it.done&&parseD(it.done)!=null?' le '+fd(parseD(it.done)):''}</span>`; cls='done'; }
+  else if(f){ sub=paWhen(f)+(parseD(f.date)<t?' <span class="pa-who">(passé)</span>':'')+(f.src==='cab'?' <span class="pa-who">· fixé par le cabinet</span>':''); cls='fixed'; }
+  else { sub=`<span class="${late?'pa-late':''}">À prendre ${per}${late?' (période dépassée)':''}</span>`; cls='todo'; }
+  return `<div class="pa-row"><span class="pa-dot ${cls}" aria-hidden="true"></span><div class="pa-main"><b>${esc(it.name)}</b><small>${sub}</small>${!done&&f&&per?`<small>Période recommandée : ${per}</small>`:''}</div><div class="pa-act">${done?'':`<button class="btn small${f?'':' primary'}" data-pa="rdv" data-pid="${esc(p.id)}" data-ms="${esc(it.id)}"${f&&f.src==='moi'?` data-rid="${esc(f.id)}"`:''}>${f?'Modifier':'Noter mon RDV'}</button>`}</div></div>`;
+}
+function paVacRow(p,it){
+  const v=it.vac||{}, pv=(p.patVac||{})[it.id]||{}; const per=`du ${fd(it.s)} au ${fd(it.e)}`; let sub, cls='todo', act='';
+  if(v.adm){ sub=`<span class="pa-done">✓ Fait le ${fd(parseD(v.adm))}</span>`; cls='done'; }
+  else if(v.refus){ sub=`<span class="pa-who">Refusé${parseD(v.refus)!=null?' le '+fd(parseD(v.refus)):''}</span>`; cls='done'; }
+  else if(pv.st){ sub=pv.st==='fait'?`<span class="pa-done">✓ Fait${pv.date?' le '+fd(parseD(pv.date)):''}</span> <span class="pa-who">(noté par vous)</span>`:`<span class="pa-who">Refusé (noté par vous)</span>`; cls='done'; act=`<button class="btn small" data-pa="vacx" data-pid="${esc(p.id)}" data-ms="${esc(it.id)}">Annuler</button>`; }
+  else { sub=`Période recommandée : ${per}${v.presc?` · <span class="pa-when">prescrit le ${fd(parseD(v.presc))}</span>`:''}`; act=`<button class="btn small primary" data-pa="vacok" data-pid="${esc(p.id)}" data-ms="${esc(it.id)}">Fait</button><button class="btn small" data-pa="vacno" data-pid="${esc(p.id)}" data-ms="${esc(it.id)}">Refusé</button>`; }
+  return `<div class="pa-row"><span class="pa-dot ${cls}" aria-hidden="true"></span><div class="pa-main"><b>${esc(it.name.replace(/ – refusé$/,''))}</b><small>${sub}</small></div><div class="pa-act">${act}</div></div>`;
+}
+function paItems(p){ const inf=info(p); return inf.ok?milestonesFor(p,inf).filter(it=>it.kind==='ms'&&it.id!=='sgb'&&it.id!=='decl'):[]; }
+function patAgendaHTML(p){
+  const inf=info(p); if(!inf.ok) return '<div class="banner">Le calendrier apparaîtra dès que votre médecin aura indiqué le début de la grossesse.</div>';
+  const items=paItems(p), t=today();
+  const isCons=it=>AUTO_IDS[it.id]==='consult'||(/^Consultation/i.test(it.name)&&it.id!=='anesth'&&it.id!=='voie');
+  const isEcho=it=>AUTO_IDS[it.id]==='echo'||/^Échographie/i.test(it.name);
+  const cons=items.filter(it=>!it.isVac&&isCons(it)), echos=items.filter(it=>!it.isVac&&isEcho(it)), vacs=items.filter(it=>it.isVac);
+  const other=items.filter(it=>!it.isVac&&!isCons(it)&&!isEcho(it));
+  const free=list(p.patRdv).filter(r=>!r.ms).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  const up=[]; for(const it of [...cons,...echos,...other]){ const f=paFixed(p,it); if(f&&parseD(f.date)>=t&&it.st!=='fait') up.push({name:it.name,f}); }
+  for(const r of free) if(parseD(r.date)>=t) up.push({name:r.label||'Rendez-vous',f:Object.assign({src:'moi'},r)});
+  up.sort((a,b)=>(a.f.date+(a.f.time||'')).localeCompare(b.f.date+(b.f.time||'')));
+  const sec=(title,rows,empty)=>`<section class="sec"><h2>${title}</h2><div class="card pag">${rows||`<div class="pa-row"><div class="pa-main"><small>${empty}</small></div></div>`}</div></section>`;
+  let h=`<section class="sec"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-pa="add" data-pid="${esc(p.id)}">＋ Noter un rendez-vous</button></div><div class="note" style="margin-top:6px">Quand vous prenez un rendez-vous (téléphone, cabinet, Doctolib…), notez-le ici : il se fixe dans votre agenda.</div></section>`;
+  h+=sec('Mes prochains rendez-vous',up.map(u=>`<div class="pa-row"><span class="pa-dot fixed" aria-hidden="true"></span><div class="pa-main"><b>${esc(u.name)}</b><small>${paWhen(u.f)}</small></div></div>`).join(''),'Aucun rendez-vous noté pour l’instant.');
+  h+=sec('Consultations',cons.map(it=>paRow(p,it)).join(''),'—');
+  h+=sec('Échographies',echos.map(it=>paRow(p,it)).join(''),'—');
+  h+=sec('Vaccins recommandés',vacs.map(it=>paVacRow(p,it)).join(''),'Aucun vaccin recommandé pendant votre grossesse à ce jour.');
+  h+=sec('Autres rendez-vous',other.map(it=>paRow(p,it)).join('')+free.map(r=>`<div class="pa-row"><span class="pa-dot fixed" aria-hidden="true"></span><div class="pa-main"><b>${esc(r.label||'Rendez-vous')}</b><small>${paWhen(r)}${parseD(r.date)<t?' <span class="pa-who">(passé)</span>':''}</small>${r.note?`<small>${esc(r.note)}</small>`:''}</div><div class="pa-act"><button class="btn small" data-pa="rdv" data-pid="${esc(p.id)}" data-rid="${esc(r.id)}">Modifier</button></div></div>`).join(''),'—');
+  return h;
+}
+function paOpenRdv(p,msId,rid){
+  const items=paItems(p).filter(it=>!it.isVac&&it.st!=='fait');
+  const ex=rid?list(p.patRdv).find(r=>r.id===rid):null; const b=Object.assign({ms:msId||'',date:'',time:'',urg:false,who:'',whoName:'',lieu:'',label:'',note:''},ex||{});
+  const opts=items.map(it=>`<option value="${esc(it.id)}" ${b.ms===it.id?'selected':''}>${esc(it.name)}</option>`).join('');
+  const {sh,val}=miniSheet(ex?'Modifier le rendez-vous':'Noter un rendez-vous',`<fieldset><legend>Rendez-vous</legend><div class="fbox">
+    <label class="f"><span>Pour</span><select name="pms">${opts}<option value="" ${!b.ms?'selected':''}>Autre rendez-vous (urgence, spécialiste…)</option></select></label>
+    <div id="paLab">${F('Intitulé','<input name="plabel" value="'+esc(b.label||'')+'" placeholder="ex. Consultation pour contractions">')}</div>
+    <div class="grid2">${F('Date','<input type="date" name="pdate" value="'+esc(b.date||'')+'">')}${F('Heure','<input type="time" name="ptime" value="'+esc(b.time||'')+'">')}</div>
+    <div class="f"><span>Nature</span>${radios('purg',[['prog','Programmé'],['urg','Urgence']],b.urg?'urg':'prog')}</div>
+    <div class="f"><span>Avec</span>${radios('pwho',PA_WHO.map(x=>[x,x]),b.who||'')}</div>
+    <div class="grid2">${F('Nom (facultatif)','<input name="pwname" value="'+esc(b.whoName||'')+'" placeholder="Dr …, Mme …">')}${F('Lieu (facultatif)','<input name="plieu" value="'+esc(b.lieu||'')+'" placeholder="cabinet, maternité…">')}</div>
+    ${F('Remarque','<input name="pnote" value="'+esc(b.note||'')+'">')}</div></fieldset>`,
+    async v=>{ const date=v('pdate'); if(!date){ toast('Indiquez la date'); return false; } const ms=v('pms'); const it=items.find(x=>x.id===ms);
+      const o={id:b.id||uid('r'),ms,label:ms?(it?it.name:b.label):(v('plabel')||'Rendez-vous'),date,time:v('ptime'),urg:v('purg')==='urg',who:v('pwho'),whoName:v('pwname'),lieu:v('plieu'),note:v('pnote'),at:Date.now()};
+      p.patRdv=list(p.patRdv).filter(r=>r.id!==o.id); if(ms) p.patRdv=p.patRdv.filter(r=>r.ms!==ms||parseD(r.date)<today()); p.patRdv.push(o);
+      await savePatient(p); toast('Rendez-vous noté'); renderPatient(p.id); },
+    ex?async()=>{ p.patRdv=list(p.patRdv).filter(r=>r.id!==ex.id); await savePatient(p); renderPatient(p.id); }:null);
+  const sync=()=>{ $('#paLab').style.display=val('pms')?'none':''; }; sh.addEventListener('change',sync); sync();
+}
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-pa]'); if(!b) return; const p=S.patients.find(x=>x.id===b.dataset.pid); if(!p) return; const a=b.dataset.pa;
+  if(a==='add') return paOpenRdv(p,'');
+  if(a==='rdv') return paOpenRdv(p,b.dataset.ms||'',b.dataset.rid||'');
+  if(a==='vacok'||a==='vacno'){ p.patVac=Object.assign({},p.patVac||{}); p.patVac[b.dataset.ms]={st:a==='vacok'?'fait':'refus',date:iso(today()),at:Date.now()}; await savePatient(p); toast(a==='vacok'?'Vaccin noté comme fait':'Refus noté'); renderPatient(p.id); }
+  if(a==='vacx'){ p.patVac=Object.assign({},p.patVac||{}); delete p.patVac[b.dataset.ms]; await savePatient(p); renderPatient(p.id); } });
+/* Côté soignant : ce que la patiente a noté */
+function patNote(p,it){ if(isPatient()) return ''; const r=list(p.patRdv).filter(x=>x.ms===it.id).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||''))).pop(); const v=it.isVac?(p.patVac||{})[it.id]:null;
+  if(r) return `<small style="display:block;color:#6D28D9;font-size:.8rem;margin-top:2px">📱 RDV noté par la patiente : ${fd(parseD(r.date))}${r.time?' à '+esc(r.time):''}${r.who?' · '+esc(r.who):''}${r.whoName?' '+esc(r.whoName):''}${r.urg?' (urgence)':''}</small>`;
+  if(v&&v.st) return `<small style="display:block;color:#6D28D9;font-size:.8rem;margin-top:2px">📱 Noté par la patiente : ${v.st==='fait'?'fait':'refusé'}${v.date?' le '+fd(parseD(v.date)):''}</small>`;
+  return ''; }
+
+/* ---------- La patiente ajoute ses résultats de laboratoire (PDF ou photo) ---------- */
+function moisDe(p,dIso){ const inf=info(p), d=parseD(dIso); if(!inf.ok||d==null) return null; const days=Math.round((d-inf.base)/DAY); if(days<0) return null; const m=Math.max(1,Math.min(9,Math.floor((days-14)/30.44)+1)); return {m,txt:sa(days)}; }
+function bilanName(p,dIso){ const x=moisDe(p,dIso), d=parseD(dIso); return (x?`Bilan du ${x.m===1?'1er':x.m+'e'} mois`:'Résultats de laboratoire')+(d!=null?' – '+fd(d):''); }
+function paLabHTML(p){ return `<section class="sec"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-palab="${esc(p.id)}">＋ Ajouter mes résultats (PDF ou photo)</button></div><div class="note" style="margin-top:6px">PDF reçu du laboratoire ou téléchargé dans Mon espace santé, ou photo du compte rendu papier. Indiquez seulement la date du prélèvement : le bilan est rangé et nommé tout seul. Votre soignant le recevra quand vous lui transmettrez votre dossier.</div></section>`; }
+function paAddLab(p){
+  const m=$('#modal'), b=$('#modalBox'); let edited=false; const d0=iso(today());
+  b.innerHTML=`<h3>Ajouter mes résultats</h3><label class="f"><span>Date du prélèvement</span><input type="date" id="plDate" value="${d0}"></label><label class="f"><span>Nom du bilan</span><input id="plName" value="${esc(bilanName(p,d0))}"></label><p class="note" id="plTerm" style="margin:4px 0 0"></p>
+   <div class="bx"><button class="btn" data-a="0">Annuler</button><button class="btn" data-a="photo">📷 Photo(s)</button><button class="btn primary" data-a="pdf">📄 Choisir le PDF</button></div>`;
+  const upd=()=>{ const v=$('#plDate').value, x=moisDe(p,v); $('#plTerm').textContent=x?'Soit '+x.txt+' ('+(x.m===1?'1er':x.m+'e')+' mois de grossesse)':''; if(!edited) $('#plName').value=bilanName(p,v); };
+  $('#plDate').addEventListener('input',upd); $('#plName').addEventListener('input',()=>{ edited=true; }); upd(); m.classList.add('open');
+  m.onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a==='0'){ m.classList.remove('open'); m.onclick=null; return; }
+    const date=$('#plDate').value, name=($('#plName').value||bilanName(p,date)).replace(/[\\/:*?"<>|]+/g,'-').trim(); if(!date){ toast('Indiquez la date du prélèvement'); return; }
+    m.classList.remove('open'); m.onclick=null;
+    if(a.dataset.a==='pdf'){ const i=$('#pdfInput'); i.value=''; i.onchange=async()=>{ const f=i.files[0]; if(!f) return; if(!/pdf$/i.test(f.type)&&!/\.pdf$/i.test(f.name)){ toast('Choisissez un fichier PDF'); return; }
+        try{ await put('files',{id:uid('f'),patientId:p.id,cat:'Biologie',name:name+'.pdf',date,by:'patiente',type:'application/pdf',size:f.size,addedAt:Date.now(),data:await f.arrayBuffer()}); p.updatedAt=Date.now(); await savePatient(p); toast('Résultats ajoutés : '+name); renderPatient(p.id); }catch(err){ toast('Enregistrement impossible (espace insuffisant ?)'); } }; i.click(); }
+    else { S._docMeta={name:name+'.pdf',date,by:'patiente'}; photoToPdf(p,'Biologie','bio'); } };
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-palab]'); if(!b) return; const p=S.patients.find(x=>x.id===b.dataset.palab); if(p) paAddLab(p); });
 let viewing=null, vScale=1, vRun=0;
 let pdfjsP=null;
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if(!pdfjsP) pdfjsP=new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=PDFJS+'pdf.min.js';
-    sc.onload=async()=>{ for(let i=0;i<60&&!window.pdfjsLib;i++) await new Promise(r=>setTimeout(r,50)); if(!window.pdfjsLib){ pdfjsP=null; return rej(new Error('load')); } try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; }catch(e){} res(window.pdfjsLib); };
-    sc.onerror=()=>{ pdfjsP=null; rej(new Error('load')); }; document.head.appendChild(sc); });
+  if(!pdfjsP) pdfjsP=(async()=>{ try{ await loadLib(PDFJS+'pdf.min.js',()=>true); for(let i=0;i<60&&!window.pdfjsLib;i++) await new Promise(r=>setTimeout(r,50)); if(!window.pdfjsLib) throw new Error('load');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc=await libBlobUrl(PDFJS+'pdf.worker.min.js'); return window.pdfjsLib; }catch(e){ pdfjsP=null; throw e; } })();
   return pdfjsP;
 }
 async function drawPdfPages(){
@@ -2178,7 +2674,7 @@ async function drawPdfPages(){
   box.innerHTML='<div class="vmsg">Ouverture du document…</div>';
   let lib; try{ lib=await loadPdfJs(); }catch(e){ box.innerHTML='<div class="vmsg">Le lecteur de PDF n’a pas pu être chargé (connexion Internet nécessaire la première fois).<br><br><button class="btn primary" id="vAlt">Ouvrir avec une autre application</button></div>'; $('#vAlt').addEventListener('click',()=>$('#vSave').click()); return; }
   try{
-    const doc=await lib.getDocument({data:new Uint8Array(f.data.slice(0))}).promise; if(run!==vRun) return;
+    const doc=await lib.getDocument({data:new Uint8Array(f.data.slice(0)),isEvalSupported:false}).promise; if(run!==vRun) return;
     box.innerHTML=''; const W=Math.max(200,box.clientWidth-20), dpr=Math.min(window.devicePixelRatio||1,2.5);
     for(let n=1;n<=doc.numPages;n++){
       const page=await doc.getPage(n); if(run!==vRun) return;
@@ -2389,8 +2885,8 @@ function pdfSections(p,patient){
   return S2;
 }
 let jsPDFp=null;
-function loadJsPDF(){ if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF); if(!jsPDFp) jsPDFp=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=()=>res(window.jspdf.jsPDF); s.onerror=()=>{ jsPDFp=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsPDFp; }
-function pdfTxt(s){ return String(s==null?'':s).replace(/[\u202F\u00A0]/g,' ').replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/−/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/→/g,'->').replace(/✓/g,'x').replace(/²/g,'2'); }
+function loadJsPDF(){ if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF); if(!jsPDFp) jsPDFp=loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>!!window.jspdf).then(()=>window.jspdf.jsPDF,e=>{ jsPDFp=null; throw e; }); return jsPDFp; }
+function pdfTxt(s){ return String(s==null?'':s).replace(/[\u202F\u00A0]/g,' ').replace(/[’‘]/g,"'").replace(/[“”«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/−/g,'-').replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/→/g,'->').replace(/✓/g,'x').replace(/²/g,'2').replace(/↑/g,'(élevé)').replace(/↓/g,'(bas)').replace(/⚠️?/g,'(!)').replace(/[\u{1F300}-\u{1FAFF}]/gu,''); }
 async function makePDF(p,ids,patient,qrs){
   const JsPDF=await loadJsPDF();
   const doc=new JsPDF({unit:'mm',format:'a4'}); const W=210, M=16, KW=58; let y=18;
@@ -2824,7 +3320,7 @@ async function renderCarte(str){
 /* Fichier dossier chiffré */
 async function makeDossierFile(p,code,withFiles){
   const q=forPatient(p); let files=[];
-  if(withFiles){ for(const m of await filesFor(p.id)){ const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,by:f.by||null,name:f.name,cat:f.cat||'',addedAt:f.addedAt,size:f.size,b64:u8b64(new Uint8Array(f.data))}); } }
+  if(withFiles){ for(const m of await filesFor(p.id)){ const f=await get('files',m.id); if(f&&f.data) files.push({id:f.id,by:f.by||null,date:f.date||null,name:f.name,cat:f.cat||'',addedAt:f.addedAt,size:f.size,b64:u8b64(new Uint8Array(f.data))}); } }
   let u=new TextEncoder().encode(JSON.stringify({app:'suivi-grossesse-dossier',v:1,exportedAt:new Date().toISOString(),patient:q,files}));
   let z=false; if(canZip()){ u=await zip(u); z=true; }
   const s=await seal(u,code,310000);
@@ -2864,9 +3360,10 @@ async function openMyCard(p){
 async function showTransferScreen(p,code){
   if(!code){ toast('Code introuvable'); return; }
   let qs; try{ qs=await transferQRs(p,code); }catch(e){ toast('Création impossible sur cet appareil'); return; }
+  let myDocs=0; if(isPatient()){ try{ myDocs=(await filesFor(p.id)).filter(f=>f.by==='patiente').length; }catch(e){} }
   let k=0, play=true, timer=null; const z=$('#zoom');
   z.innerHTML=`<header><b>Transfert à un soignant</b><button class="btn small" id="trClose">Fermer</button></header><div class="zbody" style="text-align:center">
-   <p class="note" style="margin:4px 0 10px">${isPatient()?'Le soignant ouvre votre dossier → « 📥 Recevoir les nouveautés de la patiente » (ou Réglages → Données → « Importer un dossier »), puis vise cet écran.':'La patiente ouvre « Mon suivi de grossesse » → « Mettre à jour mon dossier (QR code) », puis vise cet écran.'} Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
+   <p class="note" style="margin:4px 0 10px">${isPatient()?'Le soignant ouvre votre dossier → « 📥 Recevoir les nouveautés de la patiente » (ou Réglages → Données → « Importer un dossier »), puis vise cet écran.'+(myDocs?` <br><b>Vos ${myDocs} document(s) ajouté(s) (résultats…) ne passent pas par les QR codes</b> : envoyez-les avec « Partager mon dossier » (AirDrop, message, e-mail).`:''):'La patiente ouvre « Mon suivi de grossesse » → « Mettre à jour mon dossier (QR code) », puis vise cet écran.'} Les ${qs.length} QR codes défilent automatiquement. Montez la luminosité de votre écran.</p>
    <div id="trQr" class="trqr"></div><div id="trLbl" class="scprog"></div>
    <div class="actions" style="justify-content:center"><button class="btn" id="trPrev">‹</button><button class="btn primary" id="trPlay">⏸ Pause</button><button class="btn" id="trNext">›</button></div>
    <p class="note">Aucune connexion Internet n’est nécessaire : les données passent directement de l’écran à la caméra.${isPatient()?' Donnez ensuite votre code oralement.':` Si c’est la première fois, donnez à la patiente son code : <b>${fmtCode(code)}</b>`}</p></div>`;
@@ -3025,7 +3522,7 @@ async function importPayload(payload,code){
   let have=new Set(); if(target){ try{ have=new Set((await filesFor(target.id)).map(f=>f.id)); }catch(e){} }
   let n=0;
   for(const f of list(payload.files)){ if(mode==='merge'&&f.id&&have.has(f.id)) continue; let fid=f.id||uid('f'); if(mode!=='merge'&&f.id){ let ex_=null; try{ ex_=await get('files',f.id); }catch(e){} if(ex_) fid=uid('f'); }
-    try{ await put('files',{id:fid,patientId:np.id,by:f.by||null,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; if(mode==='merge') news.push(fid); }catch(e){} }
+    try{ await put('files',{id:fid,patientId:np.id,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:'application/pdf',size:f.size,addedAt:f.addedAt||Date.now(),data:b64u8(f.b64).buffer}); n++; if(mode==='merge') news.push(fid); }catch(e){} }
   if(mode==='merge'&&!isPatient()){ np.unread=Object.assign({},np.unread||{}); news.forEach(id=>{ np.unread[id]=1; }); if(keys.length) np.unread.__fiche={n:keys.length,at:Date.now()}; for(const e of list(np.evals)) if(news.includes(e.id)&&!e.urg){ try{ applyEvalValidation(np,e); }catch(err){} } }
   await savePatient(np);
   if(mode==='merge') toast(news.length||keys.length?(news.length?news.length+' nouveauté'+(news.length>1?'s':'')+' ajoutée'+(news.length>1?'s':''):'Fiche mise à jour'):'Dossier déjà à jour');
@@ -3033,7 +3530,7 @@ async function importPayload(payload,code){
   go('patient-'+np.id);
 }
 let jsqrP=null;
-function loadJsQR(){ if(window.jsQR) return Promise.resolve(window.jsQR); if(!jsqrP) jsqrP=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=()=>window.jsQR?res(window.jsQR):rej(new Error('load')); s.onerror=()=>{ jsqrP=null; rej(new Error('load')); }; document.head.appendChild(s); }); return jsqrP; }
+function loadJsQR(){ if(window.jsQR) return Promise.resolve(window.jsQR); if(!jsqrP) jsqrP=loadLib('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',()=>!!window.jsQR).then(()=>window.jsQR,e=>{ jsqrP=null; throw e; }); return jsqrP; }
 function openScanImport(){
   const parts=new Map(); let kind='T', tid=null, total=0, stream=null, timer=null, busy=false, done=false;
   const z=$('#zoom');
@@ -3462,7 +3959,7 @@ async function saveFile(name,data){
 async function exportBackup(){
   const pw=S._bkpw?[S._bkpw]:await askPw({title:'Mot de passe de la sauvegarde',body:'La sauvegarde sera chiffrée. Choisissez un mot de passe d’au moins 8 caractères et notez-le en lieu sûr : <b>sans lui, la sauvegarde ne pourra pas être restaurée</b>. Il restera en mémoire jusqu’à la fermeture de l’application, pour les sauvegardes suivantes.',fields:['Mot de passe','Confirmer le mot de passe'],min:8,ok:'Chiffrer et enregistrer'}); if(!pw) return; S._bkpw=pw[0];
   toast('Préparation de la sauvegarde…');
-  const files=(await getAll('files')).map(f=>({id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:b64(f.data)}));
+  const files=(await getAll('files')).map(f=>({id:f.id,patientId:f.patientId,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,b64:b64(f.data)}));
   const payload={app:'suivi-grossesse',version:1,exportedAt:new Date().toISOString(),settings:S.settings,patients:S.patients,files};
   const ok=await saveFile(`sauvegarde-suivi-grossesse-${iso(today())}-chiffree.json`, await sealBackup(payload,pw[0]));
   if(ok){ toast('Sauvegarde exportée'); try{ await put('kv',Date.now(),'lastBackup'); S.lastBackup=Date.now(); }catch(e){} }
@@ -3476,7 +3973,7 @@ async function importBackup(file){
     await clearAll();
     S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),data.settings||{}); await saveSettings();
     for(const p of data.patients) await put('patients',p);
-    for(const f of (data.files||[])) await put('files',{id:f.id,patientId:f.patientId,by:f.by||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,data:unb64(f.b64)});
+    for(const f of (data.files||[])) await put('files',{id:f.id,patientId:f.patientId,by:f.by||null,date:f.date||null,cat:f.cat||'',name:f.name,type:f.type,size:f.size,addedAt:f.addedAt,data:unb64(f.b64)});
     S.patients=await getAll('patients'); toast('Sauvegarde importée'); go('liste');
   }catch(e){ toast('Import interrompu : espace de stockage insuffisant ?'); S.patients=await getAll('patients'); }
 }
@@ -3516,11 +4013,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && $('#viewer').cla
 
 /* ---------- Démarrage ---------- */
 (async function init(){
-  lockShow();
+  lockShow(); if(!isPatient()){ setTimeout(()=>resBadge(),2500); if(FOLD_OK){ setTimeout(()=>{ if(inboxCfg()) inboxScan(false); },6000); setInterval(()=>{ if(inboxCfg()) inboxScan(false); },180000); } }
+  if(FOLD_OK&&!isPatient()){ setTimeout(()=>{ if(foldCfg()) foldSync(false); },4000); setInterval(()=>{ if(foldCfg()&&!document.hidden) foldSync(false); },180000); document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&foldCfg()) foldSync(false); }); }
   $('#view').innerHTML='<div class="card empty" style="margin-top:16px">Chargement des dossiers…</div>';
   idb=await openDB();
   if(false){ MODE='cloud'; const n=await migrateLocalToCloud(); if(n) setTimeout(()=>toast(n+' dossier'+(n>1?'s':'')+' de l’appareil copié'+(n>1?'s':'')+' dans votre compte'),600); }
   else MODE=idb?'local':'memory';
+  dbReadyR();
+  if(MODE==='local'&&encSupported()&&lockCfg()&&!ENC.key){ lockShow(); await encWait(); }
   try{ S.lastBackup=(idb && await rq(store('kv').get('lastBackup')))||null; }catch(e){}
   if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
   try{ const s=await get('kv','settings'); S.settings=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),s||{}); }catch(e){ S.settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
