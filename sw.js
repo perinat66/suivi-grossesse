@@ -1,6 +1,6 @@
 /* Permet d’ouvrir l’application sans connexion Internet, ou avec un réseau très faible. Aucune donnée patiente ne passe par ce fichier. */
-const CACHE = 'suivi-grossesse-v31';
-const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'];
+const CACHE = 'suivi-grossesse-v37';
+const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js','https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'];
 const FILES = ['./', './index.html', './patiente.html', './manifest.webmanifest', './manifest-patiente.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './icon-p-180.png', './icon-p-192.png', './icon-p-512.png'];
 const WAIT = 3000; // au-delà de 3 s sans réponse du réseau, on ouvre la copie enregistrée sur l’appareil
 self.addEventListener('install', e => {
@@ -26,7 +26,11 @@ self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = req.url;
   if (url.startsWith('https://cdnjs.cloudflare.com/') || url.startsWith('https://cdn.jsdelivr.net/')) {
-    e.respondWith(caches.match(url).then(r => r || fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(url, cp)); return res; })));
+    // Bibliothèques : copie locale si elle est vérifiable (réponse « cors ») ; les copies opaques ne servent plus.
+    e.respondWith(caches.match(url).then(r => {
+      if (r && (r.type !== 'opaque' || req.mode === 'no-cors')) return r;
+      return fetch(req).then(res => { if (res && res.ok && res.type !== 'opaque') { const cp = res.clone(); caches.open(CACHE).then(c => c.put(url, cp)); } return res; }).catch(() => r || Response.error());
+    }));
     return;
   }
   if (new URL(url).origin !== self.location.origin) return;
@@ -38,4 +42,10 @@ self.addEventListener('fetch', e => {
     net.then(res => { clearTimeout(timer); if (res && res.ok) finish(res); else fromCache(req).then(r => finish(r || res)); })
        .catch(() => { clearTimeout(timer); fromCache(req).then(r => finish(r || Response.error())); });
   }));
+});
+
+// Clic sur une notification « nouveaux résultats » : ouvre ou ramène l’application au premier plan.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(cs => { for (const c of cs) if ('focus' in c) return c.focus(); return self.clients.openWindow('./'); }));
 });
