@@ -1,5 +1,5 @@
 /* Permet d’ouvrir l’application sans connexion Internet, ou avec un réseau très faible. Aucune donnée patiente ne passe par ce fichier. */
-const CACHE = 'suivi-grossesse-v38';
+const CACHE = 'suivi-grossesse-v39';
 const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js','https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'];
 const FILES = ['./', './index.html', './patiente.html', './manifest.webmanifest', './manifest-patiente.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './icon-p-180.png', './icon-p-192.png', './icon-p-512.png'];
 const WAIT = 3000; // au-delà de 3 s sans réponse du réseau, on ouvre la copie enregistrée sur l’appareil
