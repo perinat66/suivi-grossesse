@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-oSYaaX/n9+F0S9xSpCntHJAalBBGfhDMc0QQ4eMNiqo=' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js; worker-src blob:; connect-src 'self' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xUN9zfswcOpUdopz8veozvTJD8QsYkbkCs5CJiyd8og=' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js; worker-src blob:; connect-src 'self' https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Suivi de grossesse</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1944,7 +1944,7 @@ function bindLockSettings(rerender){
 function praticien(){ const x=(S.settings&&S.settings.praticien)||{}; return x.nom&&x.id?{id:x.id,nom:x.nom,prof:x.prof||'',lieu:x.lieu||'',tel:x.tel||'',mail:x.mail||'',rpps:x.rpps||'',aka:x.aka||[]}:null; }
 function praticienSecHTML(){ const x=S.settings.praticien||{};
   return `<section class="sec"><h2>Mon identité de soignant</h2><div class="card"><div class="fpad"><div class="txt" style="margin-bottom:8px">Jointe à chaque donnée que vous saisissez et transmise avec le dossier ; affichée sur la carte d’urgence.</div>${identityFields(x)}</div></div></section>`; }
-function bindPraticien(){ ['idNom','idProf','idLieu','idTel','idRpps','idMail','idMailPro'].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener('change',async()=>{ const v=readIdentity(); if(!v.nom){ toast('Le nom est nécessaire'); return; } await saveIdentity(v); toast('Identité enregistrée'); }); }); }
+function bindPraticien(){ ['idNom','idProf','idLieu','idTel','idRpps','idMail','idMailPro','idMailWeb'].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener('change',async()=>{ const v=readIdentity(); if(!v.nom){ toast('Le nom est nécessaire'); return; } await saveIdentity(v); toast('Identité enregistrée'); }); }); }
 
 /* ---------- Auteurs des données (soignants) ---------- */
 const AUTH_COLORS=['#7B2D5E','#1D6FB8','#1E8A4C','#C2620A','#7C3AED','#0E7C7B','#B42318','#4B5563'];
@@ -2011,8 +2011,8 @@ function markRead(p,id,after){
 }
 function unreadCount(p){ return p&&p.unread?Object.keys(p.unread).length:0; }
 /* Identité du soignant (obligatoire dans la version professionnelle) */
-function identityFields(x){ return `${F('Nom et prénom','<input id="idNom" value="'+esc(x.nom||'')+'" placeholder="Dr Prénom NOM">')}<label class="f"><span>Profession</span><select id="idProf"><option value=""></option>${PROFS.map(o=>`<option ${x.prof===o?'selected':''}>${esc(o)}</option>`).join('')}</select></label>${F('Lieu d’exercice','<input id="idLieu" value="'+esc(x.lieu||'')+'" placeholder="Cabinet, maternité – ville">')}<div class="grid2">${F('Téléphone professionnel','<input id="idTel" type="tel" value="'+esc(x.tel||'')+'">')}${F('N° RPPS (facultatif)','<input id="idRpps" inputmode="numeric" value="'+esc(x.rpps||'')+'">')}</div>${F('Messagerie MSSanté (facultatif)','<input id="idMail" type="email" value="'+esc(x.mail||'')+'" placeholder="prenom.nom@medecin.mssante.fr">')}${isPatient()?'':F('E-mail professionnel – envoi des mises à jour aux patientes (facultatif)','<input id="idMailPro" type="email" value="'+esc(x.mailPro||'')+'" placeholder="cabinet@exemple.fr">')}`; }
-function readIdentity(){ const g=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; }; return {nom:g('idNom'),prof:g('idProf'),lieu:g('idLieu'),tel:g('idTel'),rpps:g('idRpps'),mail:g('idMail'),mailPro:g('idMailPro')}; }
+function identityFields(x){ return `${F('Nom et prénom','<input id="idNom" value="'+esc(x.nom||'')+'" placeholder="Dr Prénom NOM">')}<label class="f"><span>Profession</span><select id="idProf"><option value=""></option>${PROFS.map(o=>`<option ${x.prof===o?'selected':''}>${esc(o)}</option>`).join('')}</select></label>${F('Lieu d’exercice','<input id="idLieu" value="'+esc(x.lieu||'')+'" placeholder="Cabinet, maternité – ville">')}<div class="grid2">${F('Téléphone professionnel','<input id="idTel" type="tel" value="'+esc(x.tel||'')+'">')}${F('N° RPPS (facultatif)','<input id="idRpps" inputmode="numeric" value="'+esc(x.rpps||'')+'">')}</div>${F('Messagerie MSSanté (facultatif)','<input id="idMail" type="email" value="'+esc(x.mail||'')+'" placeholder="prenom.nom@medecin.mssante.fr">')}${isPatient()?'':F('E-mail professionnel – envoi des mises à jour aux patientes (facultatif)','<input id="idMailPro" type="email" value="'+esc(x.mailPro||'')+'" placeholder="cabinet@exemple.fr">')+F('Adresse de votre messagerie web, si vous lisez vos e-mails dans le navigateur (facultatif)','<input id="idMailWeb" value="'+esc(x.mailWeb||'')+'" placeholder="outlook.office.com, mail.ovh.net…">')}`; }
+function readIdentity(){ const g=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; }; return {nom:g('idNom'),prof:g('idProf'),lieu:g('idLieu'),tel:g('idTel'),rpps:g('idRpps'),mail:g('idMail'),mailPro:g('idMailPro'),mailWeb:g('idMailWeb')}; }
 async function saveIdentity(v){ const old=(S.settings&&S.settings.praticien)||{}; S.settings.praticien=Object.assign({},old,v,{id:old.id||uid('a')}); await saveSettings(); secrClass(); }
 function ensureIdentity(){
   if(isPatient()||S.preview||!S.settings) return; const x=S.settings.praticien||{}; if(x.nom&&x.prof&&x.tel&&x.id) return void ensureLock();
@@ -3511,7 +3511,7 @@ const SENT_VIA={qr:'QR codes',mes:'Mon espace santé',mail:'e-mail'};
 function sendUpdHTML(p){
   if(isPatient()||S.preview||!p.shareCode) return '';
   if(needsSend(p)) return `<div class="banner" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><span style="flex:1;min-width:180px">📤 <b>Mise à jour non envoyée à la patiente</b>${p.sentAt?' – dernier envoi le '+fd(localDay(p.sentAt))+' ('+(SENT_VIA[p.sentVia]||'')+')':''}.</span><button class="btn small primary" data-sendupd="${esc(p.id)}" data-ro-ok>📧 Envoyer la mise à jour</button></div>`;
-  return p.sentAt?`<p style="margin:0 0 10px;font-size:.85rem;color:var(--muted)">✓ Dossier de la patiente à jour – transmis le ${fd(localDay(p.sentAt))} (${SENT_VIA[p.sentVia]||''}).</p>`:'';
+  return p.sentAt?`<p style="margin:0 0 10px;font-size:.85rem;color:var(--muted)">✓ Dossier de la patiente à jour – transmis le ${fd(localDay(p.sentAt))} (${SENT_VIA[p.sentVia]||''}). <button class="link" data-sendupd="${esc(p.id)}" data-ro-ok style="padding:0;font-size:.85rem">Renvoyer</button></p>`:'';
 }
 async function openSendUpd(p){
   const m=$('#modal'), b=$('#modalBox'); const close=()=>{ m.classList.remove('open'); m.onclick=null; };
@@ -3552,12 +3552,12 @@ async function openSendUpd(p){
        <ol style="padding-left:20px;font-size:.92rem;line-height:1.5">
         ${d==='mes'?`<li>Touchez <b>« Enregistrer le PDF »</b>.</li><li>Touchez <b>« Ouvrir ma messagerie MSSanté »</b>, créez un message et joignez le PDF.</li><li>Collez l’adresse et le message (boutons « Copier » ci-dessous), puis envoyez.</li>`
           :`<li>Touchez <b>« Ouvrir la messagerie »</b> : ${canSh?'choisissez Mail ou Outlook, le PDF et le message sont déjà joints':'le PDF est enregistré, puis votre messagerie s’ouvre : joignez-y le PDF'}.</li><li>Collez l’adresse (copiée automatiquement) puis envoyez.</li>`}
-        <li>Touchez <b>« C’est envoyé »</b> : le dossier est noté à jour.</li></ol>
+        <li>Envoyez le message <b>dans votre messagerie</b> (son bouton « Envoyer »).</li><li>Revenez ici et touchez <b>« J’ai envoyé le message »</b> : ce bouton n’envoie rien, il note seulement que c’est fait.</li></ol>
        <p style="font-size:.9rem;margin:6px 0">Destinataire : <b class="num">${esc(addr)}</b></p>
        <div class="bx" style="flex-wrap:wrap">${d==='mes'
           ?'<button class="btn" data-a="save">Enregistrer le PDF</button><button class="btn" data-a="cpa">Copier l’adresse</button><button class="btn" data-a="cpm">Copier le message</button><button class="btn" data-a="web">Ouvrir ma messagerie MSSanté</button>'
-          :'<button class="btn" data-a="go">📧 Ouvrir la messagerie</button><button class="btn" data-a="save">Enregistrer le PDF seulement</button>'}
-        <button class="btn" data-a="0">Fermer</button><button class="btn primary" data-a="done">✓ C’est envoyé</button></div>`;
+          :'<button class="btn" data-a="go">📧 Ouvrir la messagerie</button><button class="btn" data-a="save">Enregistrer le PDF</button><button class="btn" data-a="cpa">Copier l’adresse</button><button class="btn" data-a="cpm">Copier le message</button><button class="btn" data-a="webm">Ouvrir ma messagerie web</button>'}
+        <button class="btn" data-a="0">Fermer</button><button class="btn primary" data-a="done">✓ J’ai envoyé le message</button></div>`;
       return;
     }
     const copy=async(t,ok)=>{ try{ await navigator.clipboard.writeText(t); toast(ok); }catch(err){ toast('Copie impossible : '+t.slice(0,60)); } };
@@ -3565,6 +3565,7 @@ async function openSendUpd(p){
     if(k==='cpm') return copy(txt,'Message copié');
     if(k==='save'){ await saveFile(file.name,blob); return; }
     if(k==='web'){ window.open(S.settings.mssUrl||'https://mailiz.mssante.fr','_blank','noopener'); return; }
+    if(k==='webm'){ return openMailWeb(); }
     if(k==='go'){
       try{ navigator.clipboard.writeText(addr).catch(()=>{}); }catch(err){}
       if(navigator.canShare&&navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file],title:subj,text:txt}); toast('Adresse copiée : collez-la dans le message'); }catch(err){ if(err&&err.name!=='AbortError') toast('Partage impossible : enregistrez le PDF'); } return; }
@@ -3613,7 +3614,7 @@ async function sendBatch(){
         ${d==='mail'&&!p.mailOk?'<label class="chkline"><input type="checkbox" id="sbOk"> La patiente a accepté de recevoir son dossier chiffré à cette adresse.</label>':''}
         <div id="sbAct" style="margin-top:12px"><p style="font-size:.9rem">Préparation du PDF…</p></div>`
        :`<p>Aucune adresse : saisissez l’<b>INS</b> (Mon espace santé) ou l’<b>e-mail</b> de la patiente dans son identité.</p>`}
-      <div class="bx" style="flex-wrap:wrap"><button class="btn" data-a="stop">Arrêter</button><button class="btn" data-a="skip">Passer</button>${ch.length?'<button class="btn primary" data-a="ok" id="sbNext" disabled>✓ Envoyé – suivante</button>':''}</div>`;
+      <div class="bx" style="flex-wrap:wrap"><button class="btn" data-a="stop">Arrêter</button><button class="btn" data-a="skip">Passer</button>${ch.length?'<button class="btn primary" data-a="ok" id="sbNext" disabled>✓ Message envoyé – suivante</button>':''}</div>`;
     b.querySelectorAll('[name="sbd"]').forEach(r=>r.addEventListener('change',()=>{ d=r.value; show(); }));
     if(L[i+1]) prep(L[i+1]).catch(()=>{});
     if(!ch.length) return;
@@ -3621,7 +3622,7 @@ async function sendBatch(){
     if(L[i]!==p) return; const act=b.querySelector('#sbAct'); if(!act) return;
     act.innerHTML=d==='mes'
       ?`<p style="font-size:.88rem;margin:0 0 8px">Dans votre messagerie MSSanté : nouveau message, collez l’adresse et le texte, joignez le PDF, envoyez.</p><div class="newev"><button class="btn primary" data-a="save">Enregistrer le PDF</button><button class="btn" data-a="cpa">Copier l’adresse</button><button class="btn" data-a="cpm">Copier le texte</button><button class="btn" data-a="web">Ouvrir ma messagerie MSSanté</button></div>`
-      :`<div class="newev"><button class="btn primary" data-a="mail">📧 Ouvrir la messagerie (PDF et texte joints)</button><button class="btn" data-a="classic">Autre méthode</button></div><p style="font-size:.82rem;color:var(--muted);margin:6px 0 0">L’adresse est copiée : collez-la dans « À ». « Autre méthode » enregistre le PDF et ouvre un message déjà adressé${mp?', avec copie cachée à '+esc(mp):''}.</p>`;
+      :`<div class="newev"><button class="btn primary" data-a="mail">📧 Ouvrir la messagerie (PDF et texte joints)</button><button class="btn" data-a="classic">Autre méthode</button></div><p style="font-size:.85rem;margin:10px 0 4px"><b>Messagerie dans le navigateur</b> (webmail) : enregistrez le PDF, copiez l’adresse et le texte, puis joignez le PDF au nouveau message.</p><div class="newev"><button class="btn" data-a="save">Enregistrer le PDF</button><button class="btn" data-a="cpa">Copier l’adresse</button><button class="btn" data-a="cpm">Copier le texte</button><button class="btn" data-a="webm">Ouvrir ma messagerie web</button></div><p style="font-size:.82rem;color:var(--muted);margin:6px 0 0">L’adresse est copiée : collez-la dans « À ». « Autre méthode » enregistre le PDF et ouvre un message déjà adressé${mp?', avec copie cachée à '+esc(mp):''}.</p>`;
     const nx=b.querySelector('#sbNext'); if(nx) nx.disabled=false;
   };
   const subj=()=>S.settings.sendSubj||SEND_SUBJ;
@@ -3636,10 +3637,14 @@ async function sendBatch(){
     if(k==='cpa'||k==='cpm'){ const t=k==='cpa'?addr:sendText(p); try{ await navigator.clipboard.writeText(t); toast(k==='cpa'?'Adresse copiée':'Texte copié'); }catch(err){ toast('Copie impossible'); } return; }
     if(k==='save'){ if(file) await saveFile(file.name,file); return; }
     if(k==='web'){ window.open(S.settings.mssUrl||'https://mailiz.mssante.fr','_blank','noopener'); return; }
+    if(k==='webm'){ return openMailWeb(); }
     if(k==='mail'||k==='classic'){ if(!needOk()||!file) return; return sendViaMail(file,addr,subj(),sendText(p),k==='classic'); }
     if(k==='ok'){ if(!needOk()) return; if(d==='mail'&&!p.mailOk) p.mailOk=Date.now(); p.sendPref=d; await markSent(p,d); sent++; i++; return show(); }
   };
 }
+function openMailWeb(){ let u=((S.settings.praticien||{}).mailWeb||'').trim();
+  if(!u){ toast('Indiquez l’adresse de votre messagerie web dans Réglages → Mon identité (ex. outlook.office.com)'); return; }
+  if(!/^https?:\/\//i.test(u)) u='https://'+u; window.open(u,'_blank','noopener'); }
 document.addEventListener('click',e=>{ if(e.target.closest('[data-sendall]')&&!isPatient()) sendBatch(); });
 
 document.addEventListener('click',e=>{ const a=e.target.closest('[data-sendupd]'); if(!a||isPatient()) return; const p=S.patients.find(x=>x.id===a.dataset.sendupd); if(p) openSendUpd(p); });
